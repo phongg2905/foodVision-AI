@@ -1,0 +1,24 @@
+# Cấu hình Dataset YOLO cho FoodVision AI (12 nhãn nguyên liệu MVP)
+path: ../datasets/foodvision_v1  # Thư mục gốc của dataset
+train: images/train              # Tập huấn luyện (~70%)
+val: images/val                  # Tập kiểm định (~15%)
+test: images/test                # Tập kiểm thử độc lập (~15%)
+
+# Số lượng lớp (classes)
+nc: 12
+
+# Danh mục 12 nhãn chuẩn (khớp với cột yolo_class trong bảng ingredients trên Supabase)
+names:
+  0: tomato        # Cà chua
+  1: carrot        # Cà rốt
+  2: potato        # Khoai tây
+  3: onion         # Hành tây
+  4: cucumber      # Dưa leo
+  5: egg           # Trứng gà nguyên vỏ
+  6: cabbage       # Bắp cải
+  7: bell_pepper   # Ớt chuông
+  8: pumpkin       # Bí đỏ
+  9: garlic        # Tỏi
+  10: green_onion  # Hành lá
+  11: lemon        # Chanh
+
