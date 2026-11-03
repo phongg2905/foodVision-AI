@@ -1,0 +1,20 @@
+flowchart TB
+    Guest["Guest / User / Admin<br/>Trình duyệt Web"]
+    FE["React + TypeScript + Vite<br/>Tailwind UI"]
+    Auth["Supabase Auth<br/>Login / JWT"]
+    API["FastAPI<br/>Validation / Authorization / Business API"]
+    Detector["AI adapter<br/>Ultralytics YOLO"]
+    Ranking["Recommendation Engine<br/>Deterministic weighted scoring"]
+    DB[("Supabase PostgreSQL<br/>Profiles / Ingredients / Recipes / History")]
+    Storage[("Supabase Storage<br/>Ảnh công thức có quyền sử dụng")]
+    Guest --> FE
+    FE <-->|"Đăng nhập / phiên"| Auth
+    FE <-->|"HTTPS JSON / Multipart"| API
+    API -->|"Verify JWT khi có token"| Auth
+    API -->|"Ảnh tạm thời, không lưu bền vững"| Detector
+    Detector -->|"Class / bbox / confidence"| API
+    API -->|"ingredient_ids được User xác nhận"| Ranking
+    Ranking <-->|"Món / nguyên liệu"| DB
+    API <-->|"CRUD / audit / lịch sử có consent"| DB
+    API <-->|"Metadata / ảnh công thức"| Storage
+    FE -.->|"Ảnh công thức public hoặc signed URL"| Storage

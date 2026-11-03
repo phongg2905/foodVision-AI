@@ -1,0 +1,129 @@
+erDiagram
+    PROFILES ||--o{ RECIPES : authors
+    PROFILES ||--o{ FAVORITES : owns
+    PROFILES ||--o{ SCAN_SESSIONS : saves
+    PROFILES ||--o{ RECOMMENDATION_FEEDBACK : writes
+    PROFILES ||--o{ AUDIT_LOGS : performs
+    INGREDIENTS ||--o{ INGREDIENT_ALIASES : aliases
+    INGREDIENTS ||--o{ RECIPE_INGREDIENTS : used_in
+    RECIPES ||--o{ RECIPE_INGREDIENTS : contains
+    RECIPES ||--o{ RECIPE_STEPS : steps
+    RECIPES ||--o{ FAVORITES : saved_as
+    RECIPES ||--o{ RECOMMENDATION_FEEDBACK : reviewed
+    INGREDIENTS ||--o{ INGREDIENT_NUTRITION_TAGS : mapped
+    NUTRITION_TAGS ||--o{ INGREDIENT_NUTRITION_TAGS : classified
+    AI_MODELS ||--o{ AI_LABELS : defines
+    INGREDIENTS ||--o{ AI_LABELS : resolves_to
+    AI_MODELS ||--o{ SCAN_SESSIONS : used_by
+    SCAN_SESSIONS ||--o{ SCAN_DETECTIONS : has
+    AI_LABELS ||--o{ SCAN_DETECTIONS : predicted_as
+    SCAN_SESSIONS ||--o{ SCAN_INGREDIENTS : confirmed_set
+    INGREDIENTS ||--o{ SCAN_INGREDIENTS : confirmed_item
+    SCAN_SESSIONS o|--o{ RECOMMENDATION_FEEDBACK : context
+    PROFILES {
+        uuid id PK,FK
+        text display_name
+        text role
+        timestamptz created_at
+    }
+    INGREDIENTS {
+        uuid id PK
+        text slug UK
+        text name_vi
+        text category
+        bool is_active
+    }
+    INGREDIENT_ALIASES {
+        uuid id PK
+        uuid ingredient_id FK
+        text alias
+        text normalized_alias
+        text locale
+    }
+    AI_MODELS {
+        uuid id PK
+        text version UK
+        text family
+        text dataset_version
+        text status
+    }
+    AI_LABELS {
+        uuid id PK
+        uuid model_id FK
+        int class_index
+        text class_name
+        uuid ingredient_id FK
+    }
+    RECIPES {
+        uuid id PK
+        text slug UK
+        text name_vi
+        text cuisine_code
+        int prep_minutes
+        int cook_minutes
+        text status
+        uuid author_id FK
+    }
+    RECIPE_INGREDIENTS {
+        uuid recipe_id PK,FK
+        uuid ingredient_id PK,FK
+        bool is_required
+        text display_quantity
+    }
+    RECIPE_STEPS {
+        uuid id PK
+        uuid recipe_id FK
+        int step_no
+        text instruction
+    }
+    NUTRITION_TAGS {
+        uuid id PK
+        text code UK
+        text name_vi
+        text description
+    }
+    INGREDIENT_NUTRITION_TAGS {
+        uuid ingredient_id PK,FK
+        uuid nutrition_tag_id PK,FK
+        text source_url
+    }
+    SCAN_SESSIONS {
+        uuid id PK
+        uuid user_id FK
+        uuid model_id FK
+        timestamptz created_at
+    }
+    SCAN_DETECTIONS {
+        uuid id PK
+        uuid scan_session_id FK
+        uuid ai_label_id FK
+        float confidence
+        float x1
+        float y1
+        float x2
+        float y2
+    }
+    SCAN_INGREDIENTS {
+        uuid scan_session_id PK,FK
+        uuid ingredient_id PK,FK
+        text provenance
+    }
+    FAVORITES {
+        uuid user_id PK,FK
+        uuid recipe_id PK,FK
+        timestamptz created_at
+    }
+    RECOMMENDATION_FEEDBACK {
+        uuid id PK
+        uuid user_id FK
+        uuid recipe_id FK
+        uuid scan_session_id FK
+        int rating
+    }
+    AUDIT_LOGS {
+        uuid id PK
+        uuid actor_id FK
+        text action
+        text entity_type
+        uuid entity_id
+    }
