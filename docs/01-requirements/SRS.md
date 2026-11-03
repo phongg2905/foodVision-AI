@@ -1,131 +1,208 @@
-# SRS — Đặc tả yêu cầu phần mềm (rút gọn nhưng triển khai được)
+# SRS — Đặc tả Yêu cầu Phần mềm (Software Requirements Specification)
 
-**Mã:** FV-SRS-001 · **Phiên bản:** 1.0.0 · **Ngày:** 03/11/2026 · **Trạng thái:** Đề xuất, chờ duyệt.  
-**Người duyệt:** Giảng viên phụ trách / nhóm dự án (chưa xác nhận).  
-**Liên kết:** [Use Cases](use-cases.md) · [User Stories](user-stories.md) · [Traceability](traceability-matrix.md)
+**Mã tài liệu:** `FV-SRS-001` · **Phiên bản:** `0.9.0-draft` · **Ngày cập nhật:** `03/11/2026` · **Trạng thái:** Đề xuất (`Proposed`), chờ nhóm và Giảng viên hướng dẫn phê duyệt để chốt `1.0.0-baseline`.  
+**Học phần:** Phát triển các hệ thống thông minh  
+**Tên đề tài:** Xây dựng website thông minh gợi ý món ăn từ hình ảnh nguyên liệu sử dụng YOLO  
+**Liên kết nhanh:** [Use Cases](use-cases.md) · [UML Use Case Diagram](use-case-diagram.puml) · [User Stories & Gherkin AC](user-stories.md) · [Traceability Matrix](traceability-matrix.md)
+
+---
+
+## Lịch sử sửa đổi (Revision History)
+
+| Phiên bản | Ngày | Tác giả / Vai trò | Mô tả thay đổi |
+|---|---|---|---|
+| `0.1.0-draft` | 03/11/2026 | Nhóm dự án | Khởi tạo khung tài liệu SRS, 18 FR, 12 NFR, 10 BR ban đầu. |
+| `0.9.0-draft` | 03/11/2026 | Nhóm dự án | Chuẩn hóa SRS theo IEEE 830 / ISO 29148: bổ sung Glossary, bảng Stakeholder & kiểm thử chéo, tách `FR-09a`/`FR-09b`, nâng `FR-15` lên `P0`, bổ sung cơ chế bật/tắt gia vị nền (`category='pantry'`, `excluded_pantry_ids`), quy ước `cook_minutes` gồm thời gian ướp/chờ bắt buộc, tiền xử lý EXIF Orientation, mở rộng `NFR-01`..`NFR-14` và `BR-01`..`BR-12`, đồng bộ hợp đồng OpenAPI và 47 TC. |
+| `1.0.0-baseline` | _Chờ duyệt_ | Giảng viên & Nhóm | Baseline chính thức sau khi hoàn tất rà soát và ký duyệt. |
+
+---
 
 ## 1. Giới thiệu
 
-### 1.1. Bối cảnh và vấn đề
+### 1.1. Bối cảnh và bài toán
 
-Người nấu ăn có nguyên liệu tại nhà nhưng thiếu ý tưởng món phù hợp. Việc tìm công thức theo văn bản mất thời gian và không tận dụng được ảnh. **Tên đề tài đề xuất:** "Xây dựng website thông minh gợi ý món ăn từ hình ảnh nguyên liệu sử dụng YOLO". FoodVision AI cung cấp công cụ Web giúp nhận diện nguyên liệu từ ảnh, cho phép chỉnh sửa sai sót và gợi ý công thức dựa trên các nguyên liệu thực tế.
+Người nội trợ và sinh viên thường có sẵn một số nguyên liệu trong tủ lạnh hoặc gian bếp nhưng khó nghĩ nhanh món ăn phù hợp. Việc tra cứu công thức thuần văn bản tốn nhiều thao tác và không tận dụng được hình ảnh thực tế của nguyên liệu. **FoodVision AI** là ứng dụng Web thông minh cho phép người dùng chụp/tải lên một bức ảnh chứa nhiều nguyên liệu, sử dụng mô hình **YOLO Object Detection** để phát hiện nguyên liệu tự động, kết hợp bước **người dùng xác nhận/chỉnh sửa và bật/tắt gia vị nền sẵn có**, từ đó chấm điểm và xếp hạng các công thức món ăn Việt/Âu/Mỹ minh bạch.
 
-### 1.2. Mục tiêu có thể kiểm chứng
+### 1.2. Mục tiêu hệ thống có thể kiểm chứng
 
-- Mục tiêu G-01: dùng ảnh chứa nhiều loại nguyên liệu để tạo danh sách nguyên liệu có thể chỉnh sửa.
-- Mục tiêu G-02: gợi ý các món có thể làm ngay và các món còn thiếu nguyên liệu, giải thích điểm xếp hạng.
-- Mục tiêu G-03: phân loại món Việt/Âu/Mỹ, hiển thị thời gian sơ chế/nấu và hướng dẫn theo bước; hỗ trợ tìm món nhanh 10–15 phút nếu dữ liệu công thức hợp lệ.
-- Mục tiêu G-04: tách rõ API, database và AI, có kiểm thử chất lượng nhận diện/gợi ý cùng bản trình diễn Web.
-- Mục tiêu G-05: thể hiện nhóm thành phần dinh dưỡng ở mức **định tính có nguồn**, không suy diễn khối lượng, kcal hoặc g protein từ ảnh.
+- **G-01 (Nhận diện đa đối tượng có kiểm soát):** Cho phép tải lên 1 ảnh chứa nhiều loại nguyên liệu để nhận danh sách gợi ý kèm hộp giới hạn (`bbox`) và độ tin cậy (`confidence`), luôn đi kèm giao diện chỉnh sửa trước khi gợi ý món.
+- **G-02 (Gợi ý và xếp hạng minh bạch):** Phân nhóm rõ món **"Nấu được ngay" (`ready`)** và món **"Còn thiếu nguyên liệu" (`missing`)**, giải thích chi tiết điểm tương thích `S` (`0..100`) và danh sách nguyên liệu/gia vị bắt buộc còn thiếu.
+- **G-03 (Đa dạng ẩm thực và kiểm soát thời gian):** Hỗ trợ tra cứu và lọc theo nhóm ẩm thực Việt (`VN`), Âu (`EU`), Mỹ (`US`) và tổng thời gian chế biến (`total_minutes = prep_minutes + cook_minutes`, bao gồm lọc nhanh `<= 15` phút).
+- **G-04 (Kiến trúc tách biệt & kiểm chứng thực nghiệm):** Tách biệt rõ mô-đun nhận diện thị giác (YOLO) với mô-đun gợi ý dựa trên quy tắc (Rule-based Scoring Engine), có bộ kiểm thử hợp đồng API, bảo mật RLS và quy trình đánh giá mô hình độc lập.
+- **G-05 (An toàn thông tin dinh dưỡng):** Chỉ hiển thị nhóm chất dinh dưỡng ở mức **định tính có dẫn nguồn (`source_url`)** ở cấp nguyên liệu; tuyệt đối không suy diễn khối lượng (`gram`), năng lượng (`kcal`) hay đưa ra khuyến nghị y khoa/dị ứng từ ảnh chụp.
 
-### 1.3. Phạm vi
+### 1.3. Bên liên quan, phân vai phụ trách và nguyên tắc kiểm thử chéo
 
-**MVP gồm:** (1) trang tìm và xem công thức, (2) tải/chụp ảnh, (3) nhiều bounding box + độ tin cậy, (4) danh sách nguyên liệu đã xác nhận, (5) thuật toán gợi ý dựa trên công thức và bộ lọc, (6) Supabase Auth cho lưu yêu thích, (7) CMS đơn giản cho Admin, (8) thử nghiệm AI và thuật toán.
-
-**Ngoài phạm vi:** điều trị/chẩn đoán dinh dưỡng, dị ứng được bảo đảm 100%, suy ra gram từ ảnh, tự đặt thực phẩm, chat AI, livestream camera, app Android/iOS native, thanh toán, OCR hóa đơn.
-
-### 1.4. Tác nhân và quyền
-
-| Tác nhân | Diễn giải | Quyền |
-|---|---|---|
-| Guest (khách) | Chưa đăng nhập | Xem món, upload ảnh, gợi ý, chỉnh sửa nguyên liệu cục bộ; không lưu lịch sử/yêu thích |
-| User | Đăng nhập Supabase Auth | Toàn bộ quyền Guest; lưu món yêu thích, gửi đánh giá, tùy chọn lưu lịch sử kết quả nhận diện |
-| Admin | User có vai trò được cấp **từ server** | Quản lý nguyên liệu, công thức, nhãn ánh xạ AI, nội dung dinh dưỡng; xem log thao tác |
-| AI Inference Service | Thành phần nội bộ | Nhận ảnh, trả nhãn/bbox/confidence; **không tự chọn món** |
-
-### 1.5. Quy trình nghiệp vụ chính
-
-1. Guest/User chọn ảnh JPG/PNG/WebP (≤5 MB). Backend kiểm tra dung lượng, MIME thực, kích thước và giải mã an toàn.
-2. YOLO trả danh sách đối tượng: nhãn, confidence, bounding box; backend ánh xạ phiên bản nhãn → `ingredients.id`.
-3. Giao diện hiển thị các nguyên liệu đã gộp trùng; người dùng **thêm/xóa/sửa** nguyên liệu. Chỉ danh sách sau xác nhận được đưa vào hệ gợi ý.
-4. Người dùng chọn tối đa thời gian nấu và nhóm ẩm thực (nếu muốn); backend tìm công thức đang công bố và chấm điểm theo thiết kế [recommendation-design.md](../05-recommendation/recommendation-design.md).
-5. Hiển thị **Nhóm A — có đủ nguyên liệu bắt buộc** trước **Nhóm B — còn thiếu** (nếu người dùng cho phép); mỗi món có điểm, nguyên liệu còn thiếu, thời gian và lý do xếp hạng.
-6. Người dùng xem chi tiết công thức và nhóm dinh dưỡng định tính. User có thể lưu yêu thích/gửi phản hồi và xem/xóa lịch sử đã tự chọn lưu.
-
-## 2. Yêu cầu chức năng (FR)
-
-**Ưu tiên:** P0 = bắt buộc MVP; P1 = làm sau luồng cốt lõi trong đồ án; P2 = mở rộng.  
-**Nghiệm thu:** mỗi FR có ít nhất một TC liên kết ở [traceability-matrix.md](traceability-matrix.md).
-
-| ID | Vai trò | Yêu cầu có thể kiểm thử | Ưu tiên |
+| Vai trò chuẩn (Role) | Thành viên phụ trách (cập nhật tên thật) | Trách nhiệm chính (Primary Ownership) | Phụ trách kiểm thử chéo (Cross-Testing) |
 |---|---|---|---|
-| FR-01 | Guest/User | Tra cứu danh sách món theo từ khóa, nhóm ẩm thực, tổng thời gian | P0 |
-| FR-02 | Guest/User | Xem chi tiết món: nguyên liệu, bắt buộc/tùy chọn, sơ chế, nấu, bước, nguồn | P0 |
-| FR-03 | Guest/User | Tải 1 ảnh JPEG/PNG/WebP ≤5 MB; báo lỗi rõ khi ảnh không hợp lệ | P0 |
-| FR-04 | Guest/User | Nhận diện **nhiều** đối tượng nguyên liệu, hiển thị confidence và bbox | P0 |
-| FR-05 | Guest/User | Xác nhận và thêm/sửa/xóa nguyên liệu, gộp trùng, không buộc theo dự đoán AI | P0 |
-| FR-06 | Guest/User | Nhận danh sách món được tính điểm, xếp hạng; giải thích nguyên liệu có/thiếu | P0 |
-| FR-07 | Guest/User | Lọc/ưu tiên nhóm món Việt, Âu, Mỹ và thời gian (bao gồm ≤15 phút) | P0 |
-| FR-08 | Guest/User | Xem thông tin **nhóm chất dinh dưỡng định tính** có dẫn nguồn, cảnh báo hạn chế | P0 |
-| FR-09 | User | Đăng ký/đăng nhập/đăng xuất qua Supabase Auth | P1 |
-| FR-10 | User | Thêm/bỏ/xem danh sách món yêu thích; chỉ thấy dữ liệu của mình | P1 |
-| FR-11 | User | Gửi đánh giá mức hữu ích (1–5) cho món gợi ý | P1 |
-| FR-12 | User | Chọn lưu hoặc không lưu; xem và xóa lịch sử **kết quả** nhận diện của mình; mặc định **không lưu** | P1 |
-| FR-13 | Admin | Tạo/sửa/ẩn/công bố món, các bước nấu và nguyên liệu tương ứng | P0 |
-| FR-14 | Admin | Quản lý danh mục nguyên liệu, tên đồng nghĩa, trạng thái hoạt động | P0 |
-| FR-15 | Admin | Quản lý phiên bản mô hình và ánh xạ class YOLO → nguyên liệu; không tự động huấn luyện | P1 |
-| FR-16 | Admin | Quản lý nhãn dinh dưỡng và căn cứ nguồn, không cho phép khẳng định số gram khi thiếu dữ liệu | P1 |
-| FR-17 | Admin | Xem nhật ký thay đổi dữ liệu quan trọng | P1 |
-| FR-18 | Guest/User | Khi ảnh không nhận diện được, vẫn nhập thủ công và dùng chức năng gợi ý | P0 |
+| **PM / Content Lead** | `[Họ tên thành viên 1]` | Quản lý phạm vi SRS, biên tập bộ công thức mẫu (`recipes`, `recipe_steps`), danh mục nguyên liệu/gia vị nền (`ingredients`), nguồn dinh dưỡng (`nutrition_tags`) và kiểm tra bản quyền (`LEGAL-01`). | Kiểm thử nghiệm thu giao diện và luồng người dùng do `FE / QA Lead` xây dựng. |
+| **BE / DB Lead** | `[Họ tên thành viên 2]` | Thiết kế CSDL PostgreSQL/Supabase, migration/seed, RLS policies, xây dựng REST API FastAPI, thuật toán gợi ý (`Scoring v1`), xác thực phân quyền và vận hành (`OPS`). | Kiểm thử tích hợp mô-đun suy luận AI (`AI-01`..`AI-03`, `PERF-01`) do `AI Lead` phụ trách. |
+| **AI Lead** | `[Họ tên thành viên 3]` | Thu thập/gán nhãn dataset, huấn luyện và đánh giá mô hình YOLO trên test split độc lập, quản lý `dataset.yaml`, tiền xử lý ảnh EXIF và đóng gói inference worker. | Kiểm thử hợp đồng API, thuật toán chấm điểm và bảo mật (`API-*`, `SEC-*`, `PERF-02`) do `BE / DB Lead` phụ trách. |
+| **FE / QA Lead** | `[Họ tên thành viên 4]` | Xây dựng giao diện Web React + TypeScript + Tailwind responsive, tích hợp Supabase Auth SDK, màn hình chỉnh sửa bbox/nguyên liệu, thanh gia vị sẵn có và điều phối bộ test case `TC-01`..`TC-47`. | Thực thi kiểm thử độc lập toàn bộ API backend và luồng quản trị CMS trước khi đánh dấu `Pass`. |
+| **Giảng viên hướng dẫn** | `[Họ tên Giảng viên]` | Phê duyệt phạm vi đề tài, ngưỡng nghiệm thu mô hình AI sau Pilot run và đánh giá nghiệm thu cuối kỳ. | — |
 
-**Ràng buộc FR quan trọng:** chức năng nhận diện không bảo đảm mọi nhãn và không thay thế xác nhận người dùng. Công thức phải có tối thiểu một nguyên liệu bắt buộc và một bước hướng dẫn trước khi chuyển sang `published`.
+> **Nguyên tắc kiểm thử chéo bắt buộc:** Trong ma trận truy vết ([`traceability-matrix.md`](traceability-matrix.md)), mỗi yêu cầu chỉ gắn **một vai trò chịu trách nhiệm chính (`Primary Owner`)** để rõ đầu mối. Khi nghiệm thu (`06-testing`), người lập trình một chức năng **không được tự đánh dấu `Pass` cuối cùng** cho chức năng đó mà phải do thành viên giữ vai trò kiểm thử chéo thực thi và ký xác nhận bằng chứng.
 
-## 3. Yêu cầu phi chức năng (NFR)
+### 1.4. Thuật ngữ và từ viết tắt (Glossary)
 
-| ID | Yêu cầu / mục tiêu kiểm chứng | Phương pháp |
+| Thuật ngữ / Ký hiệu | Định nghĩa chuẩn trong FoodVision AI |
+|---|---|
+| **Guest (Khách)** | Người dùng chưa đăng nhập; được phép tra cứu công thức, tải ảnh nhận diện (`save_history=false`), chỉnh sửa nguyên liệu, bật/tắt gia vị nền và nhận gợi ý món ăn. |
+| **User (Người dùng đã đăng ký)** | Người dùng đã xác thực qua Supabase Auth; kế thừa toàn bộ quyền của `Guest` và có thêm quyền lưu yêu thích, gửi đánh giá (`feedback`), tùy chọn lưu/xem/xóa lịch sử quét (`scan_sessions`). |
+| **Admin (Quản trị viên)** | Tài khoản có `profiles.role = 'admin'` được kiểm tra tại server; kế thừa toàn bộ quyền của `User` (`Admin --\|> User`) và có quyền quản trị công thức, nguyên liệu, mô hình AI, nhãn dinh dưỡng và xem `audit_logs`. |
+| **Nguyên liệu chính (`Main Ingredient`)** | Nguyên liệu thực phẩm hoặc gia vị tươi có hình khối thuộc `category IN ('vegetable', 'protein', 'seafood', 'spice', 'other')` (ví dụ: cà chua, trứng gà, thịt heo, tỏi củ, ớt trái, gừng). Có thể được nhận diện bởi YOLO hoặc nhập tay vào `ingredient_ids` (`U`). |
+| **Gia vị nền (`Pantry Ingredient`)** | Nhóm 5 gia vị gia dụng cơ bản luôn mặc định có sẵn trong bếp, có `category = 'pantry'`: **muối, đường, nước mắm, dầu ăn, tiêu xay** (nước lọc sinh hoạt không tạo bản ghi trong bảng `ingredients`). Không gán nhãn YOLO; người dùng bật/tắt trên giao diện để báo thiếu qua `excluded_pantry_ids` (`X`). |
+| **Danh sách nguyên liệu xác nhận (`U`)** | Tập UUID nguyên liệu chính (`category != 'pantry'`) sau khi người dùng đã duyệt, sửa, xóa hoặc thêm thủ công; là nguồn sự thật duy nhất đại diện cho nguyên liệu chính người dùng có khi gọi `/recommendations`. |
+| **Danh sách gia vị nền báo thiếu (`X`)** | Tập UUID gia vị nền (`category = 'pantry'`) mà người dùng chủ động bỏ chọn trên thanh "Gia vị sẵn có" (`excluded_pantry_ids`, mặc định `[]`). |
+| **Nhóm `ready` / `missing`** | `ready`: món ăn có đủ 100% nguyên liệu chính bắt buộc (`R_main ⊆ U`) VÀ không thiếu gia vị nền bắt buộc nào (`R_pantry ∩ X = ∅`, tức `E = 1.0`). `missing`: món ăn thiếu ít nhất 1 nguyên liệu chính bắt buộc hoặc thiếu ít nhất 1 gia vị nền bắt buộc (`E < 1.0`). |
+| **`prep_minutes` / `cook_minutes` / `total_minutes`** | `prep_minutes`: thời gian sơ chế (phút). `cook_minutes`: thời gian chế biến nhiệt trên bếp **cộng thời gian ướp, chờ ngấm gia vị hoặc hầm bắt buộc** (phút). `total_minutes = prep_minutes + cook_minutes`. |
+| **Bằng chứng dinh dưỡng (`Nutrition Evidence`)** | Nhóm chất định tính (`nutrition_tags`) gắn với nguyên liệu kèm đường dẫn nguồn tham khảo hợp lệ (`source_url`, ví dụ USDA FoodData Central), không phải định lượng `kcal`/`gram` của khẩu phần. |
+| **Model `draft` / `active` / `archived`** | Vòng đời phiên bản mô hình trong bảng `ai_models`. Tại mọi thời điểm chỉ có tối đa 1 model `active` phục vụ `/ai/detect`. Model `active` và `archived` bị khóa bất biến ánh xạ nhãn (`ai_labels`). |
+| **Phiên quét (`Scan Session`)** | Bản ghi metadata lần nhận diện ảnh (`scan_sessions`, `scan_detections`, `scan_ingredients`) chỉ được tạo khi `User` chủ động gửi `save_history=true`. Không bao giờ lưu tệp ảnh gốc của người dùng. |
+
+### 1.5. Phạm vi hệ thống và lộ trình ưu tiên
+
+- **Trong phạm vi MVP (`P0` — Bắt buộc hoàn thành trước khi nghiệm thu cốt lõi):**
+  1. Tra cứu, lọc và xem chi tiết công thức món ăn đã công bố (`FR-01`, `FR-02`, `FR-08`).
+  2. Tải ảnh nguyên liệu, tự xoay EXIF Orientation, xóa metadata EXIF/GPS và nhận diện nhiều đối tượng bằng YOLO (`FR-03`, `FR-04`).
+  3. Xác nhận/chỉnh sửa danh sách nguyên liệu chính, nhập tay khi AI không phát hiện được, và bật/tắt thanh gia vị nền sẵn có (`FR-05`, `FR-18`).
+  4. Chấm điểm, phân nhóm `ready`/`missing`, giải thích lý do và lọc theo ẩm thực/thời gian (`FR-06`, `FR-07`).
+  5. Đăng nhập/đăng xuất dành cho Quản trị viên (`FR-09a`) và bộ công cụ CMS quản trị công thức, nguyên liệu, phiên bản model AI & ánh xạ nhãn (`FR-13`, `FR-14`, `FR-15`).
+- **Trong phạm vi mở rộng đồ án (`P1` — Thực hiện ngay sau khi luồng `P0` ổn định):**
+  1. Đăng ký, đăng nhập, khôi phục mật khẩu, đăng xuất cho `User` (`FR-09b`).
+  2. Lưu/bỏ lưu món ăn yêu thích (`FR-10`), gửi đánh giá mức hữu ích `1..5` theo ngữ cảnh (`FR-11`), tùy chọn lưu/xem/xóa lịch sử kết quả nhận diện (`FR-12`).
+  3. Quản trị danh mục nhãn dinh dưỡng kèm nguồn (`FR-16`) và tra cứu nhật ký thao tác hệ thống (`FR-17`).
+- **Ngoài phạm vi (`P2+` / Out of Scope):**
+  - Không ước lượng khối lượng (`gram`), khẩu phần hay tính toán `kcal`/macros từ ảnh chụp.
+  - Không tư vấn y khoa, bệnh lý và **không lọc tự động theo dị ứng thực phẩm hoặc chế độ ăn kiêng nghiêm ngặt** (chỉ hiển thị đầy đủ thành phần công thức và cảnh báo miễn trừ trách nhiệm ở `BR-03`).
+  - Không lưu trữ hồ sơ cấu hình gia vị bếp cố định theo tài khoản giữa các thiết bị (`user_pantry_preferences`), không thu hồi phiên đăng nhập toàn cục đa thiết bị (`global sign-out`), không có chatbot LLM tự sinh công thức chưa kiểm duyệt, không làm ứng dụng mobile native (iOS/Android APK), không livestream camera thời gian thực.
+
+### 1.6. Tác nhân và mô hình kế thừa quyền (`Admin --|> User --|> Guest`)
+
+| Tác nhân | Kế thừa | Quyền hạn trong hệ thống |
 |---|---|---|
-| NFR-01 | Web responsive, hỗ trợ Chrome/Edge/Firefox phiên bản hiện hành; mobile browser ≥360px | UI test ở 360/768/1366px |
-| NFR-02 | Với ảnh hợp lệ ≤5 MB, API nhận diện có **mục tiêu** p95 ≤10s trên cấu hình benchmark đã công bố | 30+ lượt đo, ghi CPU/GPU, model, kích thước ảnh |
-| NFR-03 | API gợi ý **mục tiêu** p95 ≤1s với tập 500 công thức, không tính AI | Load test + log |
-| NFR-04 | Bảo vệ vai trò Admin cả tại server; JWT phải được xác minh; không tin role do client gửi | Kiểm thử 401/403 và cấp quyền |
-| NFR-05 | Bảng public có kiểm soát GRANT + RLS khi sử dụng Supabase Data API | Kiểm thử RLS bằng 2 tài khoản và anon |
-| NFR-06 | Không lưu ảnh gốc ở MVP; lịch sử kết quả AI chỉ lưu khi User chủ động chọn | Kiểm thử Storage/DB và quyền riêng tư |
-| NFR-07 | Không công bố kcal/protein/chất béo theo gram từ 1 ảnh không có khối lượng xác thực | Review nội dung và API |
-| NFR-08 | Mọi API có lỗi chuẩn `code`, `message`, `details`, `request_id` | Contract test |
-| NFR-09 | Tất cả input được validate; image type qua magic bytes; giới hạn request, chống file giả | Security & negative tests |
-| NFR-10 | Có OpenAPI và bảng dữ liệu cập nhật cùng code; CI hoặc lệnh local xác thực OpenAPI | Review PR, schema validation |
-| NFR-11 | Đánh giá YOLO trên test độc lập, công bố Precision/Recall/mAP50/mAP50-95, confusion/error cases | Báo cáo eval, không giả định kết quả |
-| NFR-12 | Không sử dụng tài sản ảnh/công thức/model trái giấy phép; quản lý nguồn và ghi công | Checklist license/attribution |
+| **Guest** | Gốc | Xem/tìm công thức `published`, xem nhãn dinh dưỡng định tính, gọi `GET /ingredients`, tải ảnh nhận diện với `save_history=false`, chỉnh sửa nguyên liệu, bật/tắt gia vị nền và nhận gợi ý món ăn (`/recommendations` với `scan_id=null`). |
+| **User** | Kế thừa **Guest** (`User --\|> Guest`) | Toàn bộ quyền của `Guest`; thêm quyền gọi `/ai/detect` với `save_history=true`, xem/xóa `/scan-sessions`, quản lý `/favorites`, gửi `/feedback`, khôi phục mật khẩu và đăng xuất cục bộ. |
+| **Admin** | Kế thừa **User** (`Admin --\|> User`) | Toàn bộ quyền của `User` trên dữ liệu cá nhân của chính mình; thêm quyền truy cập toàn bộ endpoint quản trị `/api/v1/admin/*` (công thức, nguyên liệu, nhãn dinh dưỡng, model AI, audit logs). Vai trò được xác minh từ `public.profiles.role = 'admin'` tại server. |
+| **AI Inference Service** | Nội bộ | Thành phần nội bộ nhận ảnh đã chuẩn hóa EXIF từ backend, chạy YOLO model đang `active` và trả danh sách `(class_index, confidence, bbox)`; không truy cập trực tiếp DB của người dùng và không tự chọn món ăn. |
 
-**Mục tiêu NFR-02/03 là kỳ vọng thiết kế, không phải kết quả đã đo.** Nếu phần cứng/bộ dữ liệu thay đổi, benchmark phải được làm lại và điều chỉnh tiêu chí qua PR.
+---
 
-## 4. Quy tắc nghiệp vụ (BR)
+## 2. Yêu cầu chức năng (Functional Requirements — FR)
 
-- **BR-01:** chỉ `recipes.status = published` mới xuất hiện trong API công khai.
-- **BR-02:** nguyên liệu tên đồng nghĩa phải quy về mã chuẩn `ingredients.id` trước khi tính điểm; phải xử lý trùng lặp.
-- **BR-03:** nguồn sự thật cho gợi ý là danh sách `ingredient_ids` **sau xác nhận**, không phải nhãn YOLO chưa duyệt.
-- **BR-04:** món chỉ thuộc nhóm "nấu được ngay" khi có **100% nguyên liệu bắt buộc**; nguyên liệu tùy chọn không ngăn vào nhóm này.
-- **BR-05:** khi lọc thời gian tối đa, dùng `total_minutes = prep_minutes + cook_minutes` theo dữ liệu công thức đã duyệt; nếu thiếu thời gian không được gắn nhãn ≤15 phút.
-- **BR-06:** mỗi công thức có `cuisine_code` trong VN/EU/US; EU là nhóm giao diện rộng, có thể bổ sung `country_code` về sau; không coi mọi món châu Âu đồng nhất.
-- **BR-07:** nhãn chất dinh dưỡng chỉ đưa ra khi nguồn dữ liệu đáng tin cậy; không diễn giải thành khuyến nghị y khoa.
-- **BR-08:** người dùng được dùng tính năng chính khi không đăng nhập; đăng nhập chỉ yêu cầu cho yêu thích, feedback, xem/lưu/xóa lịch sử.
-- **BR-09:** không có kết quả AI ⇒ cho nhập thủ công; không có món phù hợp ⇒ hiển thị lý do và đề xuất bỏ bớt bộ lọc.
-- **BR-10:** role Admin chỉ được cập nhật qua luồng quản trị có kiểm soát; client không được tự cập nhật role.
+Mỗi yêu cầu chức năng dưới đây được ánh xạ tới Use Case, User Story, Acceptance Criteria (Gherkin), API endpoint và Test Case trong [`traceability-matrix.md`](traceability-matrix.md).
 
-## 5. Dữ liệu đầu vào/đầu ra
+| Mã FR | Tác nhân | Mô tả yêu cầu có thể kiểm thử | Ưu tiên |
+|---|---|---|---|
+| **FR-01** | Guest / User | Tra cứu danh sách công thức đang `published` theo từ khóa (`q`, hỗ trợ tiếng Việt có dấu và không dấu), mã ẩm thực (`cuisine_code` thuộc `VN`, `EU`, `US`) và tổng thời gian tối đa (`max_total_minutes = prep_minutes + cook_minutes`), có phân trang (`limit`, `offset`, `total`). | **P0** |
+| **FR-02** | Guest / User | Xem chi tiết một công thức `published`: thông tin chung, thời gian sơ chế (`prep_minutes`), thời gian nấu & ướp/chờ bắt buộc (`cook_minutes`), tổng thời gian (`total_minutes`), danh sách nguyên liệu có phân loại `category` (tách biệt nguyên liệu chính và khu vực nhắc nhở "Gia vị cần chuẩn bị" `category='pantry'`), trạng thái bắt buộc/tùy chọn, định lượng hiển thị (`display_quantity`), các bước chế biến (`steps`) và nguồn/giấy phép. Trả `404 RECIPE_NOT_FOUND` nếu món không tồn tại hoặc đang ở trạng thái `draft`/`archived`. | **P0** |
+| **FR-03** | Guest / User | Tải lên 1 tệp ảnh nguyên liệu qua `POST /api/v1/ai/detect` (`multipart/form-data`, định dạng `image/jpeg`, `image/png`, `image/webp`, dung lượng `<= 5 MiB`). Backend kiểm tra kích thước (vượt `5 MiB` trả `413 IMAGE_TOO_LARGE`), kiểm tra MIME/magic bytes (sai kiểu trả `415 UNSUPPORTED_IMAGE_TYPE`), giải mã ảnh an toàn (file hỏng/giả mạo trả `422 INVALID_IMAGE`), **tự động xoay ảnh về đúng chiều hiển thị chuẩn theo cờ `EXIF Orientation` và xóa sạch toàn bộ metadata `EXIF/GPS` trong bộ nhớ** trước khi đưa vào mô hình AI. | **P0** |
+| **FR-04** | Guest / User, AI | Thực thi nhận diện đa đối tượng bằng mô hình YOLO đang `active`. Trả về `model_version`, mảng `detections[]` (mỗi phần tử gồm `class_index`, `class_name`, `ingredient_id`, `ingredient_name`, `confidence` trong `[0, 1]` và `bbox` chuẩn hóa `[0, 1]` tính trên ảnh đã xoay EXIF) và mảng `suggested_ingredients[]` đã khử trùng lặp theo `ingredient_id` với `max_confidence` (chỉ gồm nguyên liệu chính `category != 'pantry'`). Nếu chưa có model `active` trả `503 MODEL_NOT_READY`; nếu suy luận vượt ngưỡng thời gian cấu hình trả `504 INFERENCE_TIMEOUT`. | **P0** |
+| **FR-05** | Guest / User | Xác nhận và chỉnh sửa nguyên liệu trước khi gợi ý: (1) thêm, xóa, đổi nguyên liệu chính từ danh mục `GET /api/v1/ingredients` (chỉ trả nguyên liệu `is_active=true`, hỗ trợ lọc `category` và `exclude_pantry`; nếu gửi `category=pantry&exclude_pantry=true` trả `422 INVALID_QUERY_PARAMS`); (2) tự động gộp trùng `ingredient_id`; (3) hiển thị thanh **"Gia vị sẵn có trong bếp"** (`category='pantry'`: muối, đường, nước mắm, dầu ăn, tiêu xay) mặc định bật sẵn (`checked`), cho phép người dùng tắt các gia vị đang hết để gửi vào mảng `excluded_pantry_ids`. Ngăn gọi gợi ý nếu danh sách nguyên liệu chính `ingredient_ids` rỗng. | **P0** |
+| **FR-06** | Guest / User | Chấm điểm và xếp hạng công thức qua `POST /api/v1/recommendations`: nhận `ingredient_ids` (`category != 'pantry'`, `minItems: 1`) và `excluded_pantry_ids` (`category = 'pantry'`, mặc định `[]`; gửi sai phân loại hoặc UUID không tồn tại/inactive trả `422 INVALID_INGREDIENTS`). Chỉ xét các công thức `published` có ít nhất 1 nguyên liệu chính khớp với `ingredient_ids` (`C > 0`). Tính `E`, `C`, `T`, `P` và điểm tổng `S = round(100*(0.55*C + 0.25*E + 0.10*T + 0.10*P), 1)` theo [`recommendation-design.md`](../05-recommendation/recommendation-design.md). Phân nhóm `availability = "ready"` (`E = 1.0`, không thiếu nguyên liệu chính bắt buộc và không thiếu gia vị nền bắt buộc) hiển thị trước nhóm `"missing"` (`E < 1.0`), trả kèm `matched_ingredient_ids`, `missing_required_ingredient_ids` (bao gồm cả gia vị nền bắt buộc bị tắt), `missing_optional_ingredient_ids`, `score_breakdown` và `explanation_vi`. Hỗ trợ `include_missing=false` và trả `items=[]` khi không có món phù hợp. | **P0** |
+| **FR-07** | Guest / User | Lọc và ưu tiên gợi ý theo nhóm ẩm thực và thời gian: hỗ trợ lọc cứng `cuisine_codes` (`VN`, `EU`, `US`), lọc cứng `max_total_minutes` (`prep_minutes + cook_minutes <= max_total_minutes`, loại trước khi chấm điểm, bao gồm mốc nấu nhanh `<= 15` phút) và ưu tiên mềm `preferred_cuisine_codes` (tính hệ số `P = 1.0` hoặc `0.0`). | **P0** |
+| **FR-08** | Guest / User | Hiển thị thông tin nhóm chất dinh dưỡng định tính (`nutrition_tags`) gắn với nguyên liệu của công thức kèm liên kết nguồn tham khảo (`source_url`) và câu cảnh báo miễn trừ trách nhiệm định lượng/dị ứng bắt buộc (`BR-03`). | **P0** |
+| **FR-09a** | Admin | Xác thực Quản trị viên cho MVP: đăng nhập qua Supabase Auth, xác minh `profiles.role = 'admin'` tại backend cho mọi request `/api/v1/admin/*`, hỗ trợ khôi phục mật khẩu qua email (`resetPasswordForEmail`) và đăng xuất cục bộ (`signOut({ scope: 'local' })`). Tài khoản Admin kế thừa đầy đủ quyền của `User` (`Admin --\|> User`). | **P0** |
+| **FR-09b** | User | Quản lý phiên xác thực cho Người dùng đã đăng ký: đăng ký tài khoản mới (tự động tạo `profiles` với `role = 'user'`), đăng nhập, khôi phục mật khẩu qua email và đăng xuất cục bộ (`signOut({ scope: 'local' })`) qua Supabase Auth. | **P1** |
+| **FR-10** | User | Quản lý danh sách món ăn yêu thích cá nhân (`GET`, `POST`, `DELETE /api/v1/favorites`): thao tác thêm yêu thích đảm bảo tính idempotent (`201 Created` khi thêm mới, `200 OK` nếu đã lưu), xóa trả `204 No Content`, chỉ thao tác được trên công thức `published` và cô lập dữ liệu nghiêm ngặt theo chủ sở hữu (`user_id`). | **P1** |
+| **FR-11** | User | Gửi đánh giá mức độ hữu ích của gợi ý (`POST /api/v1/feedback`): `rating` nguyên từ `1` đến `5`, `note` tùy chọn (`<= 500` ký tự), gắn với `recipe_id` (`published`) và `scan_id` tùy chọn (nếu `scan_id` không tồn tại hoặc thuộc người khác trả `404 SCAN_NOT_OWNED`). Hoạt động theo cơ chế **upsert** trên khóa duy nhất `UNIQUE NULLS NOT DISTINCT (user_id, recipe_id, scan_session_id)`: tạo mới trả `201 Created`, gửi lại trong cùng ngữ cảnh cập nhật `rating`/`note`/`updated_at` và trả `200 OK`. | **P1** |
+| **FR-12** | User | Quản lý lịch sử kết quả nhận diện theo cơ chế **opt-in** (`save_history` mặc định `false`): khi `User` gửi `save_history=true` ở `/ai/detect`, hệ thống lưu metadata phiên quét vào `scan_sessions`, `scan_detections` (không lưu ảnh gốc) và cập nhật `scan_ingredients` (chỉ nguyên liệu chính) khi gọi `/recommendations` kèm `scan_id`. Cho phép xem danh sách (`GET /scan-sessions`), xem chi tiết (`GET /scan-sessions/{scan_id}`) và xóa (`DELETE /scan-sessions/{scan_id}` trả `204`, xóa lan truyền `scan_detections`, `scan_ingredients` và `recommendation_feedback` gắn với phiên quét đó). Nếu truy cập `scan_id` không tồn tại hoặc của người dùng khác, trả `404 SCAN_NOT_OWNED`. | **P1** |
+| **FR-13** | Admin | Quản trị vòng đời công thức (`POST`, `GET`, `PATCH /api/v1/admin/recipes`, `PATCH /api/v1/admin/recipes/{id}/status`): tạo công thức `draft`, cập nhật thông tin/nguyên liệu/bước nấu trong một giao dịch DB. Khi chuyển trạng thái sang `published` **hoặc khi chỉnh sửa (`PATCH`) một công thức đang ở trạng thái `published`**, hệ thống bắt buộc kiểm tra đủ 4 điều kiện (`BR-01`, `BR-05`): (1) có `>= 1` bước hướng dẫn, (2) có `>= 1` nguyên liệu chính bắt buộc (`is_required=true`, `category != 'pantry'`), (3) mọi nguyên liệu trong món đều có `is_active=true`, và (4) không có bước đơn lẻ nào có `estimated_minutes > prep_minutes + cook_minutes`; nếu vi phạm bất kỳ điều kiện nào, từ chối với `400 RECIPE_NOT_PUBLISHABLE`. | **P0** |
+| **FR-14** | Admin | Quản trị danh mục nguyên liệu chuẩn và tên đồng nghĩa (`GET`, `POST`, `PATCH /api/v1/admin/ingredients`): hỗ trợ 6 nhóm `category` (`vegetable`, `protein`, `seafood`, `spice`, `pantry`, `other`), kiểm tra trùng `slug` (`409 DUPLICATE_SLUG`), thay thế `aliases` trong giao dịch. Chặn thao tác đặt `is_active=false` hoặc đổi `category` (đặc biệt sang/từ `pantry`) bằng mã lỗi `400 INGREDIENT_IN_USE` nếu nguyên liệu đang được dùng trong bất kỳ công thức `published` nào hoặc đang được ánh xạ trong `ai_labels` của model `draft`/`active`. | **P0** |
+| **FR-15** | Admin | Quản trị phiên bản mô hình AI và ánh xạ nhãn (`GET`, `POST /api/v1/admin/ai-models`, `PATCH /api/v1/admin/ai-models/{id}/status`, `GET`, `POST`, `PATCH /api/v1/admin/ai-labels`): đăng ký metadata model `draft` (trùng `version` trả `409 DUPLICATE_MODEL_VERSION`), cấu hình ánh xạ `class_index -> ingredient_id` (chỉ cho phép trên model `draft`, sửa trên `active`/`archived` trả `400 MODEL_IMMUTABLE`; chỉ cho phép trỏ tới nguyên liệu `is_active=true` và `category != 'pantry'`, vi phạm trả `400 INVALID_LABEL_MAPPING`). Khi kích hoạt sang `active` (từ `draft` hoặc **rollback từ `archived`**), kiểm tra toàn bộ lớp đã được ánh xạ và mọi nguyên liệu được ánh xạ hiện vẫn `is_active=true` và `category != 'pantry'` (vi phạm trả `400 MODEL_NOT_ACTIVATABLE`), đồng thời tự động chuyển model `active` cũ sang `archived` trong cùng giao dịch. | **P0** |
+| **FR-16** | Admin | Quản trị danh mục nhãn dinh dưỡng định tính (`GET`, `POST`, `PATCH /api/v1/admin/nutrition-tags`) và gán nhãn dinh dưỡng cho nguyên liệu (`PUT /api/v1/admin/ingredients/{id}/nutrition-tags`): bắt buộc mỗi ánh xạ phải có `source_url` hợp lệ (`422 VALIDATION_ERROR` nếu thiếu hoặc sai định dạng URL). | **P1** |
+| **FR-17** | Admin | Ghi nhận tự động và tra cứu nhật ký kiểm toán (`GET /api/v1/admin/audit-logs`): mọi thao tác thêm/sửa/đổi trạng thái của Admin trên công thức, nguyên liệu, nhãn dinh dưỡng, mô hình AI và ánh xạ nhãn đều được ghi vào bảng `audit_logs` (`actor_id`, `action`, `entity_type`, `entity_id`, `created_at`, `metadata` đã lọc bỏ secret/token). | **P1** |
+| **FR-18** | Guest / User | Luồng dự phòng nhập thủ công hoàn chỉnh: người dùng có thể truy cập thẳng màn hình chọn nguyên liệu thủ công hoặc chuyển tiếp mượt mà khi `/ai/detect` trả `detections=[]` hay gặp lỗi `503`/`504`, để tìm kiếm và chọn nguyên liệu chính + bật/tắt gia vị nền rồi nhận gợi ý món ăn mà không cần `scan_id`. | **P0** |
 
-| Chức năng | Đầu vào | Đầu ra |
-|---|---|---|
-| Detect | `multipart/form-data`: `file`, `save_history=false` | danh sách detection (label, confidence, bbox), nguyên liệu gợi ý đã chuẩn hóa, `scan_id` có thể null |
-| Recommend | JSON: `ingredient_ids`, `max_total_minutes?`, `cuisine_codes?`, `include_missing`, `scan_id?` | nhóm `ready` / `missing`, điểm 0–100, lý do, `missing_ingredient_ids` |
-| Recipe details | `recipe_id` | tên, quốc gia/nhóm, thời gian, steps, ingredients, nutrition tags, nguồn |
-| Favorites | token người dùng + recipe ID | trạng thái đã lưu và danh sách riêng của chủ sở hữu |
-| Admin CRUD | token Admin + dữ liệu hợp lệ | tài nguyên mới/cập nhật; ghi audit |
+---
 
-Chi tiết hợp đồng: [openapi.yaml](../03-api/openapi.yaml).
+## 3. Yêu cầu phi chức năng (Non-Functional Requirements — NFR)
 
-## 6. Giới hạn và phụ thuộc
+> **Lưu ý thiết kế:** Các ngưỡng thời gian phản hồi và độ chính xác AI dưới đây là **mục tiêu thiết kế cần kiểm chứng thực nghiệm** trên môi trường benchmark đã công bố. Tham số cấu hình chi tiết (rate limit, timeout, cache TTL) được quản lý tập trung tại [`security-and-deployment.md`](../02-architecture/security-and-deployment.md) và [`api-conventions.md`](../03-api/api-conventions.md).
 
-1. Nhận diện nguyên liệu bị cắt, che khuất, dạng đã chế biến hoặc rất giống nhau có thể sai; phải có danh sách nhãn được hỗ trợ.
-2. Không nhận định độ chính xác trước khi huấn luyện và đánh giá thực nghiệm.
-3. Công thức dùng thông tin thời gian từ tác giả/nguồn hợp lệ, phải kiểm tra độ hợp lý trước khi công bố; **không hứa mọi món chỉ nấu trong 10–15 phút**.
-4. Không được sao chép nguyên văn công thức/hình ảnh có bản quyền khi không có quyền sử dụng. Nguồn tham khảo riêng tại [references.md](../references.md).
-5. Quyết định license Ultralytics/YOLO phải được kiểm tra trước khi công khai hoặc thương mại hóa; xem ADR-005.
+| Mã NFR | Nhóm chất lượng | Yêu cầu và tiêu chí kiểm chứng | Tài liệu thiết kế / Kiểm thử |
+|---|---|---|---|
+| **NFR-01** | Khả dụng & Tương thích (Usability) | Giao diện Web responsive hoạt động tốt trên Chrome, Edge, Firefox (2 phiên bản ổn định gần nhất) và trình duyệt di động ở các độ rộng khung nhìn `360px`, `768px`, `1366px`; không bị khuất nút hành động chính trên màn hình tải ảnh, chỉnh sửa nguyên liệu, thanh gia vị sẵn có và chi tiết món. | `UI-01`, `UI-02`, `UI-04` |
+| **NFR-02** | Hiệu năng AI (AI Performance) | Với ảnh hợp lệ `<= 5 MiB`, API `POST /api/v1/ai/detect` có mục tiêu độ trễ `p95 <= 10.0 giây` trên cấu hình CPU demo chuẩn (`p95 <= 3.0 giây` khi chạy trên GPU), đo trên tối thiểu 30 lượt yêu cầu liên tiếp. | [`ai-model-design.md`](../04-ai-model/ai-model-design.md), `PERF-01` |
+| **NFR-03** | Hiệu năng API (API Performance) | Với cơ sở dữ liệu chứa tối thiểu `500` công thức `published`, API `POST /api/v1/recommendations` đạt mục tiêu `p95 <= 1.0 giây` và `GET /api/v1/recipes` đạt `p95 <= 500 ms` (không tính thời gian mạng ngoài). `GET /api/v1/ingredients` hỗ trợ `Cache-Control: public, max-age=300` khi không có `q`. | [`api-conventions.md`](../03-api/api-conventions.md), `PERF-02` |
+| **NFR-04** | Xác thực & Phân quyền (AuthZ) | Mọi endpoint người dùng và quản trị phải xác minh chữ ký và hạn dùng của Supabase JWT tại backend; quyền `admin` chỉ được quyết định bởi `public.profiles.role = 'admin'` truy vấn từ server, tuyệt đối không tin cậy claim hay trường `role` do client tự gửi. Đảm bảo tính kế thừa `Admin --\|> User`. | [`security-and-deployment.md`](../02-architecture/security-and-deployment.md), `SEC-01`, `SEC-03`, `SEC-07` |
+| **NFR-05** | Bảo mật dữ liệu cấp dòng (DB RLS) | Toàn bộ bảng trong schema `public` phải bật Row Level Security (`RLS`) kết hợp phân quyền `GRANT`/`REVOKE` tối thiểu. Dữ liệu `favorites`, `scan_sessions`, `scan_detections`, `scan_ingredients`, `recommendation_feedback` bị cô lập nghiêm ngặt theo `auth.uid() = user_id`; truy cập `scan_id` của người khác trả `404 SCAN_NOT_OWNED`. | [`database-design.md`](../02-architecture/database-design.md), `SEC-04`, `SEC-06` |
+| **NFR-06** | Quyền riêng tư hình ảnh (Image Privacy) | Hệ thống **không lưu trữ bền vững tệp ảnh nguyên liệu gốc** của Guest/User trên đĩa hay đám mây; bộ nhớ đệm xử lý ảnh phải được giải phóng trong khối `finally` ngay khi kết thúc request. Trước khi suy luận, backend tự xoay ảnh theo `EXIF Orientation` và xóa sạch toàn bộ metadata `EXIF/GPS`. | [`ADR-007`](../07-decisions/ADR-007-image-privacy.md), [`ADR-010`](../07-decisions/ADR-010-image-exif-and-validation-errors.md), `SEC-02`, `TC-43` |
+| **NFR-07** | An toàn thông tin dinh dưỡng (Safety) | Không công bố số liệu định lượng `kcal`, `gram` protein/lipid/glucid suy diễn từ ảnh và không đưa ra lời khuyên điều trị hay cam kết an toàn dị ứng; mọi nhãn dinh dưỡng hiển thị phải đi kèm `source_url` và tuyên bố miễn trừ trách nhiệm. | [`nutrition-and-content.md`](../05-recommendation/nutrition-and-content.md), `TC-15` |
+| **NFR-08** | Quan sát hệ thống & Chuẩn lỗi (Observability) | Mọi phản hồi lỗi từ API tuân thủ cấu trúc JSON chuẩn `{ "code", "message", "details", "request_id" }` kèm header `X-Request-Id` và danh mục 20 mã lỗi đã khóa. Cung cấp `GET /api/v1/health` và ghi structured log JSON (ẩn toàn bộ JWT/secret). | [`api-conventions.md`](../03-api/api-conventions.md), `API-01`, `OPS-01` |
+| **NFR-09** | Toàn vẹn dữ liệu & Khả năng tái lập (Reproducibility) | Ràng buộc toàn vẹn dữ liệu ở tầng PostgreSQL (`>= 15`) bằng `FOREIGN KEY`, `CHECK`, partial unique index cho model `active`, và `UNIQUE NULLS NOT DISTINCT` cho feedback. Toàn bộ schema và dữ liệu mẫu (gồm 5 gia vị nền `pantry`) phải khởi tạo lại được trên DB trống bằng bộ script migration + seed tự động. | [`data-dictionary.md`](../02-architecture/data-dictionary.md), `OPS-02` |
+| **NFR-10** | Đồng bộ Hợp đồng API (Contract Sync) | Tài liệu `openapi.yaml` (OpenAPI 3.1.0) phải vượt qua trình kiểm tra cú pháp chuẩn và khớp với các route/schema thực tế của ứng dụng FastAPI. | [`openapi.yaml`](../03-api/openapi.yaml), `API-02` |
+| **NFR-11** | Minh bạch đánh giá AI (AI Evaluation Integrity) | Đánh giá mô hình YOLO trên tập `test` độc lập (chia `70/15/15` theo `scene/session`, không rò rỉ dữ liệu augment). Danh sách lớp mục tiêu phải được chốt trước khi chạy đánh giá cuối cùng (`dataset_ready`); **nghiêm cấm loại bỏ các lớp có kết quả thấp sau khi đã chạy test để nâng khống `mean mAP50`**. Bắt buộc công bố bảng per-class `AP50`, `Recall` và số lượng mẫu `N_test` từng lớp. Ngưỡng mục tiêu tham chiếu `mAP50 >= 0.70` (chốt chính thức cùng Giảng viên sau Pilot run). | [`dataset-and-evaluation.md`](../04-ai-model/dataset-and-evaluation.md), `AI-01`, `AI-02`, `AI-03` |
+| **NFR-12** | Ngôn ngữ hiển thị & Bản địa hóa (Localization) | 100% giao diện người dùng, tên nguyên liệu/công thức, giải thích xếp hạng (`explanation_vi`) và thông báo lỗi hiển thị bằng **tiếng Việt có dấu chuẩn UTF-8**. Ô tìm kiếm nguyên liệu và công thức hỗ trợ khớp chuỗi cả khi người dùng gõ có dấu hoặc không dấu. | `UI-03` |
+| **NFR-13** | Pháp lý, Bản quyền & Bảo vệ DLCN (Legal Compliance) | Tuân thủ giấy phép phần mềm và tập dữ liệu (`ADR-005`), ghi rõ nguồn/giấy phép công thức (`source_url`, `content_license`), và tuân thủ nguyên tắc tối thiểu hóa dữ liệu, sự đồng ý rõ ràng (opt-in) và quyền xóa dữ liệu của người dùng theo **Luật Bảo vệ dữ liệu cá nhân số 91/2025/QH15** (có hiệu lực từ 01/01/2026) và Nghị định 13/2023/NĐ-CP. | [`security-and-deployment.md`](../02-architecture/security-and-deployment.md), `LEGAL-01` |
+| **NFR-14** | Bảo vệ tài nguyên & Chống quá tải (Resource Protection) | Kiểm tra magic bytes của tệp tải lên, giới hạn kích thước body (`<= 5 MiB`), giới hạn tốc độ yêu cầu (`Rate Limiting` trả `429 RATE_LIMITED` kèm `Retry-After`), giới hạn số luồng suy luận đồng thời (`Concurrency Limit`) và tự động hủy tác vụ suy luận quá hạn (`504 INFERENCE_TIMEOUT`). | [`security-and-deployment.md`](../02-architecture/security-and-deployment.md), `SEC-05`, `API-03`, `API-04`, `OPS-03` |
 
-## 7. Quy trình phê duyệt baseline
+---
 
-- [ ] Nhóm xác nhận MVP, tính năng P0/P1 và số nhãn giai đoạn đầu.
-- [ ] Giảng viên duyệt tên đề tài, phạm vi AI và bộ chỉ số đánh giá.
-- [ ] Review Use Case, ERD, công thức xếp hạng và quyền dữ liệu.
-- [ ] Chạy kiểm tra tính hợp lệ OpenAPI.
-- [ ] Ghi nhận quyết định bằng PR/ADR; chuyển trạng thái tài liệu sang `Approved` sau khi được duyệt.
+## 4. Quy tắc nghiệp vụ (Business Rules — BR)
+
+- **BR-01 (Điều kiện xuất bản và duy trì công thức `published`):** Chỉ các công thức có `status = 'published'` mới xuất hiện trên API công khai (`/recipes`, `/recommendations`). Khi chuyển công thức sang `published` (`PATCH /api/v1/admin/recipes/{id}/status`) **hoặc khi chỉnh sửa (`PATCH /api/v1/admin/recipes/{id}`) một công thức đang `published`**, hệ thống bắt buộc kiểm tra 4 điều kiện:
+  1. Có ít nhất 1 bước hướng dẫn (`recipe_steps` không rỗng, `reason = "missing_steps"`).
+  2. Có ít nhất 1 nguyên liệu bắt buộc thuộc nhóm thực phẩm chính (`is_required = true` và `category != 'pantry'`, `reason = "missing_required_main_ingredient"`).
+  3. Toàn bộ nguyên liệu gắn với công thức đều đang hoạt động (`ingredients.is_active = true`, `reason = "inactive_ingredient"`).
+  4. Không có bất kỳ bước đơn lẻ nào có `estimated_minutes > prep_minutes + cook_minutes` (`reason = "step_exceeds_total_minutes"`).
+  Nếu vi phạm bất kỳ điều kiện nào, trả `400 RECIPE_NOT_PUBLISHABLE`.
+- **BR-02 (Chuẩn hóa nguyên liệu và tính bất biến của mô hình AI):** Mọi tên đồng nghĩa (`ingredient_aliases`) phải quy về UUID chuẩn `ingredients.id` và khử trùng lặp trước khi tính điểm gợi ý. Tại mọi thời điểm chỉ có tối đa 1 phiên bản mô hình AI ở trạng thái `active`. Bảng ánh xạ nhãn `ai_labels` chỉ được phép thêm/sửa khi model ở trạng thái `draft`; khi model đang ở trạng thái `active` hoặc `archived`, mọi thao tác thêm/sửa nhãn bị chặn với `400 MODEL_IMMUTABLE`. Khi kích hoạt một model sang `active` (từ `draft` hoặc rollback từ `archived`), toàn bộ lớp của model phải được ánh xạ đầy đủ và mọi nguyên liệu được ánh xạ phải đang có `is_active = true` và `category != 'pantry'`, nếu không sẽ bị chặn với `400 MODEL_NOT_ACTIVATABLE`.
+- **BR-03 (Ranh giới dinh dưỡng, nguồn tham chiếu và cảnh báo dị ứng):** Hệ thống chỉ lưu và hiển thị nhãn dinh dưỡng định tính (`nutrition_tags`) khi có đường dẫn nguồn tham khảo hợp lệ (`source_url`). Màn hình chi tiết công thức bắt buộc hiển thị thông báo miễn trừ trách nhiệm: *"Thông tin dinh dưỡng chỉ mang tính tham khảo định tính ở mức nguyên liệu, không thay thế tư vấn y tế và không tự động sàng lọc dị ứng thực phẩm."*
+- **BR-04 (Phân loại gia vị nền `category = 'pantry'`, cơ chế bật/tắt và toàn vẹn danh mục):**
+  - Miền giá trị của `ingredients.category` gồm 6 nhóm: `'vegetable'`, `'protein'`, `'seafood'`, `'spice'`, `'pantry'`, `'other'`. Nhóm `'pantry'` chỉ dành cho 5 gia vị nền gia dụng (**muối, đường, nước mắm, dầu ăn, tiêu xay**); nước lọc sinh hoạt không tạo bản ghi trong bảng `ingredients`. Các gia vị tươi có hình khối (tỏi, ớt, gừng, hành...) thuộc `'spice'` hoặc `'vegetable'`.
+  - Trên giao diện xác nhận nguyên liệu (`FR-05`), 5 gia vị nền `pantry` mặc định được bật sẵn (`checked`). Nếu người dùng bỏ chọn một gia vị vì đang hết, UUID của gia vị đó được gửi trong `excluded_pantry_ids` (`X`).
+  - Trong thuật toán gợi ý (`FR-06`), gọi `R_main = R_r \ Pantry`, `O_main = O_r \ Pantry`, `R_pantry = R_r ∩ Pantry` và `M_pantry = R_pantry ∩ X`. Công thức chỉ được đưa vào tập ứng viên nếu khớp ít nhất 1 nguyên liệu chính (`|(R_main ∪ O_main) ∩ U| >= 1`). Điểm độ phủ được tính theo `E = |R_main ∩ U| / (|R_main| + |M_pantry|)` và `C = (|R_main ∩ U| + 0.5 * |O_main ∩ U|) / (|R_main| + 0.5 * |O_main| + |M_pantry|)`. Món chỉ thuộc nhóm `"ready"` khi `|R_main - U| = 0` và `|M_pantry| = 0`.
+  - Backend từ chối với `400 INGREDIENT_IN_USE` nếu Admin tắt (`is_active = false`) hoặc đổi `category` của một nguyên liệu đang nằm trong công thức `published` hoặc đang được ánh xạ trong `ai_labels` của model `draft`/`active`.
+- **BR-05 (Quy ước `cook_minutes` và kiểm tra thời gian bước nấu):** Trường `cook_minutes` của công thức bao gồm cả thời gian chế biến nhiệt trên bếp **và** thời gian ướp, chờ ngấm gia vị hoặc hầm bắt buộc trong quy trình. Bộ lọc thời gian và hàm điểm `T(r)` luôn dùng `total_minutes = prep_minutes + cook_minutes`. Không bước đơn lẻ nào trong `recipe_steps` được có `estimated_minutes > total_minutes` (chặn tự động bằng `400 RECIPE_NOT_PUBLISHABLE`); nếu tổng cộng dồn `sum(estimated_minutes) > total_minutes`, giao diện Admin hiển thị cảnh báo biên tập để kiểm tra tính song song của các bước.
+- **BR-06 (Phân nhóm ẩm thực):** Mỗi công thức thuộc một trong ba mã ẩm thực giao diện `cuisine_code IN ('VN', 'EU', 'US')` và có thể lưu thêm `country_code` (ISO) để mở rộng chi tiết quốc gia mà không làm thay đổi bộ lọc chính.
+- **BR-07 (Nguồn sự thật khi gợi ý món):** Nguồn dữ liệu duy nhất đại diện cho nguyên liệu người dùng có khi tính điểm gợi ý là cặp `(ingredient_ids, excluded_pantry_ids)` do người dùng gửi sau bước xác nhận; không dùng trực tiếp kết quả thô của YOLO nếu người dùng đã chỉnh sửa hoặc xóa.
+- **BR-08 (Quyền sử dụng không cần đăng nhập và cơ chế lưu lịch sử opt-in):** Khách (`Guest`) sử dụng được toàn bộ luồng cốt lõi (tra cứu, nhận diện ảnh với `save_history=false`, chỉnh sửa nguyên liệu, bật/tắt gia vị nền, gợi ý món). Chỉ khi đã đăng nhập (`User`/`Admin`) và chủ động truyền `save_history=true`, hệ thống mới lưu phiên quét vào `scan_sessions`.
+- **BR-09 (Xử lý rỗng và dự phòng thủ công):** Khi mô hình AI không phát hiện được đối tượng nào (`detections = []`), API `/ai/detect` vẫn trả `200 OK` và giao diện chuyển sang chế độ nhập nguyên liệu thủ công. Khi không có công thức nào khớp điều kiện gợi ý, API `/recommendations` trả `200 OK` với `items = []` kèm gợi ý nới lỏng bộ lọc, tuyệt đối không tự sinh công thức chưa kiểm duyệt.
+- **BR-10 (Bảo vệ phân quyền và kế thừa vai trò):** Quyền `admin` chỉ được cấp thông qua quản trị cơ sở dữ liệu có kiểm soát (`profiles.role`). Tài khoản `admin` kế thừa toàn bộ quyền của `user` (`Admin --\|> User`), đồng thời mọi thao tác quản trị làm thay đổi dữ liệu đều phải ghi nhận vào `audit_logs`.
+- **BR-11 (Khóa duy nhất theo ngữ cảnh và xóa lan truyền cho đánh giá gợi ý):** Bảng `recommendation_feedback` áp dụng ràng buộc `UNIQUE NULLS NOT DISTINCT (user_id, recipe_id, scan_session_id)` (PostgreSQL `>= 15`). Gửi lại đánh giá trong cùng ngữ cảnh `(user_id, recipe_id, scan_session_id)` thực hiện cập nhật (`upsert`, trả `200 OK`, cập nhật `updated_at`). Khóa ngoại `scan_session_id` dùng `ON DELETE CASCADE` để khi người dùng xóa một phiên quét lịch sử, các đánh giá gắn với phiên quét đó được dọn sạch mà không bao giờ gây xung đột với đánh giá ở ngữ cảnh `scan_session_id IS NULL`.
+- **BR-12 (Ràng buộc ánh xạ nhãn AI):** Bảng `ai_labels` chỉ được phép ánh xạ `class_index` của mô hình YOLO tới nguyên liệu thực phẩm/gia vị tươi có hình khối đang hoạt động (`is_active = true` và `category != 'pantry'`). Mọi yêu cầu gán hoặc sửa nhãn trỏ tới nguyên liệu `pantry` hoặc `inactive` đều bị chặn với `400 INVALID_LABEL_MAPPING`.
+
+---
+
+## 5. Tổng quan dữ liệu đầu vào / đầu ra theo chức năng
+
+Hợp đồng chi tiết từng trường và mã trạng thái HTTP được quy định tại [`openapi.yaml`](../03-api/openapi.yaml) và [`api-conventions.md`](../03-api/api-conventions.md):
+
+| Nhóm chức năng | Endpoint chính | Đầu vào chính | Đầu ra chính & Mã trạng thái |
+|---|---|---|---|
+| **Danh mục nguyên liệu** | `GET /api/v1/ingredients` | Query: `q?`, `category?`, `exclude_pantry=false`, `limit=20`, `offset=0` | `200 OK`: `{ items: Ingredient[], total, limit, offset }` (chỉ `is_active=true`); `422 INVALID_QUERY_PARAMS` nếu `category=pantry&exclude_pantry=true`. |
+| **Tra cứu & Xem công thức** | `GET /api/v1/recipes`, `GET /api/v1/recipes/{recipe_id}` | Query: `q?`, `cuisine_code?`, `max_total_minutes?`, `limit`, `offset`; Path: `recipe_id` | `200 OK`: `PagedRecipes` hoặc `RecipeDetail` (kèm `ingredients[].category`, `steps[]`, `nutrition_evidence[]`); `404 RECIPE_NOT_FOUND`. |
+| **Nhận diện nguyên liệu từ ảnh** | `POST /api/v1/ai/detect` | `multipart/form-data`: `file` (`JPEG/PNG/WebP <= 5 MiB`), `save_history=false` | `200 OK`: `{ scan_id, model_version, detections[], suggested_ingredients[] }` (bbox trên ảnh đã xoay EXIF); lỗi `401`, `413`, `415`, `422`, `429`, `503`, `504`. |
+| **Gợi ý & Xếp hạng món ăn** | `POST /api/v1/recommendations` | JSON: `ingredient_ids` (`minItems: 1`, `category != 'pantry'`), `excluded_pantry_ids=[]` (`category = 'pantry'`), `max_total_minutes?`, `cuisine_codes=[]`, `preferred_cuisine_codes=[]`, `include_missing=true`, `limit=20`, `scan_id=null` | `200 OK`: `{ items: RecommendationItem[], total, limit }` (xếp `ready` trước `missing`, điểm `0..100`, `score_breakdown`, `missing_required_ingredient_ids`); lỗi `401`, `404 SCAN_NOT_OWNED`, `422 INVALID_INGREDIENTS`, `429`. |
+| **Yêu thích & Đánh giá** | `/api/v1/favorites`, `POST /api/v1/feedback` | Bearer JWT; JSON: `recipe_id`, `rating (1..5)`, `scan_id?`, `note?` | Favorites: `201`/`200` (idempotent), `204` khi xóa. Feedback: `201 Created` (mới) hoặc `200 OK` (upsert cùng ngữ cảnh); `404 SCAN_NOT_OWNED`. |
+| **Lịch sử nhận diện** | `GET /api/v1/scan-sessions`, `GET`/`DELETE /api/v1/scan-sessions/{scan_id}` | Bearer JWT; Path: `scan_id` | `200 OK` danh sách/chi tiết metadata; `204 No Content` khi xóa (cascade feedback của phiên quét đó); `404 SCAN_NOT_OWNED`. |
+| **Quản trị CMS & AI** | `/api/v1/admin/*` | Bearer JWT (`role='admin'`); JSON body theo từng tài nguyên | `200`/`201` tài nguyên cập nhật + ghi `audit_logs`; lỗi nghiệp vụ `400` (`RECIPE_NOT_PUBLISHABLE`, `INGREDIENT_IN_USE`, `MODEL_NOT_ACTIVATABLE`, `INVALID_LABEL_MAPPING`, `MODEL_IMMUTABLE`), `403`, `404`, `409`, `422`. |
+
+---
+
+## 6. Giới hạn, Giả định và Quản trị rủi ro
+
+### 6.1. Giới hạn kỹ thuật đã xác định
+
+1. Mô hình YOLO Object Detection chỉ nhận diện các nguyên liệu thực phẩm/gia vị tươi có hình khối nằm trong danh mục lớp đã huấn luyện (`label-catalog.md`); không nhận diện các nguyên liệu đã nấu chín trộn lẫn, thái vụn, chất lỏng hoặc gia vị đựng trong lọ kín (`category = 'pantry'`).
+2. Không cam kết độ chính xác nhận diện cố định trước khi hoàn tất thu thập dữ liệu và chạy đánh giá thực nghiệm trên tập `test` độc lập.
+3. Không suy diễn khối lượng (`gram`) hay năng lượng (`kcal`) từ hình ảnh 2D; thời gian nấu dựa trên dữ liệu công thức chuẩn hóa đã được biên tập viên kiểm duyệt.
+
+### 6.2. Bảng Giả định và Rủi ro (Assumptions & Risks)
+
+| Mã | Loại | Mô tả giả định / rủi ro | Mức tác động | Biện pháp giảm thiểu (Mitigation) |
+|---|---|---|---|---|
+| **AR-01** | Giả định | Môi trường cơ sở dữ liệu triển khai sử dụng **PostgreSQL `>= 15`** (mặc định trên Supabase hiện hành) để hỗ trợ cú pháp `UNIQUE NULLS NOT DISTINCT` và `RLS`. | Trung bình | Kiểm tra phiên bản PG trong script migration (`OPS-02`); nếu chạy bản PG cũ hơn trong môi trường cục bộ đặc biệt, nâng cấp image Docker lên `postgres:15+`. |
+| **AR-02** | Rủi ro AI | Một số lớp nguyên liệu khó (như `raw_chicken` vs `raw_pork`) có phương sai đánh giá cao khi số mẫu kiểm thử mỗi lớp nhỏ (`N_test ≈ 12–15` mẫu ở quy mô 80 đối tượng/lớp). | Cao | Áp dụng quy tắc `NFR-11`: chốt danh sách lớp đủ điều kiện trước khi đánh giá (`dataset_ready`), công bố minh bạch `AP50`, `Recall`, `N_test` từng lớp và luôn có bước người dùng chỉnh sửa/nhập tay (`FR-05`, `FR-18`). |
+| **AR-03** | Rủi ro Hiệu năng | Máy chạy demo không có GPU rời hoặc bị nghẽn khi nhiều người dùng tải ảnh `5 MiB` cùng lúc. | Cao | Chọn biến thể YOLO nhẹ cho CPU, giới hạn `MAX_CONCURRENT_INFERENCES`, đặt timeout `504 INFERENCE_TIMEOUT` và rate limit `429 RATE_LIMITED` (`NFR-02`, `NFR-14`). |
+| **AR-04** | Rủi ro Pháp lý | Tập ảnh huấn luyện hoặc nội dung công thức/hình ảnh món ăn vướng bản quyền hoặc chứa dữ liệu cá nhân (EXIF GPS). | Cao | Tự động xóa sạch EXIF/GPS trong RAM (`NFR-06`), không lưu ảnh gốc của người dùng, kiểm tra giấy phép YOLO/dataset (`ADR-005`) và rà soát nguồn công thức qua `LEGAL-01`. |
+
+---
+
+## 7. Danh mục kiểm tra phê duyệt Baseline (Approval Checklist)
+
+- [x] Đã phân tách rõ phạm vi `P0` (MVP), `P1` và ngoài phạm vi (`P2+`), giải quyết triệt để phụ thuộc xác thực bằng `FR-09a` (`P0`) và `FR-09b` (`P1`).
+- [x] Đã đồng bộ quy tắc gia vị nền (`category = 'pantry'`, `excluded_pantry_ids`), quy ước `cook_minutes` (gồm thời gian ướp/chờ bắt buộc) và tiền xử lý EXIF Orientation xuyên suốt SRS, Database, OpenAPI, AI, Recommendation và Test Cases.
+- [x] Đã thiết lập bảng phân vai trách nhiệm và quy tắc kiểm thử chéo (Cross-Testing).
+- [ ] Nhóm dự án điền tên thành viên cụ thể vào Mục 1.3 và Giảng viên hướng dẫn ký duyệt chuyển trạng thái sang `1.0.0-baseline`.
