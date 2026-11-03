@@ -1,10 +1,13 @@
-# ADR-003 — Tách YOLO Detector và Recommendation Engine
+# ADR-003 — Tách Tầng Nhận thức Thị giác và Hệ Suy luận – Xếp hạng – Cá nhân hóa
 
 - **Status:** Proposed
 - **Date:** 03/11/2026
-- **Context:** mục tiêu môn học cần phân hệ thông minh có thể giải thích. YOLO chỉ phát hiện vật thể, không tự chứa công thức hoặc logic tính món.
-- **Decision:** YOLO trả detections→ ingredient ID; User sửa xác nhận; recommender dùng dữ liệu món + công thức tính điểm C/E/T/P minh bạch.
-- **Alternatives:** dùng LLM tự sinh công thức hoặc end-to-end multimodal; luật search-only không nhận diện ảnh.
-- **Consequences:** giải thích gợi ý dễ, kiểm thử độc lập; cần cơ sở dữ liệu recipe curate và cân nhắc trọng số qua thử nghiệm.
-- **Revisit when:** có đủ lịch sử phản hồi/nhãn relevance để xây mô hình học xếp hạng thực nghiệm.
-- **References:** `docs/04-ai-model/ai-model-design.md`, `docs/05-recommendation/recommendation-design.md`.
+- **Context:** Học phần *Phát triển các hệ thống thông minh* đòi hỏi kiến trúc đa tầng có cơ sở khoa học, giải thích được quyết định và kiểm chứng được bằng thước đo định lượng. Mô hình YOLO chỉ phát hiện đối tượng nhìn thấy trong ảnh, không biết nguyên liệu ngoài khung hình (như gia vị trong bếp hoặc nguyên liệu cất trong tủ) và không chứa tri thức chế biến hay sở thích người dùng.
+- **Decision:**
+  1. **Tầng nhận thức (`01, 02, 14`):** Backend xoay ảnh theo `EXIF Orientation` & xóa `EXIF/GPS` ([`ADR-010`](ADR-010-image-exif-and-validation-errors.md)), chạy YOLO phát hiện nguyên liệu chính (`category != 'pantry'`), hỗ trợ gợi ý ứng viên CLIP/VLM có kiểm soát cho vùng ảnh khó, bật cờ cảnh báo xác nhận khi $p_{\max}(x) < \tau$ và nhận danh sách cuối cùng sau bước người dùng duyệt (HITL) + bật/tắt gia vị nền (`excluded_pantry_ids`).
+  2. **Tầng suy luận & ra quyết định (`04, 05, 07, 09, 14`):** Hỗ trợ hợp đồng quy tắc MVP (`Scoring v1.0`: `ready`/`missing`, `S = 89.0` / `68.1`) và nâng cấp liền mạch lên động cơ thông minh (`Scoring v1.1`): suy luận thế giới mở 3 trạng thái (`READY`, `UNKNOWN`, `MISSING_CONFIRMED`) + lọc cứng dị ứng/thiết bị/thời gian/ẩm thực (`BLOCKED`), chấm điểm Weighted Coverage + MCDA 5 tiêu chí ($0.50C + 0.25G + 0.15T + 0.05P + 0.05Q$), đa dạng hóa Top-K bằng MMR và phân rã đóng góp tuyến tính XAI.
+  3. **Tầng học sở thích & đối chứng thực nghiệm (`06, 08, 12`):** Dùng Tversky Similarity làm baseline đối chứng toán học (Phiên bản B) và bổ sung lớp cá nhân hóa Logistic Regression ($S_{\text{final}} = (1 - \lambda_{\text{pers}})S_{\text{base}} + 100\lambda_{\text{pers}}p_{u,r}$) khi người dùng tích lũy phản hồi tường minh hợp lệ (Phiên bản D).
+- **Alternatives:** Dùng LLM sinh tự do toàn bộ công thức từ ảnh (rủi ro ảo giác định lượng và bỏ sót dị ứng); mô hình end-to-end hộp đen không giải thích được điểm thành phần; hoặc chỉ tìm kiếm từ khóa đơn thuần không có nhận diện ảnh và đa tiêu chí.
+- **Consequences:** Giải thích quyết định minh bạch, tách bạch lỗi nhận diện ảnh với lỗi xếp hạng món, kiểm thử độc lập qua 5 giai đoạn; đổi lại cần biên tập kho công thức chuẩn hóa có vai trò/trọng số $w_{r,i}$ và tác nhân dị ứng.
+- **Revisit when:** Kho dữ liệu tương tác đủ lớn để thử nghiệm thêm các mô hình học xếp hạng cặp như BPR (Rendle et al., 2009) hoặc đồ thị dị thể (Tian et al., 2022) bên cạnh Logistic Regression.
+- **References:** [`docs/04-ai-model/ai-model-design.md`](../04-ai-model/ai-model-design.md), [`docs/05-recommendation/recommendation-design.md`](../05-recommendation/recommendation-design.md), [`ADR-008`](ADR-008-pantry-ingredients-handling.md).

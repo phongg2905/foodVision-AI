@@ -1,8 +1,10 @@
-# Ví dụ API — dữ liệu mô phỏng, chưa có server/DB chạy
+# Ví dụ API — dữ liệu mô phỏng theo hợp đồng & bài toán xuyên suốt
 
-> Các UUID, tên món và điểm số bên dưới là **ví dụ hợp đồng**. Khi seed dữ liệu thực, dùng ID thật; không đưa ví dụ này vào báo cáo dưới dạng kết quả thử nghiệm.
+> Các UUID, tên món và điểm số bên dưới là **ví dụ hợp đồng** (khớp 100% với [`openapi.yaml`](./openapi.yaml) ở cấu hình cốt lõi `Scoring v1.0`, kèm ví dụ mở rộng `Scoring v1.1` cho lộ trình Giai đoạn 2–5). Khi seed dữ liệu thực, dùng ID thật; không đưa ví dụ này vào báo cáo dưới dạng kết quả thử nghiệm thực tế.
 
-## 1. Upload ảnh nhận diện
+## 1. Upload ảnh nhận diện (`POST /api/v1/ai/detect`)
+
+### 1.1. Hợp đồng cốt lõi MVP (`v1.0` — khớp `openapi.yaml`)
 
 ```http
 POST /api/v1/ai/detect
@@ -41,9 +43,30 @@ save_history=false
 }
 ```
 
-BBox `x1,y1,x2,y2` theo tỷ lệ [0,1] tính trên ảnh đã xoay chuẩn chiều hiển thị theo EXIF Orientation (metadata EXIF/GPS đã bị loại bỏ). Có thể có nhiều detection trùng loại nguyên liệu; `suggested_ingredients` đã khử trùng lặp theo ingredient ID (chỉ gồm nguyên liệu chính `category != 'pantry'`).
+BBox `x1,y1,x2,y2` theo tỷ lệ `[0,1]` tính trên ảnh đã xoay chuẩn chiều hiển thị theo EXIF Orientation (metadata EXIF/GPS đã bị loại bỏ). Có thể có nhiều detection trùng loại nguyên liệu; `suggested_ingredients` đã khử trùng lặp theo `ingredient_id` (chỉ gồm nguyên liệu chính `category != 'pantry'`).
 
-## 2. Gợi ý từ danh sách **đã xác nhận**
+### 1.2. Mở rộng Giai đoạn 2 & 4 (Cờ HITL `needs_confirmation` & ứng viên CLIP tùy chọn)
+
+Khi bật ngưỡng cảnh báo xác nhận HITL ($\tau = 0.80$, Thành phần 14) và nhánh phụ tùy chọn CLIP (Thành phần 02) cho phát hiện độ tin cậy thấp (`0.58 < 0.80`):
+
+```json
+{
+  "class_index": 11,
+  "class_name": "tofu",
+  "ingredient_id": "66666666-6666-4666-8666-666666666666",
+  "ingredient_name": "Đậu hũ",
+  "confidence": 0.58,
+  "needs_confirmation": true,
+  "candidates": [
+    {"ingredient_id": "66666666-6666-4666-8666-666666666666", "name_vi": "Đậu hũ", "similarity": 0.975}
+  ],
+  "bbox": {"x1": 0.52, "y1": 0.25, "x2": 0.81, "y2": 0.68}
+}
+```
+
+## 2. Gợi ý món từ danh sách **đã xác nhận** (`POST /api/v1/recommendations`)
+
+### 2.1. Hợp đồng cốt lõi MVP (`Scoring v1.0` — khớp `openapi.yaml`)
 
 ```http
 POST /api/v1/recommendations
@@ -97,9 +120,9 @@ Content-Type: application/json
 }
 ```
 
-Điểm **89.0** là ví dụ tính đúng theo công thức giả định `C=0.8, E=1, T=1, P=1`, trọng số `(0.55, 0.25, 0.10, 0.10)` khi `excluded_pantry_ids = []`. Nếu người dùng bỏ chọn gia vị bắt buộc "Nước mắm" (`"excluded_pantry_ids": ["55555555-5555-4555-8555-555555555555"]`), món chuyển sang `availability: "missing"`, `missing_required_ingredient_ids: ["55555555-5555-4555-8555-555555555555"]`, `E = 2/3 ≈ 0.667`, `C = 2/3.5 ≈ 0.571`, `score = 68.1`.
+Điểm **89.0** là ví dụ tính đúng theo công thức `Scoring v1.0` (`C=0.8, E=1, T=1, P=1`, trọng số `(0.55, 0.25, 0.10, 0.10)`) khi `excluded_pantry_ids = []`. Nếu người dùng bỏ chọn gia vị bắt buộc "Nước mắm" (`"excluded_pantry_ids": ["55555555-5555-4555-8555-555555555555"]`), món chuyển sang `availability: "missing"`, `missing_required_ingredient_ids: ["55555555-5555-4555-8555-555555555555"]`, `E = 2/3 ≈ 0.667`, `C = 2/3.5 ≈ 0.571`, `score = 68.1`.
 
-### 2.1. Chi tiết công thức kèm phân loại gia vị nền (`GET /api/v1/recipes/{recipe_id}`)
+### 2.2. Chi tiết công thức kèm phân loại gia vị nền (`GET /api/v1/recipes/{recipe_id}`)
 
 Trong `RecipeDetail.ingredients`, mỗi phần tử `RecipeIngredientView` có trường `category` để giao diện tách riêng nhóm nguyên liệu chính và nhóm "Gia vị cần chuẩn bị" (`category = 'pantry'`):
 
@@ -114,6 +137,27 @@ Trong `RecipeDetail.ingredients`, mỗi phần tử `RecipeIngredientView` có t
 }
 ```
 
+### 2.3. Mở rộng Giai đoạn 2–5 (`Scoring v1.1` — Suy luận 3 trạng thái, Trọng số & MCDA XAI)
+
+Khi nâng cấp lên cấu hình `Scoring v1.1` (cập nhật đồng bộ `openapi.yaml` theo `NFR-10`), trường hợp người dùng xác nhận có **Cà chua** ($w=4$), **Dầu ăn** ($w=1$), **Muối** ($w=1$) nhưng chưa khai báo **Trứng gà** ($w=3$, trạng thái `unknown`):
+
+```json
+{
+  "availability": "unknown",
+  "score": 80.83,
+  "unknown_required_ingredient_ids": ["22222222-2222-4222-8222-222222222222"],
+  "missing_required_ingredient_ids": [],
+  "score_breakdown": {
+    "features": {"C": 0.6667, "G": 1.0, "T": 1.0, "P": 0.5, "Q": 1.0},
+    "contributions": {"C": 33.33, "G": 25.00, "T": 15.00, "P": 2.50, "Q": 5.00},
+    "personalization_lambda": 0.0
+  },
+  "explanation_vi": "Độ phủ nguyên liệu theo trọng số đạt 66.7% (cà chua là nguyên liệu chính, nấu <= 15 phút); chưa xác nhận có trứng gà nên chưa gắn nhãn Nấu ngay."
+}
+```
+
+Điểm **80.83** khớp tuyệt đối tổng đóng góp tuyến tính 5 tiêu chí MCDA: `33.33 + 25.00 + 15.00 + 2.50 + 5.00 = 80.83`. Nếu người dùng xác nhận có thêm Trứng gà (`C = 1.0`), món chuyển sang `availability: "ready"` và điểm tăng lên **97.50**.
+
 ## 3. API lỗi mẫu
 
 ```json
@@ -125,7 +169,7 @@ Trong `RecipeDetail.ingredients`, mỗi phần tử `RecipeIngredientView` có t
 }
 ```
 
-## 4. Tạo công thức ở trạng thái draft (Admin)
+## 4. Tạo công thức ở trạng thái draft (Admin — `POST /api/v1/admin/recipes`)
 
 ```http
 POST /api/v1/admin/recipes
@@ -155,29 +199,29 @@ Content-Type: application/json
 }
 ```
 
-Response dự kiến HTTP 201 chứa đối tượng recipe ở trạng thái `draft`. Đổi sang `published` qua `PATCH /api/v1/admin/recipes/{id}/status` khi backend kiểm tra đủ thành phần bắt buộc (`>= 1` nguyên liệu bắt buộc `category != 'pantry'`, mọi nguyên liệu `is_active = true`) và bước hướng dẫn (`>= 1` bước, không có bước đơn lẻ nào có `estimated_minutes > prep_minutes + cook_minutes`). Các bất biến này cũng được kiểm tra khi `PATCH /api/v1/admin/recipes/{id}` trên một công thức đang `published`.
+Response dự kiến `HTTP 201` chứa đối tượng recipe ở trạng thái `draft` (ở Giai đoạn 2–3, mỗi phần tử `ingredients` có thể khai báo thêm `role`, `weight` và `grams` để phục vụ `Scoring v1.1` và quy đổi khẩu phần/dinh dưỡng USDA). Đổi sang `published` qua `PATCH /api/v1/admin/recipes/{id}/status` khi backend kiểm tra đủ thành phần bắt buộc (`>= 1` nguyên liệu bắt buộc `category != 'pantry'`, mọi nguyên liệu `is_active = true`) và bước hướng dẫn (`>= 1` bước, không có bước đơn lẻ nào có `estimated_minutes > prep_minutes + cook_minutes`). Các bất biến này cũng được kiểm tra khi `PATCH /api/v1/admin/recipes/{id}` trên một công thức đang `published`.
 
 ## 5. Mã lỗi nghiệp vụ chuẩn hóa (20 mã)
 
-Chi tiết schema `details` của từng mã lỗi xem tại [`api-conventions.md`](./api-conventions.md):
+Chi tiết schema `details` của từng mã lỗi xem tại [`api-conventions.md`](./api-conventions.md#danh-mục-20-mã-lỗi-nghiệp-vụ-chuẩn-và-cấu-trúc-details):
 
-1. `UNAUTHORIZED` (`401`)
-2. `FORBIDDEN` (`403`)
-3. `SCAN_NOT_OWNED` (`404`)
-4. `RECIPE_NOT_FOUND` (`404`)
-5. `RESOURCE_NOT_FOUND` (`404`)
-6. `DUPLICATE_SLUG` (`409`)
-7. `DUPLICATE_MODEL_VERSION` (`409`)
-8. `IMAGE_TOO_LARGE` (`413`)
-9. `UNSUPPORTED_IMAGE_TYPE` (`415`)
-10. `INVALID_IMAGE` (`422`)
-11. `INVALID_INGREDIENTS` (`422`)
-12. `INVALID_QUERY_PARAMS` (`422`)
-13. `VALIDATION_ERROR` (`422`)
-14. `RECIPE_NOT_PUBLISHABLE` (`400`)
-15. `INGREDIENT_IN_USE` (`400`)
-16. `MODEL_NOT_ACTIVATABLE` (`400`)
-17. `INVALID_LABEL_MAPPING` (`400`)
+1. `IMAGE_TOO_LARGE` (`413`)
+2. `UNSUPPORTED_IMAGE_TYPE` (`415`)
+3. `INVALID_IMAGE` (`422`)
+4. `INVALID_INGREDIENTS` (`422`)
+5. `RECIPE_NOT_PUBLISHABLE` (`400`)
+6. `UNAUTHORIZED` (`401`)
+7. `FORBIDDEN` (`403`)
+8. `SCAN_NOT_OWNED` (`404`)
+9. `RECIPE_NOT_FOUND` (`404`)
+10. `DUPLICATE_SLUG` (`409`)
+11. `RATE_LIMITED` (`429`)
+12. `INTERNAL_ERROR` (`500`)
+13. `MODEL_NOT_READY` (`503`)
+14. `INVALID_QUERY_PARAMS` (`422`)
+15. `VALIDATION_ERROR` (`422`)
+16. `INGREDIENT_IN_USE` (`400`)
+17. `MODEL_NOT_ACTIVATABLE` (`400`)
 18. `MODEL_IMMUTABLE` (`400`)
-19. `RATE_LIMITED` (`429`)
-20. `INTERNAL_ERROR` (`500`), `MODEL_NOT_READY` (`503`), `INFERENCE_TIMEOUT` (`504`)
+19. `INVALID_LABEL_MAPPING` (`400`)
+20. `INFERENCE_TIMEOUT` (`504`)

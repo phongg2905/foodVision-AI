@@ -1,6 +1,6 @@
-# 05 — Recommendation Engine & Nutrition
+# 05 — Recommendation Engine, Personalization & Nutrition (`0.9.1-draft`)
 
-- [recommendation-design.md](recommendation-design.md): định nghĩa C/E/T/P, trọng số, điều kiện lọc, chia nhóm, ví dụ tính điểm, pseudocode.
-- [nutrition-and-content.md](nutrition-and-content.md): hạn chế kết luận dinh dưỡng, kiểm chứng nguồn, quản trị công thức/thời gian.
+- [recommendation-design.md](recommendation-design.md): đặc tả phân lớp thuật toán gợi ý gồm hợp đồng quy tắc MVP (`Scoring v1.0` với `excluded_pantry_ids`, khớp `openapi.yaml`) và động cơ thông minh mở rộng (`Scoring v1.1`): suy luận thế giới mở 3 trạng thái & lọc ràng buộc cứng (Thành phần 04), Weighted Ingredient Coverage (Thành phần 05), Tversky Similarity đối chứng Baseline B (Thành phần 06), xếp hạng đa tiêu chí MCDA 5 thành phần (Thành phần 07), học sở thích Logistic Regression (Thành phần 08), đa dạng hóa Top-K MMR (Thành phần 09), giải thích điểm tuyến tính XAI (Thành phần 14) và kiểm định `Precision@5` / `nDCG@5` qua 4 phiên bản `A – B – C – D` (Thành phần 12).
+- [nutrition-and-content.md](nutrition-and-content.md): chính sách dinh dưỡng hai tầng (nhãn định tính có nguồn `P0` + ước tính USDA FoodData Central theo định lượng chuẩn `P1` — Thành phần 11), truy xuất công thức kiểm duyệt & quy đổi khẩu phần (Thành phần 10), quy ước `cook_minutes` gồm thời gian ướp/chờ/hầm bắt buộc ([`ADR-009`](../07-decisions/ADR-009-cooking-and-waiting-time.md)) và quản trị bản quyền nội dung.
 
-**Lưu ý:** đây là **thuật toán gợi ý theo quy tắc có giải thích**, dùng kết quả YOLO làm đầu vào. Không gọi thuật toán này là mô hình AI thứ hai đã học từ dữ liệu. Trọng số hiện tại là **giả thuyết thiết kế** cần thử nghiệm với người dùng.
+**Lưu ý kiến trúc:** hệ gợi ý tách biệt rõ **tầng suy luận – chấm điểm quy tắc có thể phân rã chính xác (Symbolic + MCDA)** với **tầng học sở thích cá nhân hóa (Logistic Regression)** khi có dữ liệu phản hồi được kiểm định. Không gộp lẫn việc trang web gọi mô hình YOLO với việc toàn bộ hệ gợi ý "tự học", và không tuyên bố phương pháp nào vượt trội khi chưa đo thực nghiệm đối chứng độc lập (`A/B/C/D`).

@@ -1,5 +1,7 @@
 # API Conventions — FoodVision AI v1
 
+**Phiên bản:** 0.9.1-draft · **Hợp đồng máy đọc:** [`openapi.yaml`](./openapi.yaml)
+
 ## 1. Cơ sở
 
 - Base URL local: `http://localhost:8000/api/v1`.
@@ -7,15 +9,18 @@
 - Upload ảnh: `multipart/form-data` với `file` và `save_history` (boolean).
 - Supabase Auth xử lý sign-up/sign-in phía client; Backend **không tự viết `/login`**.
 - `Authorization: Bearer <Supabase access token>` cho endpoint cá nhân và quản trị; `/ai/detect` cho phép guest nếu `save_history=false`.
-- UUID là chuỗi định dạng UUID; thời gian là ISO 8601 UTC; điểm gợi ý 0–100 làm tròn 1 chữ số; confidence 0..1.
-- Ngôn ngữ phản hồi nội dung người dùng: tiếng Việt; tên code/path/field: tiếng Anh snake_case.
+- UUID là chuỗi định dạng UUID; thời gian là ISO 8601 UTC; `confidence` nằm trong `[0..1]`.
+- Quy ước làm tròn điểm gợi ý:
+  - Ở hợp đồng cốt lõi MVP (`Scoring v1.0` trong `openapi.yaml` hiện hành): điểm gợi ý thang `0–100` làm tròn **1 chữ số thập phân** (`89.0`, `68.1`).
+  - Ở cấu hình mở rộng thông minh (`Scoring v1.1` — Giai đoạn 2–5, có giải thích XAI 5 tiêu chí MCDA): điểm tổng và 5 điểm đóng góp thành phần $100 \cdot \alpha_k f_k$ làm tròn **2 chữ số thập phân** (`33.33 + 25.00 + 15.00 + 2.50 + 5.00 = 80.83`) để tổng đóng góp khớp tuyệt đối với điểm cơ sở.
+- Ngôn ngữ phản hồi nội dung người dùng: tiếng Việt; tên code/path/field: tiếng Anh `snake_case`.
 
 ## 2. Danh sách endpoint thiết kế
 
 | Nhóm | Method | Đường dẫn sau `/api/v1` | Truy cập |
 |---|---|---|---|
 | Health | GET | `/health` | Public |
-| Catalogue | GET | `/ingredients` | Public |
+| Catalogue | GET | `/ingredients` (hỗ trợ `?q=` chuẩn hóa tiếng Việt + alias + `pg_trgm`) | Public |
 | Catalogue | GET | `/nutrition-tags` | Public |
 | Recipes | GET | `/recipes` | Public |
 | Recipes | GET | `/recipes/{recipe_id}` | Public |
@@ -48,7 +53,7 @@
 | Admin AI | PATCH | `/admin/ai-labels/{label_id}` | Admin |
 | Admin audit | GET | `/admin/audit-logs` | Admin |
 
-**Tổng:** 33 operations. Một đường dẫn REST có thể có nhiều operations. Định nghĩa chính xác ở `openapi.yaml`.
+**Tổng:** 33 operations. Một đường dẫn REST có thể có nhiều operations. Định nghĩa chính xác ở [`openapi.yaml`](./openapi.yaml).
 
 ## 3. Mã HTTP và JSON lỗi
 
@@ -58,7 +63,7 @@
 | 201 | Tạo mới thành công | POST admin recipe, favorite mới, feedback mới |
 | 204 | Xóa/unfavorite thành công, body trống | DELETE favorite, DELETE scan-session |
 | 400 | Thao tác ghi/chuyển trạng thái vi phạm quy tắc toàn vẹn nghiệp vụ giữa các thực thể lưu trữ | Xuất công thức thiếu bước/nguyên liệu chính (`RECIPE_NOT_PUBLISHABLE`), sửa nguyên liệu đang dùng (`INGREDIENT_IN_USE`), sửa model bất biến (`MODEL_IMMUTABLE`), gán nhãn AI vào `pantry` (`INVALID_LABEL_MAPPING`) |
-| 401 | Chưa xác thực hoặc token không hợp lệ | Lưu favorite khi guest |
+| 401 | Chưa xác thực hoặc token không hợp lệ | Lưu favorite khi guest (`UNAUTHORIZED`) |
 | 403 | Đã xác thực nhưng không có quyền | User thường gọi `/admin/*` (`FORBIDDEN`) |
 | 404 | Bản ghi không thấy hoặc không thuộc quyền sở hữu | Recipe draft/archived với public (`RECIPE_NOT_FOUND`), `scan_id` không tồn tại hoặc của người khác (`SCAN_NOT_OWNED`) |
 | 409 | Xung đột khóa duy nhất (unique constraint) | Tạo slug/version/code đã tồn tại (`DUPLICATE_SLUG`) |
@@ -115,21 +120,22 @@
 
 ## 4. Auth & security
 
-- Public endpoint không cần token; nếu khách gửi token lỗi vào endpoint private thì trả 401.
+- Public endpoint không cần token; nếu khách gửi token lỗi vào endpoint private thì trả `401`.
 - `save_history=true` bắt buộc token hợp lệ; không tự động lưu ảnh và không lưu lịch sử cho guest. User xem/xóa lịch sử đã lưu qua `/scan-sessions`, phải xác minh owner (`404 SCAN_NOT_OWNED` nếu sai chủ sở hữu hoặc không tồn tại).
 - `POST /recommendations` và `POST /feedback` có kèm `scan_id` bắt buộc token của người sở hữu scan đó; nếu `scan_id` không tồn tại hoặc thuộc người khác thì trả `404 SCAN_NOT_OWNED`.
-- Quyền Admin kiểm tra server-side từ nguồn tin cậy; không tin header `X-Role`, input `role`, hay localStorage.
+- Quyền Admin kiểm tra server-side từ nguồn tin cậy; không tin header `X-Role`, input `role`, hay `localStorage`.
 - Không trả SQL/stacktrace/token/secret trong JSON lỗi.
 
-## 5. Phân trang, sắp xếp, caching và idempotency
+## 5. Phân trang, tìm kiếm tiếng Việt, caching và idempotency
 
 - List endpoints: `limit` (mặc định 20, tối đa 50), `offset` (mặc định 0); kết quả gồm `items`, `total`, `limit`, `offset`.
 - `GET /ingredients` là endpoint công khai (không cần token), chỉ trả các nguyên liệu có `is_active = true`:
   - Hỗ trợ lọc theo `category` (`vegetable`, `protein`, `seafood`, `spice`, `pantry`, `other`) và `exclude_pantry` (`boolean`, mặc định `false`). Nếu gửi đồng thời `category=pantry&exclude_pantry=true`, trả `422 INVALID_QUERY_PARAMS`.
+  - **Tìm kiếm tiếng Việt (`?q=`, Thành phần 13):** Chuẩn hóa chuỗi truy vấn $\text{Norm}(q)$ (`casefold` + `đ -> d` + bỏ dấu Unicode NFD), tra cứu theo thứ tự ưu tiên: (1) khớp `slug` / `alias` có dấu, (2) khớp chính xác `normalized_alias = Norm(q)`, (3) khớp gần đúng qua chỉ mục tam tự `pg_trgm` (`gin_trgm_ops`), trả danh sách ứng viên sắp theo độ tương đồng giảm dần để người dùng chọn trên autocomplete.
   - **Chính sách Cache:** Khi không truyền từ khóa tìm kiếm `q` (ví dụ `GET /ingredients?category=pantry`), trả `Cache-Control: public, max-age=300` (chấp nhận độ trễ tối đa 5 phút khi Admin sửa danh mục; CDN/reverse proxy phải dùng toàn bộ query string đã chuẩn hóa gồm `category`, `exclude_pantry`, `limit`, `offset` làm cache key). Khi có tham số `q`, trả `Cache-Control: no-store`.
 - `GET /recipes` trả món `published` và sắp theo tên mặc định; sort bổ sung phải có whitelist.
-- `GET /recipes/{id}` trả 404 (`RECIPE_NOT_FOUND`) nếu món `draft`/`archived` cho public.
-- `POST /favorites` dùng PK `(user_id, recipe_id)`, gửi lại cùng món không tạo bản ghi trùng, trả 200 nếu đã tồn tại hoặc 201 nếu mới.
+- `GET /recipes/{id}` trả `404` (`RECIPE_NOT_FOUND`) nếu món `draft`/`archived` cho public.
+- `POST /favorites` dùng PK `(user_id, recipe_id)`, gửi lại cùng món không tạo bản ghi trùng, trả `200` nếu đã tồn tại hoặc `201` nếu mới.
 - `POST /feedback` dùng `UNIQUE NULLS NOT DISTINCT (user_id, recipe_id, scan_session_id)`: gửi lần đầu trong một ngữ cảnh `(user_id, recipe_id, scan_session_id)` trả `201 Created`; gửi lại trong cùng ngữ cảnh sẽ upsert (`rating`, `note`, `updated_at`) và trả `200 OK`.
 - Chuyển model sang `active` (từ `draft` hoặc rollback từ `archived`) phải có đầy đủ class mappings hợp lệ (`is_active = true`, `category != 'pantry'`) và archive model active cũ trong transaction (tối đa 1 model active).
 - `POST /admin/ai-labels` và `PATCH /admin/ai-labels/{id}` chỉ cho phép thực hiện trên **model draft** và chỉ được trỏ tới nguyên liệu `is_active = true`, `category != 'pantry'`; nếu model đang `active`/`archived`, trả `400 MODEL_IMMUTABLE`.
@@ -141,6 +147,6 @@
 1. Nhóm thiết kế cùng review file OpenAPI trước coding.
 2. Backend dùng Pydantic tạo schema và các route khớp contract; khi chạy kiểm `/openapi.json`.
 3. Frontend sinh typed client nếu cần, hoặc viết mock theo examples; không hardcode class name, dùng `ingredient_id`.
-4. Mọi thay đổi breaking API cần cập nhật `openapi.yaml`, README, consumer FE, test API và ghi changelog/ADR nếu ảnh hưởng lớn.
+4. Mọi thay đổi breaking API (ví dụ khi nâng cấp schema `/recommendations` từ `Scoring v1.0` lên `Scoring v1.1`) cần cập nhật đồng bộ `openapi.yaml`, README, consumer FE, test API và ghi changelog/ADR (`NFR-10`).
 
 **Swagger**: ở môi trường FastAPI chạy thật, `/docs` hiển thị Swagger UI, `/redoc` hiển thị ReDoc. Đây không phải trang tài liệu đã hoạt động tại thời điểm viết đặc tả này.

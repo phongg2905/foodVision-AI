@@ -1,6 +1,6 @@
 # User Stories và Tiêu chí Chấp nhận (Gherkin Acceptance Criteria)
 
-**Phiên bản:** `0.9.0-draft` · **Trạng thái:** Đề xuất (`Proposed`) · **Đối chiếu:** [SRS](SRS.md), [Use Cases](use-cases.md), [Traceability Matrix](traceability-matrix.md)
+**Phiên bản:** `0.9.1-draft` · **Trạng thái:** Đề xuất (`Proposed`) · **Đối chiếu:** [SRS](SRS.md), [Use Cases](use-cases.md), [Traceability Matrix](traceability-matrix.md)
 
 **Quy ước thiết kế:**
 1. Mỗi User Story (`US-01`..`US-14`) ánh xạ trực tiếp tới các yêu cầu chức năng (`FR-01`..`FR-18`).
@@ -109,7 +109,7 @@ Scenario Outline: Trả đúng mã lỗi HTTP và error code khi tải ảnh l�
     | thời gian suy luận vượt ngưỡng timeout cấu hình  | 504     | INFERENCE_TIMEOUT      |
 ```
 
-### AC-07 — Tra cứu danh mục nguyên liệu và lọc gia vị nền (`US-04`, `FR-05`, `TC-36`)
+### AC-07 — Tra cứu danh mục nguyên liệu, tìm kiếm tiếng Việt và lọc gia vị nền (`US-04`, `FR-05`, `TC-36`, `DEF-06`)
 
 ```gherkin
 Scenario Outline: Tra cứu danh mục nguyên liệu công khai theo bộ lọc category và exclude_pantry
@@ -396,3 +396,10 @@ Scenario: Admin xem danh sách nhật ký thay đổi dữ liệu mà không l�
   Then hệ thống trả HTTP 200 chứa danh sách bản ghi có đủ actor_id, action, entity_type, entity_id, created_at
   And không có bản ghi nào chứa mật khẩu, JWT hay service-role key
 ```
+
+
+---
+
+## 4. Liên kết mở rộng Giai đoạn 2–5 (`Scoring v1.1` & Kịch bản Bảo vệ Đồ án)
+
+30 kịch bản Gherkin nguyên tử ở Mục 3 khóa chặt hợp đồng cốt lõi MVP (`P0` / `P1` nền tảng theo [`openapi.yaml`](../03-api/openapi.yaml)). Đối với các năng lực thông minh mở rộng ở Giai đoạn 2–5 (cảnh báo xác nhận HITL theo ngưỡng $\tau$, suy luận 3 trạng thái `READY` / `UNKNOWN` / `MISSING_CONFIRMED`, lọc cứng dị ứng/thiết bị `BLOCKED`, độ phủ có trọng số $w_{r,i}$, xếp hạng MCDA 5 tiêu chí kèm giải thích XAI `80.83`, cá nhân hóa Logistic Regression, đa dạng hóa MMR, quy đổi khẩu phần và dinh dưỡng Tầng 2 USDA), tiêu chí nghiệm thu chi tiết được đặc tả tại bộ **10 kịch bản bảo vệ đồ án (`DEF-01`..`DEF-10`)** và **Unit Test toán học (`MATH-01`..`MATH-07`)** trong [`06-testing/test-cases.md`](../06-testing/test-cases.md).

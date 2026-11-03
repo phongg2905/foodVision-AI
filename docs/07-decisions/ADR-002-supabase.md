@@ -1,10 +1,10 @@
-# ADR-002 — Sử dụng Supabase PostgreSQL/Auth/Storage
+# ADR-002 — Sử dụng Supabase PostgreSQL (`>= 15`), `pg_trgm`, Auth và Storage
 
 - **Status:** Proposed
 - **Date:** 03/11/2026
-- **Context:** dữ liệu nguyên liệu–công thức có nhiều quan hệ N–N, cần auth đơn giản, không muốn tự xây hệ mật khẩu.
-- **Decision:** dùng PostgreSQL + Supabase Auth + Storage (chỉ ảnh cover được cấp quyền). Dùng RLS **kèm GRANT/REVOKE** cho schema có Data API; FastAPI phải kiểm tra quyền riêng nếu dùng secret/service role.
-- **Alternatives:** MySQL + backend auth tự viết; MongoDB; Firebase (document data khác mô hình quan hệ).
-- **Consequences:** ít công xây auth, thuận tiện SQL/FK; phải quản lý schema migration, bảo vệ secret và thiết kế RLS.
-- **Revisit when:** hạ tầng/chi phí hoặc policy dữ liệu đòi host DB riêng.
-- **References:** `docs/02-architecture/database-design.md`, https://supabase.com/docs/guides/database/postgres/row-level-security.
+- **Context:** Dữ liệu nguyên liệu–công thức có nhiều quan hệ N–N kèm trọng số vai trò, bảng bí danh tiếng Việt vùng miền (`đậu hũ`/`đậu phụ`), tác nhân dị ứng và đánh giá theo ngữ cảnh; dự án cần xác thực đơn giản, không tự xây hệ mật khẩu từ đầu.
+- **Decision:** Sử dụng **PostgreSQL `>= 15`** trên Supabase (hỗ trợ `UNIQUE NULLS NOT DISTINCT` cho `recommendation_feedback` và bật extension `unaccent`, `pg_trgm` GIN index `gin_trgm_ops` phục vụ tìm kiếm nguyên liệu tiếng Việt gần đúng) + Supabase Auth + Supabase Storage (chỉ lưu ảnh minh họa công thức hợp pháp). Áp dụng **RLS kết hợp `GRANT`/`REVOKE`** tối thiểu cho mọi bảng trong schema `public`; FastAPI phải tự kiểm tra quyền và quan hệ sở hữu nếu sử dụng `service_role`.
+- **Alternatives:** MySQL + backend auth tự viết; MongoDB/Firebase (mô hình tài liệu kém phù hợp cho ràng buộc toàn vẹn N–N và truy vấn đa điều kiện nguyên liệu–công thức).
+- **Consequences:** Giảm chi phí xây xác thực, đảm bảo toàn vẹn khóa ngoại và tìm kiếm tiếng Việt nhanh ngay trong DB; đổi lại phải quản trị chặt script migration, bảo vệ secret key và kiểm thử chính sách RLS.
+- **Revisit when:** Hạ tầng, chi phí hoặc chính sách dữ liệu yêu cầu tự vận hành cụm PostgreSQL độc lập.
+- **References:** [`docs/02-architecture/database-design.md`](../02-architecture/database-design.md), [`ADR-012`](ADR-012-feedback-uniqueness-and-context.md), https://supabase.com/docs/guides/database/postgres/row-level-security.
