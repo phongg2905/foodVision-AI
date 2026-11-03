@@ -1,0 +1,2443 @@
+# Proposed design contract; not an implementation report.
+openapi: 3.1.0
+info:
+  title: FoodVision AI REST API — Proposed Contract
+  version: 1.0.0
+  description: Hợp đồng thiết kế cho đồ án Phát triển các hệ thống thông minh, chưa khẳng định các endpoint đã triển
+    khai. Body và dữ liệu ví dụ thuộc docs/03-api.
+servers:
+- url: http://localhost:8000/api/v1
+  description: Backend local đề xuất
+tags:
+- name: Health
+- name: Catalog
+- name: Recipes
+- name: AI
+- name: Recommendations
+- name: Favorites
+- name: Feedback
+- name: AdminRecipes
+- name: AdminIngredients
+- name: AdminNutrition
+- name: AdminAI
+- name: AdminAudit
+- name: ScanHistory
+paths:
+  /health:
+    get:
+      tags:
+      - Health
+      summary: Kiểm tra sức khỏe API
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                    - ok
+                    - degraded
+                additionalProperties: false
+                required:
+                - status
+      operationId: healthCheck
+  /ingredients:
+    get:
+      tags:
+      - Catalog
+      summary: Danh mục nguyên liệu (active)
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedIngredients'
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema: &id001
+          type: string
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+      operationId: listIngredients
+  /nutrition-tags:
+    get:
+      tags:
+      - Catalog
+      summary: Danh sách nhóm dinh dưỡng định tính
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NutritionTag'
+      operationId: listNutritionTags
+  /recipes:
+    get:
+      tags:
+      - Recipes
+      summary: Tìm kiếm món published
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedRecipes'
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema: *id001
+      - name: cuisine_code
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - VN
+          - EU
+          - US
+      - name: max_total_minutes
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 720
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+      operationId: listRecipes
+  /recipes/{recipe_id}:
+    get:
+      tags:
+      - Recipes
+      summary: Lấy món published và các bước
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecipeDetail'
+        '404':
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      parameters:
+      - name: recipe_id
+        in: path
+        required: true
+        schema: &id002
+          type: string
+          format: uuid
+      operationId: getRecipe
+  /ai/detect:
+    post:
+      tags:
+      - AI
+      summary: Nhận diện nhiều nguyên liệu từ 1 ảnh
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetectResponse'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: Quá giới hạn dung lượng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Kiểu ảnh không hỗ trợ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Quá giới hạn request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Service không sẵn sàng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                save_history: &id003
+                  type: boolean
+              additionalProperties: false
+              required:
+              - file
+            encoding:
+              file:
+                contentType: image/jpeg, image/png, image/webp
+      description: Ảnh tối đa 5 MiB, JPEG/PNG/WebP. Guest được phép nếu save_history=false; save_history=true cần
+        Bearer JWT; không lưu ảnh gốc. Response scan_id=null nếu không lưu.
+      operationId: detectIngredients
+      security:
+      - {}
+      - bearerAuth: []
+  /recommendations:
+    post:
+      tags:
+      - Recommendations
+      summary: Xếp hạng món từ nguyên liệu đã xác nhận
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecommendResponse'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Quá giới hạn request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecommendRequest'
+      description: ingredient_ids là danh sách cuối sau khi User sửa; nếu scan_id khác null thì bearer token phải
+        thuộc chủ sở hữu scan. cuisine_codes là lọc cứng, preferred_cuisine_codes là ưu tiên mềm.
+      operationId: recommendRecipes
+      security:
+      - {}
+      - bearerAuth: []
+  /favorites:
+    get:
+      tags:
+      - Favorites
+      summary: Danh sách yêu thích riêng của User
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedFavorites'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+      security:
+      - bearerAuth: []
+      operationId: listFavorites
+    post:
+      tags:
+      - Favorites
+      summary: Lưu món yêu thích, idempotent
+      responses:
+        '201':
+          description: Tạo mới
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FavoriteView'
+        '200':
+          description: Đã có sẵn
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FavoriteView'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FavoriteCreate'
+      security:
+      - bearerAuth: []
+      operationId: addFavorite
+  /favorites/{recipe_id}:
+    delete:
+      tags:
+      - Favorites
+      summary: Bỏ món yêu thích
+      responses:
+        '204':
+          description: Đã xóa hoặc chưa lưu
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      parameters:
+      - name: recipe_id
+        in: path
+        required: true
+        schema: *id002
+      security:
+      - bearerAuth: []
+      operationId: removeFavorite
+  /feedback:
+    post:
+      tags:
+      - Feedback
+      summary: Đánh giá mức hữu ích gợi ý (1..5)
+      responses:
+        '201':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackView'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Không có quyền
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackCreate'
+      security:
+      - bearerAuth: []
+      operationId: submitFeedback
+  /admin/recipes:
+    post:
+      tags:
+      - AdminRecipes
+      summary: Tạo recipe draft
+      responses:
+        '201':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminRecipeView'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Không có quyền
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Xung đột
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecipeCreate'
+      security:
+      - bearerAuth: []
+      operationId: createRecipe
+    get:
+      tags:
+      - AdminRecipes
+      summary: Danh sách món bao gồm draft và archived
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedAdminRecipes'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Không có quyền
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - draft
+          - published
+          - archived
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+      security:
+      - bearerAuth: []
+      operationId: listAdminRecipes
+  /admin/recipes/{recipe_id}:
+    patch:
+      tags:
+      - AdminRecipes
+      summary: Sửa recipe (transaction; thay sublists nếu có)
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminRecipeView'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Không có quyền
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Xung đột
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecipePatch'
+      parameters:
+      - name: recipe_id
+        in: path
+        required: true
+        schema: *id002
+      security:
+      - bearerAuth: []
+      operationId: patchRecipe
+    get:
+      tags:
+      - AdminRecipes
+      summary: Xem chi tiết recipe draft/archived để chỉnh sửa
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminRecipeDetail'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Không có quyền
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      parameters:
+      - name: recipe_id
+        in: path
+        required: true
+        schema: *id002
+      security:
+      - bearerAuth: []
+      operationId: getAdminRecipe
+  /admin/recipes/{recipe_id}/status:
+    patch:
+      tags:
+      - AdminRecipes
+      summary: Công bố/ẩn recipe sau kiểm tra điều kiện
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminRecipeView'
+        '400':
+          description: Thất bại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Không có quyền
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecipeStatusPatch'
+      parameters:
+      - name: recipe_id
+        in: path
+        required: true
+        schema: *id002
+      security:
+      - bearerAuth: []
+      operationId: setRecipeStatus
+  /admin/ingredients:
+    get:
+      tags:
+      - AdminIngredients
+      summary: Danh sách nguyên liệu gồm cả inactive
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedIngredients'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Không có quyền
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema: *id001
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+      security:
+      - bearerAuth: []
+      operationId: listAdminIngredients
+    post:
+      tags:
+      - AdminIngredients
+      summary: Tạo nguyên liệu và alias
+      responses:
+        '201':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ingredient'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Không có quyền
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Xung đột
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IngredientCreate'
+      security:
+      - bearerAuth: []
+      operationId: createIngredient
+  /admin/ingredients/{ingredient_id}:
+    patch:
+      tags:
+      - AdminIngredients
+      summary: Sửa nguyên liệu, alias
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ingredient'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Không có quyền
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Xung đột
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IngredientPatch'
+      parameters:
+      - name: ingredient_id
+        in: path
+        required: true
+        schema: *id002
+      security:
+      - bearerAuth: []
+      operationId: patchIngredient
+  /admin/ingredients/{ingredient_id}/nutrition-tags:
+    put:
+      tags:
+      - AdminNutrition
+      summary: Thay toàn bộ ánh xạ nhóm chất có căn cứ
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NutritionEvidence'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Không có quyền
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IngredientTagMapRequest'
+      parameters:
+      - name: ingredient_id
+        in: path
+        required: true
+        schema: *id002
+      security:
+      - bearerAuth: []
+      operationId: setIngredientNutritionTags
+  /admin/nutrition-tags:
+    get:
+      tags:
+      - AdminNutrition
+      summary: Danh sách nutrition tags gồm inactive
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NutritionTag'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Không có quyền
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearerAuth: []
+      operationId: listAdminNutritionTags
+    post:
+      tags:
+      - AdminNutrition
+      summary: Tạo nhãn nhóm chất
+      responses:
+        '201':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NutritionTag'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Không có quyền
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Xung đột
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NutritionTagCreate'
+      security:
+      - bearerAuth: []
+      operationId: createNutritionTag
+  /admin/nutrition-tags/{tag_id}:
+    patch:
+      tags:
+      - AdminNutrition
+      summary: Sửa nhãn nhóm chất
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NutritionTag'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Không có quyền
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NutritionTagPatch'
+      parameters:
+      - name: tag_id
+        in: path
+        required: true
+        schema: *id002
+      security:
+      - bearerAuth: []
+      operationId: patchNutritionTag
+  /admin/ai-models:
+    get:
+      tags:
+      - AdminAI
+      summary: Danh sách phiên bản model
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedAIModels'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Không có quyền
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+      security:
+      - bearerAuth: []
+      operationId: listAIModels
+    post:
+      tags:
+      - AdminAI
+      summary: Đăng ký metadata model mới (draft)
+      responses:
+        '201':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIModel'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Không có quyền
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Xung đột
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIModelCreate'
+      security:
+      - bearerAuth: []
+      operationId: registerAIModel
+  /admin/ai-models/{model_id}/status:
+    patch:
+      tags:
+      - AdminAI
+      summary: Chuyển trạng thái model, active phải đủ label mapping
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIModel'
+        '400':
+          description: Thất bại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Không có quyền
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIModelStatusPatch'
+      parameters:
+      - name: model_id
+        in: path
+        required: true
+        schema: *id002
+      security:
+      - bearerAuth: []
+      operationId: setAIModelStatus
+      description: Chuyển sang active cần đầy đủ mappings; kích hoạt phải archive active cũ trong transaction, bảo
+        đảm chỉ một active model.
+  /admin/ai-labels:
+    get:
+      tags:
+      - AdminAI
+      summary: Danh sách ánh xạ nhãn theo model
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedAILabels'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Không có quyền
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      parameters:
+      - name: model_id
+        in: query
+        required: false
+        schema: *id002
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+      security:
+      - bearerAuth: []
+      operationId: listAILabels
+    post:
+      tags:
+      - AdminAI
+      summary: Thêm ánh xạ class → ingredient
+      responses:
+        '201':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AILabel'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Không có quyền
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Xung đột
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AILabelCreate'
+      security:
+      - bearerAuth: []
+      operationId: createAILabel
+  /admin/ai-labels/{label_id}:
+    patch:
+      tags:
+      - AdminAI
+      summary: Đổi ingredient mapping cho class hiện có
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AILabel'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Không có quyền
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AILabelPatch'
+      parameters:
+      - name: label_id
+        in: path
+        required: true
+        schema: *id002
+      security:
+      - bearerAuth: []
+      operationId: patchAILabel
+      description: Chỉ cho phép patch mapping trên model draft; model active/archived là immutable. Muốn đổi mapping,
+        tạo model version mới.
+  /admin/audit-logs:
+    get:
+      tags:
+      - AdminAudit
+      summary: Nhật ký thay đổi dữ liệu (không kèm secret)
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedAuditLogs'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Không có quyền
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+      security:
+      - bearerAuth: []
+      operationId: listAuditLogs
+  /scan-sessions:
+    get:
+      tags:
+      - ScanHistory
+      summary: Danh sách lần scan đã chủ động lưu của user
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedScanSessions'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+      security:
+      - bearerAuth: []
+      operationId: listScanSessions
+  /scan-sessions/{scan_id}:
+    get:
+      tags:
+      - ScanHistory
+      summary: Xem metadata lần scan của chính mình
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScanSessionDetail'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      parameters:
+      - name: scan_id
+        in: path
+        required: true
+        schema: *id002
+      security:
+      - bearerAuth: []
+      operationId: getScanSession
+    delete:
+      tags:
+      - ScanHistory
+      summary: Xóa lịch sử scan của chính mình (không có ảnh gốc)
+      responses:
+        '204':
+          description: Đã xóa
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      parameters:
+      - name: scan_id
+        in: path
+        required: true
+        schema: *id002
+      security:
+      - bearerAuth: []
+      operationId: deleteScanSession
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Supabase Auth access token
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        code: *id001
+        message: *id001
+        details:
+          type: object
+          additionalProperties: true
+        request_id: *id001
+      additionalProperties: false
+      required:
+      - code
+      - message
+      - details
+      - request_id
+    PagedIngredients:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Ingredient'
+        total:
+          type: integer
+          minimum: 0
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 50
+        offset:
+          type: integer
+          minimum: 0
+      additionalProperties: false
+      required:
+      - items
+      - total
+      - limit
+      - offset
+    Ingredient:
+      type: object
+      properties:
+        id: *id002
+        slug: *id001
+        name_vi: *id001
+        category: *id001
+        is_active: *id003
+      additionalProperties: false
+      required:
+      - id
+      - slug
+      - name_vi
+      - category
+      - is_active
+    NutritionTag:
+      type: object
+      properties:
+        id: *id002
+        code: *id001
+        name_vi: *id001
+        description: *id001
+        is_active: *id003
+      additionalProperties: false
+      required:
+      - id
+      - code
+      - name_vi
+      - description
+      - is_active
+    NutritionEvidence:
+      type: object
+      properties:
+        tag:
+          $ref: '#/components/schemas/NutritionTag'
+        source_urls:
+          type: array
+          items:
+            type: string
+            format: uri
+        note:
+          anyOf:
+          - *id001
+          - type: 'null'
+      additionalProperties: false
+      required:
+      - tag
+      - source_urls
+      - note
+    RecipeIngredientView:
+      type: object
+      properties:
+        ingredient_id: *id002
+        name_vi: *id001
+        is_required: *id003
+        display_quantity:
+          anyOf:
+          - *id001
+          - type: 'null'
+        sort_order:
+          type: integer
+      additionalProperties: false
+      required:
+      - ingredient_id
+      - name_vi
+      - is_required
+      - display_quantity
+      - sort_order
+    RecipeStepView:
+      type: object
+      properties:
+        step_no:
+          type: integer
+          minimum: 1
+        instruction: *id001
+        estimated_minutes:
+          anyOf:
+          - type: integer
+            minimum: 0
+          - type: 'null'
+      additionalProperties: false
+      required:
+      - step_no
+      - instruction
+      - estimated_minutes
+    RecipeSummary:
+      type: object
+      properties:
+        id: *id002
+        slug: *id001
+        name_vi: *id001
+        cuisine_code: &id004
+          type: string
+          enum:
+          - VN
+          - EU
+          - US
+        prep_minutes: &id005
+          type: integer
+          minimum: 0
+        cook_minutes: &id006
+          type: integer
+          minimum: 0
+        total_minutes: &id007
+          type: integer
+          minimum: 0
+        cover_image_url: &id008
+          anyOf:
+          - *id001
+          - type: 'null'
+      additionalProperties: false
+      required:
+      - id
+      - slug
+      - name_vi
+      - cuisine_code
+      - prep_minutes
+      - cook_minutes
+      - total_minutes
+      - cover_image_url
+    RecipeDetail:
+      type: object
+      properties:
+        id: *id002
+        slug: *id001
+        name_vi: *id001
+        cuisine_code: *id004
+        prep_minutes: *id005
+        cook_minutes: *id006
+        total_minutes: *id007
+        cover_image_url: *id008
+        description:
+          anyOf:
+          - *id001
+          - type: 'null'
+        country_code:
+          anyOf:
+          - *id001
+          - type: 'null'
+        ingredients:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipeIngredientView'
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipeStepView'
+        nutrition_evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/NutritionEvidence'
+        source_name:
+          anyOf:
+          - *id001
+          - type: 'null'
+        source_url:
+          anyOf:
+          - *id001
+          - type: 'null'
+        content_license:
+          anyOf:
+          - *id001
+          - type: 'null'
+      additionalProperties: false
+      required:
+      - id
+      - slug
+      - name_vi
+      - cuisine_code
+      - prep_minutes
+      - cook_minutes
+      - total_minutes
+      - cover_image_url
+      - description
+      - country_code
+      - ingredients
+      - steps
+      - nutrition_evidence
+      - source_name
+      - source_url
+      - content_license
+    PagedRecipes:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipeSummary'
+        total:
+          type: integer
+          minimum: 0
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 50
+        offset:
+          type: integer
+          minimum: 0
+      additionalProperties: false
+      required:
+      - items
+      - total
+      - limit
+      - offset
+    BBox:
+      type: object
+      properties:
+        x1:
+          type: number
+          minimum: 0
+          maximum: 1
+        y1:
+          type: number
+          minimum: 0
+          maximum: 1
+        x2:
+          type: number
+          minimum: 0
+          maximum: 1
+        y2:
+          type: number
+          minimum: 0
+          maximum: 1
+      additionalProperties: false
+      required:
+      - x1
+      - y1
+      - x2
+      - y2
+      description: Tọa độ xyxy chuẩn hóa [0..1], và x1<x2, y1<y2 kiểm tra thêm ở backend.
+    Detection:
+      type: object
+      properties:
+        class_index:
+          type: integer
+          minimum: 0
+        class_name: *id001
+        ingredient_id:
+          anyOf:
+          - *id002
+          - type: 'null'
+        ingredient_name:
+          anyOf:
+          - *id001
+          - type: 'null'
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        bbox:
+          $ref: '#/components/schemas/BBox'
+      additionalProperties: false
+      required:
+      - class_index
+      - class_name
+      - ingredient_id
+      - ingredient_name
+      - confidence
+      - bbox
+    SuggestedIngredient:
+      type: object
+      properties:
+        ingredient_id: *id002
+        name_vi: *id001
+        max_confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+      additionalProperties: false
+      required:
+      - ingredient_id
+      - name_vi
+      - max_confidence
+    DetectResponse:
+      type: object
+      properties:
+        scan_id:
+          anyOf:
+          - *id002
+          - type: 'null'
+        model_version: *id001
+        detections:
+          type: array
+          items:
+            $ref: '#/components/schemas/Detection'
+        suggested_ingredients:
+          type: array
+          items:
+            $ref: '#/components/schemas/SuggestedIngredient'
+      additionalProperties: false
+      required:
+      - scan_id
+      - model_version
+      - detections
+      - suggested_ingredients
+    RecommendRequest:
+      type: object
+      properties:
+        ingredient_ids:
+          type: array
+          items: *id002
+          minItems: 1
+          uniqueItems: true
+        max_total_minutes:
+          anyOf:
+          - type: integer
+            minimum: 1
+            maximum: 720
+          - type: 'null'
+        cuisine_codes:
+          type: array
+          items:
+            type: string
+            enum:
+            - VN
+            - EU
+            - US
+        preferred_cuisine_codes:
+          type: array
+          items:
+            type: string
+            enum:
+            - VN
+            - EU
+            - US
+        include_missing: *id003
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 50
+        scan_id:
+          anyOf:
+          - *id002
+          - type: 'null'
+      additionalProperties: false
+      required:
+      - ingredient_ids
+      description: 'Danh sách ingredient_ids sau xác nhận, không dùng class_index YOLO. Fields tùy chọn: max_total_minutes=null;
+        cuisine_codes=[]; preferred_cuisine_codes=[]; include_missing=true; limit=20; scan_id=null.'
+    ScoreBreakdown:
+      type: object
+      properties:
+        C:
+          type: number
+          minimum: 0
+          maximum: 1
+        E:
+          type: number
+          minimum: 0
+          maximum: 1
+        T:
+          type: number
+          minimum: 0
+          maximum: 1
+        P:
+          type: number
+          minimum: 0
+          maximum: 1
+      additionalProperties: false
+      required:
+      - C
+      - E
+      - T
+      - P
+    RecommendationItem:
+      type: object
+      properties:
+        recipe:
+          $ref: '#/components/schemas/RecipeSummary'
+        availability:
+          type: string
+          enum:
+          - ready
+          - missing
+        score:
+          type: number
+          minimum: 0
+          maximum: 100
+        matched_ingredient_ids:
+          type: array
+          items: *id002
+        missing_required_ingredient_ids:
+          type: array
+          items: *id002
+        missing_optional_ingredient_ids:
+          type: array
+          items: *id002
+        score_breakdown:
+          $ref: '#/components/schemas/ScoreBreakdown'
+        explanation_vi: *id001
+      additionalProperties: false
+      required:
+      - recipe
+      - availability
+      - score
+      - matched_ingredient_ids
+      - missing_required_ingredient_ids
+      - missing_optional_ingredient_ids
+      - score_breakdown
+      - explanation_vi
+    RecommendResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecommendationItem'
+        total:
+          type: integer
+          minimum: 0
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 50
+      additionalProperties: false
+      required:
+      - items
+      - total
+      - limit
+    FavoriteCreate:
+      type: object
+      properties:
+        recipe_id: *id002
+      additionalProperties: false
+      required:
+      - recipe_id
+    FavoriteView:
+      type: object
+      properties:
+        recipe_id: *id002
+        created_at:
+          type: string
+          format: date-time
+        recipe:
+          $ref: '#/components/schemas/RecipeSummary'
+      additionalProperties: false
+      required:
+      - recipe_id
+      - created_at
+      - recipe
+    PagedFavorites:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FavoriteView'
+        total:
+          type: integer
+          minimum: 0
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 50
+        offset:
+          type: integer
+          minimum: 0
+      additionalProperties: false
+      required:
+      - items
+      - total
+      - limit
+      - offset
+    FeedbackCreate:
+      type: object
+      properties:
+        recipe_id: *id002
+        scan_id:
+          anyOf:
+          - *id002
+          - type: 'null'
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        note:
+          anyOf:
+          - type: string
+            maxLength: 500
+          - type: 'null'
+      additionalProperties: false
+      required:
+      - recipe_id
+      - rating
+    FeedbackView:
+      type: object
+      properties:
+        id: *id002
+        recipe_id: *id002
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        created_at:
+          type: string
+          format: date-time
+      additionalProperties: false
+      required:
+      - id
+      - recipe_id
+      - rating
+      - created_at
+    RecipeIngredientInput:
+      type: object
+      properties:
+        ingredient_id: *id002
+        is_required: *id003
+        display_quantity:
+          anyOf:
+          - *id001
+          - type: 'null'
+        sort_order:
+          type: integer
+          minimum: 0
+      additionalProperties: false
+      required:
+      - ingredient_id
+      - is_required
+    RecipeStepInput:
+      type: object
+      properties:
+        step_no:
+          type: integer
+          minimum: 1
+        instruction:
+          type: string
+          minLength: 1
+        estimated_minutes:
+          anyOf:
+          - type: integer
+            minimum: 0
+          - type: 'null'
+      additionalProperties: false
+      required:
+      - step_no
+      - instruction
+    RecipeCreate:
+      type: object
+      properties: &id009
+        slug:
+          type: string
+          minLength: 1
+        name_vi:
+          type: string
+          minLength: 1
+        description:
+          anyOf:
+          - *id001
+          - type: 'null'
+        cuisine_code:
+          type: string
+          enum:
+          - VN
+          - EU
+          - US
+        country_code:
+          anyOf:
+          - *id001
+          - type: 'null'
+        prep_minutes:
+          type: integer
+          minimum: 0
+        cook_minutes:
+          type: integer
+          minimum: 0
+        cover_image_path:
+          anyOf:
+          - *id001
+          - type: 'null'
+        source_name:
+          anyOf:
+          - *id001
+          - type: 'null'
+        source_url:
+          anyOf:
+          - *id001
+          - type: 'null'
+        content_license:
+          anyOf:
+          - *id001
+          - type: 'null'
+        ingredients:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipeIngredientInput'
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipeStepInput'
+      additionalProperties: false
+      required:
+      - slug
+      - name_vi
+      - cuisine_code
+      - prep_minutes
+      - cook_minutes
+      - ingredients
+      - steps
+    RecipePatch:
+      type: object
+      properties: *id009
+      additionalProperties: false
+      description: Partial update; ingredients/steps nếu được truyền sẽ thay toàn bộ danh sách trong transaction.
+    AdminRecipeView:
+      type: object
+      properties:
+        id: *id002
+        slug: *id001
+        name_vi: *id001
+        status:
+          type: string
+          enum:
+          - draft
+          - published
+          - archived
+        updated_at:
+          type: string
+          format: date-time
+      additionalProperties: false
+      required:
+      - id
+      - slug
+      - name_vi
+      - status
+      - updated_at
+    RecipeStatusPatch:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - draft
+          - published
+          - archived
+      additionalProperties: false
+      required:
+      - status
+    IngredientCreate:
+      type: object
+      properties:
+        slug: *id001
+        name_vi: *id001
+        category: *id001
+        is_active: *id003
+        aliases:
+          type: array
+          items: *id001
+      additionalProperties: false
+      required:
+      - slug
+      - name_vi
+      - category
+    IngredientPatch:
+      type: object
+      properties:
+        slug: *id001
+        name_vi: *id001
+        category: *id001
+        is_active: *id003
+        aliases:
+          type: array
+          items: *id001
+      additionalProperties: false
+      description: Nếu aliases được truyền, thay thế toàn bộ alias của ingredient trong transaction.
+    IngredientTagMapping:
+      type: object
+      properties:
+        nutrition_tag_id: *id002
+        source_url:
+          type: string
+          format: uri
+        note:
+          anyOf:
+          - *id001
+          - type: 'null'
+      additionalProperties: false
+      required:
+      - nutrition_tag_id
+      - source_url
+    IngredientTagMapRequest:
+      type: object
+      properties:
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/IngredientTagMapping'
+      additionalProperties: false
+      required:
+      - tags
+    NutritionTagCreate:
+      type: object
+      properties:
+        code: *id001
+        name_vi: *id001
+        description: *id001
+        is_active: *id003
+      additionalProperties: false
+      required:
+      - code
+      - name_vi
+      - description
+    NutritionTagPatch:
+      type: object
+      properties:
+        name_vi: *id001
+        description: *id001
+        is_active: *id003
+      additionalProperties: false
+    AIModel:
+      type: object
+      properties:
+        id: *id002
+        version: *id001
+        family: *id001
+        dataset_version: *id001
+        status:
+          type: string
+          enum:
+          - draft
+          - active
+          - archived
+        confidence_threshold:
+          type: number
+          minimum: 0
+          maximum: 1
+      additionalProperties: false
+      required:
+      - id
+      - version
+      - family
+      - dataset_version
+      - status
+      - confidence_threshold
+    AIModelCreate:
+      type: object
+      properties:
+        version: *id001
+        family: *id001
+        dataset_version: *id001
+        artifact_ref: *id001
+        confidence_threshold:
+          type: number
+          minimum: 0
+          maximum: 1
+      additionalProperties: false
+      required:
+      - version
+      - family
+      - dataset_version
+      - artifact_ref
+    AIModelStatusPatch:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - draft
+          - active
+          - archived
+      additionalProperties: false
+      required:
+      - status
+    AILabel:
+      type: object
+      properties:
+        id: *id002
+        model_id: *id002
+        class_index:
+          type: integer
+          minimum: 0
+        class_name: *id001
+        ingredient_id: *id002
+      additionalProperties: false
+      required:
+      - id
+      - model_id
+      - class_index
+      - class_name
+      - ingredient_id
+    AILabelCreate:
+      type: object
+      properties:
+        model_id: *id002
+        class_index:
+          type: integer
+          minimum: 0
+        class_name: *id001
+        ingredient_id: *id002
+      additionalProperties: false
+      required:
+      - model_id
+      - class_index
+      - class_name
+      - ingredient_id
+    AILabelPatch:
+      type: object
+      properties:
+        ingredient_id: *id002
+      additionalProperties: false
+      required:
+      - ingredient_id
+    PagedAILabels:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AILabel'
+        total:
+          type: integer
+          minimum: 0
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 50
+        offset:
+          type: integer
+          minimum: 0
+      additionalProperties: false
+      required:
+      - items
+      - total
+      - limit
+      - offset
+    AuditLog:
+      type: object
+      properties:
+        id: *id002
+        actor_id: *id002
+        action: *id001
+        entity_type: *id001
+        entity_id: *id002
+        created_at:
+          type: string
+          format: date-time
+      additionalProperties: false
+      required:
+      - id
+      - actor_id
+      - action
+      - entity_type
+      - entity_id
+      - created_at
+    PagedAuditLogs:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditLog'
+        total:
+          type: integer
+          minimum: 0
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 50
+        offset:
+          type: integer
+          minimum: 0
+      additionalProperties: false
+      required:
+      - items
+      - total
+      - limit
+      - offset
+    ScanSessionSummary:
+      type: object
+      properties:
+        id: *id002
+        model_version: *id001
+        created_at:
+          type: string
+          format: date-time
+        ingredients_count:
+          type: integer
+          minimum: 0
+      additionalProperties: false
+      required:
+      - id
+      - model_version
+      - created_at
+      - ingredients_count
+    PagedScanSessions:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScanSessionSummary'
+        total:
+          type: integer
+          minimum: 0
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 50
+        offset:
+          type: integer
+          minimum: 0
+      additionalProperties: false
+      required:
+      - items
+      - total
+      - limit
+      - offset
+    ScanSessionDetail:
+      type: object
+      properties:
+        id: *id002
+        model_version: *id001
+        created_at:
+          type: string
+          format: date-time
+        detections:
+          type: array
+          items:
+            $ref: '#/components/schemas/Detection'
+        confirmed_ingredient_ids:
+          type: array
+          items: *id002
+      additionalProperties: false
+      required:
+      - id
+      - model_version
+      - created_at
+      - detections
+      - confirmed_ingredient_ids
+    PagedAdminRecipes:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminRecipeView'
+        total:
+          type: integer
+          minimum: 0
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 50
+        offset:
+          type: integer
+          minimum: 0
+      additionalProperties: false
+      required:
+      - items
+      - total
+      - limit
+      - offset
+    AdminRecipeDetail:
+      allOf:
+      - $ref: '#/components/schemas/RecipeDetail'
+      - type: object
+        properties:
+          status:
+            type: string
+            enum:
+            - draft
+            - published
+            - archived
+          author_id: *id002
+          updated_at:
+            type: string
+            format: date-time
+        additionalProperties: false
+        required:
+        - status
+        - author_id
+        - updated_at
+    PagedAIModels:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AIModel'
+        total:
+          type: integer
+          minimum: 0
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 50
+        offset:
+          type: integer
+          minimum: 0
+      additionalProperties: false
+      required:
+      - items
+      - total
+      - limit
+      - offset

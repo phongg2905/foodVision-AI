@@ -1,0 +1,40 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+actor "Guest" as Guest
+actor "User đăng nhập" as User
+actor "Admin" as Admin
+actor "YOLO Service" as AI
+User --|> Guest
+Admin --|> User
+rectangle "FoodVision AI" {
+  usecase "Tìm kiếm công thức" as UC01
+  usecase "Nhận diện từ ảnh" as UC02
+  usecase "Sửa nguyên liệu" as UC03
+  usecase "Gợi ý / lọc món" as UC04
+  usecase "Xem nhóm dinh dưỡng" as UC05
+  usecase "Đăng nhập" as UC06
+  usecase "Lưu yêu thích" as UC07
+  usecase "Phản hồi / quản lý lịch sử" as UC08
+  usecase "Quản lý công thức" as UC09
+  usecase "Quản lý nguyên liệu" as UC10
+  usecase "Quản lý nhãn AI" as UC11
+  usecase "Quản lý dinh dưỡng" as UC12
+  usecase "Xem audit log" as UC13
+}
+Guest --> UC01
+Guest --> UC02
+Guest --> UC03
+Guest --> UC04
+Guest --> UC05
+User --> UC06
+User --> UC07
+User --> UC08
+Admin --> UC09
+Admin --> UC10
+Admin --> UC11
+Admin --> UC12
+Admin --> UC13
+AI --> UC02
+UC04 ..> UC03 : <<include>>
+@enduml
