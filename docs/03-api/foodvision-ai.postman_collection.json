@@ -151,7 +151,7 @@
         },
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"ingredient_ids\": [\n    \"11111111-1111-4111-8111-111111111111\",\n    \"22222222-2222-4222-8222-222222222222\"\n  ],\n  \"max_total_minutes\": 15,\n  \"cuisine_codes\": [\n    \"VN\"\n  ],\n  \"preferred_cuisine_codes\": [],\n  \"include_missing\": true,\n  \"limit\": 20,\n  \"scan_id\": null\n}",
+          "raw": "{\n  \"ingredient_ids\": [\n    \"11111111-1111-4111-8111-111111111111\",\n    \"22222222-2222-4222-8222-222222222222\"\n  ],\n  \"excluded_pantry_ids\": [],\n  \"max_total_minutes\": 15,\n  \"cuisine_codes\": [\n    \"VN\"\n  ],\n  \"preferred_cuisine_codes\": [],\n  \"include_missing\": true,\n  \"limit\": 20,\n  \"scan_id\": null\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -336,7 +336,7 @@
         },
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"slug\": \"trung-xao-ca-chua\",\n  \"name_vi\": \"Trứng xào cà chua\",\n  \"cuisine_code\": \"VN\",\n  \"prep_minutes\": 5,\n  \"cook_minutes\": 8,\n  \"ingredients\": [\n    {\n      \"ingredient_id\": \"11111111-1111-4111-8111-111111111111\",\n      \"is_required\": true\n    },\n    {\n      \"ingredient_id\": \"22222222-2222-4222-8222-222222222222\",\n      \"is_required\": true\n    }\n  ],\n  \"steps\": [\n    {\n      \"step_no\": 1,\n      \"instruction\": \"Sơ chế cà chua.\"\n    },\n    {\n      \"step_no\": 2,\n      \"instruction\": \"Nấu chín trứng và cà chua.\"\n    }\n  ]\n}",
+          "raw": "{\n  \"slug\": \"trung-xao-ca-chua\",\n  \"name_vi\": \"Trứng xào cà chua\",\n  \"cuisine_code\": \"VN\",\n  \"prep_minutes\": 5,\n  \"cook_minutes\": 8,\n  \"ingredients\": [\n    {\n      \"ingredient_id\": \"11111111-1111-4111-8111-111111111111\",\n      \"is_required\": true\n    },\n    {\n      \"ingredient_id\": \"22222222-2222-4222-8222-222222222222\",\n      \"is_required\": true\n    },\n    {\n      \"ingredient_id\": \"55555555-5555-4555-8555-555555555555\",\n      \"is_required\": true\n    }\n  ],\n  \"steps\": [\n    {\n      \"step_no\": 1,\n      \"instruction\": \"Sơ chế cà chua.\",\n      \"estimated_minutes\": 5\n    },\n    {\n      \"step_no\": 2,\n      \"instruction\": \"Nấu chín trứng và cà chua.\",\n      \"estimated_minutes\": 8\n    }\n  ]\n}",
           "options": {
             "raw": {
               "language": "json"

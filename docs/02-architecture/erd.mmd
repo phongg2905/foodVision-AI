@@ -119,6 +119,9 @@ erDiagram
         uuid recipe_id FK
         uuid scan_session_id FK
         int rating
+        text note
+        timestamptz created_at
+        timestamptz updated_at
     }
     AUDIT_LOGS {
         uuid id PK
@@ -126,4 +129,5 @@ erDiagram
         text action
         text entity_type
         uuid entity_id
+        timestamptz created_at
     }

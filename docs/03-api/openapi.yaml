@@ -50,6 +50,7 @@ paths:
       tags:
       - Catalog
       summary: Danh mục nguyên liệu (active)
+      description: Public endpoint (không cần Bearer token), chỉ trả các nguyên liệu có is_active=true. Hỗ trợ lọc theo category hoặc exclude_pantry; nếu gửi đồng thời category=pantry và exclude_pantry=true sẽ trả 422 INVALID_QUERY_PARAMS.
       responses:
         '200':
           description: Thành công
@@ -57,12 +58,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PagedIngredients'
+        '422':
+          description: Tham số truy vấn không hợp lệ hoặc mâu thuẫn (INVALID_QUERY_PARAMS)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       parameters:
       - name: q
         in: query
         required: false
         schema: &id001
           type: string
+      - name: category
+        in: query
+        required: false
+        schema: &id010
+          type: string
+          enum:
+          - vegetable
+          - protein
+          - seafood
+          - spice
+          - pantry
+          - other
+      - name: exclude_pantry
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
       - name: limit
         in: query
         required: false
@@ -208,7 +233,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '503':
-          description: Service không sẵn sàng
+          description: Service không sẵn sàng (MODEL_NOT_READY)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '504':
+          description: Quá thời gian suy luận (INFERENCE_TIMEOUT)
           content:
             application/json:
               schema:
@@ -231,8 +262,7 @@ paths:
             encoding:
               file:
                 contentType: image/jpeg, image/png, image/webp
-      description: Ảnh tối đa 5 MiB, JPEG/PNG/WebP. Guest được phép nếu save_history=false; save_history=true cần
-        Bearer JWT; không lưu ảnh gốc. Response scan_id=null nếu không lưu.
+      description: Ảnh tối đa 5 MiB, JPEG/PNG/WebP. Backend tự xoay ảnh theo EXIF Orientation và xóa sạch metadata EXIF/GPS trước khi suy luận; bbox chuẩn hóa trên ảnh đã xoay. Guest được phép nếu save_history=false; save_history=true cần Bearer JWT; không lưu ảnh gốc. Response scan_id=null nếu không lưu.
       operationId: detectIngredients
       security:
       - {}
@@ -255,8 +285,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Không tìm thấy hoặc không thuộc chủ sở hữu scan_id (SCAN_NOT_OWNED)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
-          description: Dữ liệu không hợp lệ
+          description: Dữ liệu không hợp lệ (INVALID_INGREDIENTS hoặc VALIDATION_ERROR)
           content:
             application/json:
               schema:
@@ -273,8 +309,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/RecommendRequest'
-      description: ingredient_ids là danh sách cuối sau khi User sửa; nếu scan_id khác null thì bearer token phải
-        thuộc chủ sở hữu scan. cuisine_codes là lọc cứng, preferred_cuisine_codes là ưu tiên mềm.
+      description: ingredient_ids là danh sách nguyên liệu chính cuối cùng sau khi User sửa (category != 'pantry'); excluded_pantry_ids là danh sách gia vị nền (category = 'pantry') mà người dùng báo đang thiếu. Nếu scan_id khác null thì bearer token phải thuộc chủ sở hữu scan (nếu không trả 404 SCAN_NOT_OWNED). cuisine_codes là lọc cứng, preferred_cuisine_codes là ưu tiên mềm.
       operationId: recommendRecipes
       security:
       - {}
@@ -378,10 +413,17 @@ paths:
     post:
       tags:
       - Feedback
-      summary: Đánh giá mức hữu ích gợi ý (1..5)
+      summary: Đánh giá mức hữu ích gợi ý (1..5), upsert theo (user_id, recipe_id, scan_id)
+      description: Tạo mới (201) hoặc cập nhật (200) đánh giá cho cùng tổ hợp (user_id, recipe_id, scan_id) với UNIQUE NULLS NOT DISTINCT. Nếu scan_id không tồn tại hoặc thuộc người dùng khác sẽ trả 404 SCAN_NOT_OWNED.
       responses:
         '201':
-          description: Thành công
+          description: Tạo mới đánh giá
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackView'
+        '200':
+          description: Cập nhật đánh giá hiện có trong cùng ngữ cảnh (user_id, recipe_id, scan_id)
           content:
             application/json:
               schema:
@@ -399,7 +441,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: Không tìm thấy
+          description: Không tìm thấy món hoặc scan_id không tồn tại/không thuộc chủ sở hữu (RECIPE_NOT_FOUND / SCAN_NOT_OWNED)
           content:
             application/json:
               schema:
@@ -518,6 +560,7 @@ paths:
       tags:
       - AdminRecipes
       summary: Sửa recipe (transaction; thay sublists nếu có)
+      description: Cập nhật thông tin, danh sách ingredients và steps của công thức trong một transaction. Nếu công thức đang ở trạng thái published, mọi thay đổi vẫn phải thỏa điều kiện xuất bản (BR-01, BR-05); nếu vi phạm trả 400 RECIPE_NOT_PUBLISHABLE.
       responses:
         '200':
           description: Thành công
@@ -525,6 +568,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AdminRecipeView'
+        '400':
+          description: Vi phạm điều kiện xuất bản khi sửa công thức đang published (RECIPE_NOT_PUBLISHABLE)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Chưa xác thực
           content:
@@ -691,6 +740,10 @@ paths:
         in: query
         required: false
         schema: *id001
+      - name: category
+        in: query
+        required: false
+        schema: *id010
       - name: limit
         in: query
         required: false
@@ -756,6 +809,7 @@ paths:
       tags:
       - AdminIngredients
       summary: Sửa nguyên liệu, alias
+      description: Nếu đổi category (đặc biệt sang/từ pantry) hoặc đặt is_active=false cho nguyên liệu đang nằm trong công thức published hoặc đang được ánh xạ bởi ai_labels của model draft/active, trả 400 INGREDIENT_IN_USE.
       responses:
         '200':
           description: Thành công
@@ -763,6 +817,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Ingredient'
+        '400':
+          description: Nguyên liệu đang được sử dụng, không thể tắt hoặc đổi phân loại (INGREDIENT_IN_USE)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Chưa xác thực
           content:
@@ -1123,8 +1183,7 @@ paths:
       security:
       - bearerAuth: []
       operationId: setAIModelStatus
-      description: Chuyển sang active cần đầy đủ mappings; kích hoạt phải archive active cũ trong transaction, bảo
-        đảm chỉ một active model.
+      description: Chuyển sang active (từ draft hoặc rollback từ archived) cần đầy đủ mappings và mọi ingredient được ánh xạ phải đang có is_active=true và category != 'pantry' (nếu vi phạm trả 400 MODEL_NOT_ACTIVATABLE); kích hoạt phải archive active cũ trong transaction, bảo đảm chỉ một active model.
   /admin/ai-labels:
     get:
       tags:
@@ -1174,6 +1233,7 @@ paths:
       tags:
       - AdminAI
       summary: Thêm ánh xạ class → ingredient
+      description: Chỉ cho phép thêm ánh xạ cho model draft (model active/archived trả 400 MODEL_IMMUTABLE) và chỉ ánh xạ tới nguyên liệu có is_active=true và category != 'pantry' (vi phạm trả 400 INVALID_LABEL_MAPPING).
       responses:
         '201':
           description: Thành công
@@ -1181,6 +1241,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AILabel'
+        '400':
+          description: Vi phạm quy tắc bất biến model hoặc ánh xạ vào nguyên liệu pantry/inactive (MODEL_IMMUTABLE / INVALID_LABEL_MAPPING)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Chưa xác thực
           content:
@@ -1226,6 +1292,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AILabel'
+        '400':
+          description: Vi phạm quy tắc bất biến model hoặc ánh xạ vào nguyên liệu pantry/inactive (MODEL_IMMUTABLE / INVALID_LABEL_MAPPING)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Chưa xác thực
           content:
@@ -1453,7 +1525,7 @@ components:
         id: *id002
         slug: *id001
         name_vi: *id001
-        category: *id001
+        category: *id010
         is_active: *id003
       additionalProperties: false
       required:
@@ -1501,6 +1573,7 @@ components:
       properties:
         ingredient_id: *id002
         name_vi: *id001
+        category: *id010
         is_required: *id003
         display_quantity:
           anyOf:
@@ -1512,6 +1585,7 @@ components:
       required:
       - ingredient_id
       - name_vi
+      - category
       - is_required
       - display_quantity
       - sort_order
@@ -1547,12 +1621,15 @@ components:
         prep_minutes: &id005
           type: integer
           minimum: 0
+          description: Thời gian sơ chế (phút).
         cook_minutes: &id006
           type: integer
           minimum: 0
+          description: Thời gian chế biến trên bếp cộng thời gian ướp/chờ/hầm bắt buộc trong quy trình (phút).
         total_minutes: &id007
           type: integer
           minimum: 0
+          description: Tổng thời gian hoàn thành món (prep_minutes + cook_minutes).
         cover_image_url: &id008
           anyOf:
           - *id001
@@ -1750,6 +1827,11 @@ components:
           items: *id002
           minItems: 1
           uniqueItems: true
+        excluded_pantry_ids:
+          type: array
+          items: *id002
+          uniqueItems: true
+          default: []
         max_total_minutes:
           anyOf:
           - type: integer
@@ -1784,8 +1866,7 @@ components:
       additionalProperties: false
       required:
       - ingredient_ids
-      description: 'Danh sách ingredient_ids sau xác nhận, không dùng class_index YOLO. Fields tùy chọn: max_total_minutes=null;
-        cuisine_codes=[]; preferred_cuisine_codes=[]; include_missing=true; limit=20; scan_id=null.'
+      description: 'Danh sách ingredient_ids sau xác nhận (chỉ chứa nguyên liệu chính category != ''pantry''), không dùng class_index YOLO. Fields tùy chọn: excluded_pantry_ids=[] (chỉ chứa UUID có category = ''pantry'' mà người dùng báo thiếu); max_total_minutes=null; cuisine_codes=[]; preferred_cuisine_codes=[]; include_missing=true; limit=20; scan_id=null.'
     ScoreBreakdown:
       type: object
       properties:
@@ -2089,7 +2170,7 @@ components:
       properties:
         slug: *id001
         name_vi: *id001
-        category: *id001
+        category: *id010
         is_active: *id003
         aliases:
           type: array
@@ -2104,7 +2185,7 @@ components:
       properties:
         slug: *id001
         name_vi: *id001
-        category: *id001
+        category: *id010
         is_active: *id003
         aliases:
           type: array
