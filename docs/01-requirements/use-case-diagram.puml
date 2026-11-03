@@ -1,40 +1,46 @@
 @startuml
 left to right direction
 skinparam packageStyle rectangle
+
 actor "Guest" as Guest
 actor "User đăng nhập" as User
 actor "Admin" as Admin
 actor "YOLO Service" as AI
+
 User --|> Guest
 Admin --|> User
+
 rectangle "FoodVision AI" {
-  usecase "Tìm kiếm công thức" as UC01
-  usecase "Nhận diện từ ảnh" as UC02
-  usecase "Sửa nguyên liệu" as UC03
-  usecase "Gợi ý / lọc món" as UC04
-  usecase "Xem nhóm dinh dưỡng" as UC05
-  usecase "Đăng nhập" as UC06
-  usecase "Lưu yêu thích" as UC07
-  usecase "Phản hồi / quản lý lịch sử" as UC08
-  usecase "Quản lý công thức" as UC09
-  usecase "Quản lý nguyên liệu" as UC10
-  usecase "Quản lý nhãn AI" as UC11
-  usecase "Quản lý dinh dưỡng" as UC12
-  usecase "Xem audit log" as UC13
+  usecase "UC-01: Tra cứu và xem chi tiết công thức" as UC01
+  usecase "UC-02: Nhận diện nguyên liệu từ ảnh" as UC02
+  usecase "UC-03: Xác nhận, chỉnh sửa nguyên liệu\n& bật/tắt gia vị sẵn có\n--\nExtension points:\nEP_InitFromImage" as UC03
+  usecase "UC-04: Gợi ý, chấm điểm và lọc món ăn" as UC04
+  usecase "UC-05: Xem thông tin dinh dưỡng định tính" as UC05
+  usecase "UC-06: Quản lý tài khoản và món yêu thích" as UC06
+  usecase "UC-07: Đánh giá gợi ý và quản lý lịch sử quét" as UC07
+  usecase "UC-08: Quản trị công thức và nguyên liệu" as UC08
+  usecase "UC-09: Quản trị mô hình AI, nhãn ánh xạ\nvà dinh dưỡng" as UC09
+  usecase "UC-10: Xem nhật ký kiểm toán (Audit Logs)" as UC10
 }
+
 Guest --> UC01
-Guest --> UC02
 Guest --> UC03
 Guest --> UC04
 Guest --> UC05
+
 User --> UC06
 User --> UC07
-User --> UC08
+
+Admin --> UC08
 Admin --> UC09
 Admin --> UC10
-Admin --> UC11
-Admin --> UC12
-Admin --> UC13
-AI --> UC02
-UC04 ..> UC03 : <<include>>
+
+UC02 ..> UC03 : <<extend>>
+note on link
+  Extension Point: EP_InitFromImage
+  (Khi người dùng chọn khởi tạo danh sách
+  nguyên liệu từ ảnh chụp thay vì nhập tay)
+end note
+
+UC02 <-- AI
 @enduml

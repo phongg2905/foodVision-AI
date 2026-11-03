@@ -1,6 +1,6 @@
-# Data Dictionary — PostgreSQL
+# Data Dictionary — PostgreSQL (>= 15)
 
-**Quy ước:** `PK` khóa chính; `FK` khóa ngoại; `UQ` duy nhất; `NN` NOT NULL; `?` nullable; `ts` = `timestamptz`. Kiểu `text` có thể đặt giới hạn bằng CHECK tại migration. Dưới đây là **schema thiết kế**, không phải cấu trúc đã triển khai.
+**Quy ước:** `PK` khóa chính; `FK` khóa ngoại; `UQ` duy nhất; `NN` NOT NULL; `?` nullable; `ts` = `timestamptz`. Kiểu `text` có thể đặt giới hạn bằng CHECK tại migration. Dưới đây là **schema thiết kế (`0.9.0-draft`)**, không phải cấu trúc đã triển khai.
 
 ## 1. `profiles` (liên kết Supabase Auth)
 
@@ -20,9 +20,11 @@ Không để client tự cập nhật `role`. Email/mật khẩu do Supabase Aut
 | id | uuid | PK | Mã nguyên liệu chuẩn |
 | slug | text | UQ, NN | Mã ổn định dùng hiển thị/tra cứu |
 | name_vi | text | NN | Tên tiếng Việt |
-| category | varchar(40) | NN | vegetable/protein/seafood/spice/other |
-| is_active | boolean | NN, DEFAULT true | Được chọn trong UI |
+| category | varchar(40) | NN, CHECK(`vegetable`/`protein`/`seafood`/`spice`/`pantry`/`other`) | Phân nhóm nguyên liệu (`spice` là gia vị củ quả tươi nhận diện qua ảnh như tỏi, ớt, gừng; `pantry` là gia vị nền/chất lỏng gia dụng sẵn có trong bếp như muối, đường, nước mắm, dầu ăn, tiêu xay, giấm, hạt nêm...; không lưu nước lọc vào bảng này) |
+| is_active | boolean | NN, DEFAULT true | Được chọn trong UI (`GET /ingredients` chỉ trả bản ghi `is_active = true`) |
 | created_at | ts | NN, DEFAULT now() | Tạo bản ghi |
+
+Không được đổi `category` (sang/từ `pantry`) hoặc đặt `is_active = false` nếu nguyên liệu đang được dùng trong bất kỳ công thức `published` nào hoặc đang được trỏ bởi `ai_labels` của model `draft`/`active` (`400 INGREDIENT_IN_USE`).
 
 ## 3. `ingredient_aliases`
 
@@ -57,9 +59,9 @@ Unique `(ingredient_id, normalized_alias, locale)`; tên đồng nghĩa trùng g
 | model_id | uuid | FK→ai_models.id, NN | Model version |
 | class_index | integer | NN, CHECK ≥0 | Chỉ số class trong model |
 | class_name | text | NN | Tên class trong file dataset YAML |
-| ingredient_id | uuid | FK→ingredients.id, NN | Mã chuẩn nội bộ |
+| ingredient_id | uuid | FK→ingredients.id (`ON DELETE RESTRICT`), NN | Mã chuẩn nội bộ (bắt buộc trỏ tới nguyên liệu `is_active = true` và `category != 'pantry'`) |
 
-Unique `(model_id, class_index)`; đổi model phải đối chiếu lại ánh xạ.
+Unique `(model_id, class_index)`; bảng ánh xạ của model `active`/`archived` là bất biến (`400 MODEL_IMMUTABLE`). Khi kích hoạt model từ `draft` hoặc rollback từ `archived` sang `active`, toàn bộ `ingredient_id` được trỏ tới phải đang `is_active = true` và `category != 'pantry'` (`400 MODEL_NOT_ACTIVATABLE`).
 
 ## 6. `recipes`
 
@@ -71,8 +73,8 @@ Unique `(model_id, class_index)`; đổi model phải đối chiếu lại ánh 
 | description | text | ? | Giới thiệu ngắn tự viết |
 | cuisine_code | varchar(2) | NN, CHECK(VN/EU/US) | Nhóm ẩm thực theo UI |
 | country_code | varchar(2) | ? | Mã quốc gia chi tiết nếu biết |
-| prep_minutes | integer | NN, CHECK ≥0 | Thời gian sơ chế |
-| cook_minutes | integer | NN, CHECK ≥0 | Thời gian nấu |
+| prep_minutes | integer | NN, CHECK ≥0 | Thời gian sơ chế cơ học (rửa, gọt, thái, băm) |
+| cook_minutes | integer | NN, CHECK ≥0 | Tổng thời gian chế biến nhiệt trên bếp **cộng với thời gian ướp, ủ hoặc ninh/chờ bắt buộc** trong quy trình nấu |
 | cover_image_path | text | ? | Path ảnh được phép trên Storage |
 | source_name | text | ? | Tên nguồn/đơn vị cung cấp |
 | source_url | text | ? | Liên kết tham khảo |
@@ -82,7 +84,7 @@ Unique `(model_id, class_index)`; đổi model phải đối chiếu lại ánh 
 | created_at | ts | NN, DEFAULT now() | Ngày tạo |
 | updated_at | ts | NN, DEFAULT now() | Ngày cập nhật |
 
-`total_minutes = prep_minutes + cook_minutes` là **thuộc tính tính toán ở API**, không tạo cột lưu trữ.
+`total_minutes = prep_minutes + cook_minutes` là **thuộc tính tính toán ở API**, không tạo cột lưu trữ. Công thức ở trạng thái `published` bắt buộc có ít nhất 1 bước nấu, ít nhất 1 nguyên liệu bắt buộc thuộc nhóm chính (`category != 'pantry'`), mọi nguyên liệu trong món đều `is_active = true`, và không có bước đơn lẻ nào có `estimated_minutes > prep_minutes + cook_minutes`.
 
 ## 7. `recipe_ingredients`
 
@@ -135,7 +137,7 @@ Không ghi "giàu protein", "ít béo" khi không có căn cứ và tiêu chí �
 | model_id | uuid | FK→ai_models.id, NN | Model dùng |
 | created_at | ts | NN, DEFAULT now() | Thời điểm |
 
-Không có `image_path`: backend không lưu ảnh nguyên liệu gốc trong MVP. User có quyền xóa phiên; detections/ingredients dùng `ON DELETE CASCADE`, feedback.scan_session_id nên dùng `ON DELETE SET NULL`.
+Không có `image_path`: backend không lưu ảnh nguyên liệu gốc trong MVP. User có quyền xóa phiên; `scan_detections`, `scan_ingredients` và `recommendation_feedback.scan_session_id` đều dùng `ON DELETE CASCADE` (xem [ADR-012](../07-decisions/ADR-012-feedback-uniqueness-and-context.md)).
 
 ## 12. `scan_detections`
 
@@ -145,17 +147,17 @@ Không có `image_path`: backend không lưu ảnh nguyên liệu gốc trong MV
 | scan_session_id | uuid | FK→scan_sessions.id, NN | Lượt scan |
 | ai_label_id | uuid | FK→ai_labels.id, NN | Nhãn theo model version |
 | confidence | numeric(4,3) | NN, CHECK 0..1 | Độ tin cậy |
-| x1, y1, x2, y2 | numeric(6,5) | NN, CHECK 0..1, x1<x2, y1<y2 | Box chuẩn hóa xyxy |
+| x1, y1, x2, y2 | numeric(6,5) | NN, CHECK 0..1, x1<x2, y1<y2 | Box chuẩn hóa xyxy (tính trên khung ảnh đã xoay chuẩn chiều EXIF) |
 
 ## 13. `scan_ingredients`
 
 | Cột | Kiểu | Ràng buộc | Ý nghĩa |
 |---|---|---|---|
 | scan_session_id | uuid | PK, FK→scan_sessions.id | Lượt scan |
-| ingredient_id | uuid | PK, FK→ingredients.id | ID đã xác nhận |
+| ingredient_id | uuid | PK, FK→ingredients.id | ID nguyên liệu chính đã xác nhận (`category != 'pantry'`) |
 | provenance | varchar(10) | NN, CHECK(ai/manual/corrected) | Nguồn chọn cuối cùng |
 
-Chỉ cập nhật sau khi user xác nhận và gửi `scan_id` hợp lệ qua `/recommendations`.
+Chỉ cập nhật sau khi user xác nhận và gửi `scan_id` hợp lệ qua `/recommendations`. Trạng thái bật/tắt gia vị `pantry` chỉ lưu trên client (`localStorage`/session), không lưu vào `scan_ingredients`.
 
 ## 14. `favorites`
 
@@ -170,12 +172,15 @@ Chỉ cập nhật sau khi user xác nhận và gửi `scan_id` hợp lệ qua `
 | Cột | Kiểu | Ràng buộc | Ý nghĩa |
 |---|---|---|---|
 | id | uuid | PK | Mã feedback |
-| user_id | uuid | FK→profiles.id, NN | Người gửi |
-| recipe_id | uuid | FK→recipes.id, NN | Món đánh giá |
-| scan_session_id | uuid | FK→scan_sessions.id, ? | Gắn scan nếu có, phải cùng user |
+| user_id | uuid | FK→profiles.id (`ON DELETE CASCADE`), NN | Người gửi |
+| recipe_id | uuid | FK→recipes.id (`ON DELETE CASCADE`), NN | Món đánh giá |
+| scan_session_id | uuid | FK→scan_sessions.id (`ON DELETE CASCADE`), ? | Gắn scan nếu có, phải cùng user |
 | rating | smallint | NN, CHECK 1..5 | Độ hữu ích, **không dùng như chất lượng AI** |
 | note | varchar(500) | ? | Ý kiến |
-| created_at | ts | NN, DEFAULT now() | Thời điểm |
+| created_at | ts | NN, DEFAULT now() | Thời điểm tạo lần đầu |
+| updated_at | ts | NN, DEFAULT now() | Thời điểm cập nhật gần nhất (khi upsert) |
+
+Ràng buộc duy nhất: `UNIQUE NULLS NOT DISTINCT (user_id, recipe_id, scan_session_id)` (yêu cầu PostgreSQL >= 15). Gửi lần đầu trong một ngữ cảnh tạo bản ghi mới (`201 Created`); gửi lại trong cùng `(user_id, recipe_id, scan_session_id)` cập nhật `rating`, `note`, `updated_at` (`200 OK`). Khi thống kê toàn hệ thống, lấy bản ghi có `updated_at` mới nhất cho mỗi `(user_id, recipe_id)`.
 
 ## 16. `audit_logs`
 
@@ -184,7 +189,7 @@ Chỉ cập nhật sau khi user xác nhận và gửi `scan_id` hợp lệ qua `
 | id | uuid | PK | Log |
 | actor_id | uuid | FK→profiles.id, NN | Admin thao tác |
 | action | text | NN | create/update/publish/archive/remap... |
-| entity_type | text | NN | recipes/ingredients/ai_labels/nutrition_tags |
+| entity_type | text | NN | recipes/ingredients/ai_models/ai_labels/nutrition_tags |
 | entity_id | uuid | NN | ID bản ghi thay đổi |
 | before_json | jsonb | ? | Giá trị trước (đã loại bí mật/PII) |
 | after_json | jsonb | ? | Giá trị sau (đã loại bí mật/PII) |
@@ -192,9 +197,10 @@ Chỉ cập nhật sau khi user xác nhận và gửi `scan_id` hợp lệ qua `
 
 ## 17. Checklist migration
 
-- [ ] Tạo bảng theo thứ tự FK, thêm ON DELETE phù hợp chính sách xóa dữ liệu.
-- [ ] Khai báo ENUM/CHECK/UNIQUE/INDEX và trigger `updated_at`.
+- [ ] Xác nhận phiên bản PostgreSQL trên dự án Supabase là **>= 15** (bắt buộc cho `UNIQUE NULLS NOT DISTINCT` trên `recommendation_feedback`).
+- [ ] Tạo bảng theo thứ tự FK, thêm `ON DELETE` phù hợp chính sách xóa dữ liệu (`ON DELETE CASCADE` cho `scan_detections`, `scan_ingredients`, `recommendation_feedback.scan_session_id`; `ON DELETE RESTRICT` cho `recipe_ingredients.ingredient_id` và `ai_labels.ingredient_id`).
+- [ ] Khai báo ENUM/CHECK (`ingredients.category IN ('vegetable', 'protein', 'seafood', 'spice', 'pantry', 'other')`), UNIQUE/INDEX và trigger `updated_at` cho `recipes` và `recommendation_feedback`.
 - [ ] Kích hoạt RLS, REVOKE quyền thừa, cấp đúng GRANT cho các schema exposed.
 - [ ] Kiểm thử anon/user A/user B/admin và service role; không dựa vào kiểm tra UI.
-- [ ] Seed ingredient/recipe/nutrition tags có nguồn; không giả định đã có dữ liệu.
-- [ ] Tạo test cho trạng thái `published` và điều kiện có required ingredient + step.
+- [ ] Seed ingredient/recipe/nutrition tags có nguồn: tách rõ nhóm `spice` (tỏi, ớt, gừng) và nhóm `pantry` (muối, đường, nước mắm, dầu ăn, tiêu xay, nước tương, giấm, hạt nêm...; không tạo bản ghi cho nước lọc).
+- [ ] Tạo test cho trạng thái `published` (đủ bước, đủ nguyên liệu chính bắt buộc ngoài `pantry`, mọi nguyên liệu `is_active = true`, không có bước đơn lẻ vượt `total_minutes`) và test chặn `INGREDIENT_IN_USE`.

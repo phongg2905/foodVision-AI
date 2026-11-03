@@ -41,7 +41,7 @@ save_history=false
 }
 ```
 
-BBox `x1,y1,x2,y2` theo tỷ lệ [0,1]. Có thể có nhiều detection trùng loại nguyên liệu; `suggested_ingredients` đã khử trùng lặp theo ingredient ID.
+BBox `x1,y1,x2,y2` theo tỷ lệ [0,1] tính trên ảnh đã xoay chuẩn chiều hiển thị theo EXIF Orientation (metadata EXIF/GPS đã bị loại bỏ). Có thể có nhiều detection trùng loại nguyên liệu; `suggested_ingredients` đã khử trùng lặp theo ingredient ID (chỉ gồm nguyên liệu chính `category != 'pantry'`).
 
 ## 2. Gợi ý từ danh sách **đã xác nhận**
 
@@ -56,6 +56,7 @@ Content-Type: application/json
     "11111111-1111-4111-8111-111111111111",
     "22222222-2222-4222-8222-222222222222"
   ],
+  "excluded_pantry_ids": [],
   "max_total_minutes": 15,
   "cuisine_codes": ["VN"],
   "preferred_cuisine_codes": [],
@@ -96,7 +97,22 @@ Content-Type: application/json
 }
 ```
 
-Điểm **89.0** là ví dụ tính đúng theo công thức giả định C=0.8, E=1, T=1, P=1, trọng số (0.55,0.25,0.10,0.10). Không phải giá trị của AI học máy.
+Điểm **89.0** là ví dụ tính đúng theo công thức giả định `C=0.8, E=1, T=1, P=1`, trọng số `(0.55, 0.25, 0.10, 0.10)` khi `excluded_pantry_ids = []`. Nếu người dùng bỏ chọn gia vị bắt buộc "Nước mắm" (`"excluded_pantry_ids": ["55555555-5555-4555-8555-555555555555"]`), món chuyển sang `availability: "missing"`, `missing_required_ingredient_ids: ["55555555-5555-4555-8555-555555555555"]`, `E = 2/3 ≈ 0.667`, `C = 2/3.5 ≈ 0.571`, `score = 68.1`.
+
+### 2.1. Chi tiết công thức kèm phân loại gia vị nền (`GET /api/v1/recipes/{recipe_id}`)
+
+Trong `RecipeDetail.ingredients`, mỗi phần tử `RecipeIngredientView` có trường `category` để giao diện tách riêng nhóm nguyên liệu chính và nhóm "Gia vị cần chuẩn bị" (`category = 'pantry'`):
+
+```json
+{
+  "ingredient_id": "55555555-5555-4555-8555-555555555555",
+  "name_vi": "Nước mắm",
+  "category": "pantry",
+  "is_required": true,
+  "display_quantity": "1 muỗng canh",
+  "sort_order": 3
+}
+```
 
 ## 3. API lỗi mẫu
 
@@ -129,7 +145,8 @@ Content-Type: application/json
   "content_license": "original",
   "ingredients": [
     {"ingredient_id": "11111111-1111-4111-8111-111111111111", "is_required": true, "display_quantity": "2 quả", "sort_order": 1},
-    {"ingredient_id": "22222222-2222-4222-8222-222222222222", "is_required": true, "display_quantity": "2 quả", "sort_order": 2}
+    {"ingredient_id": "22222222-2222-4222-8222-222222222222", "is_required": true, "display_quantity": "2 quả", "sort_order": 2},
+    {"ingredient_id": "55555555-5555-4555-8555-555555555555", "is_required": true, "display_quantity": "1 muỗng canh", "sort_order": 3}
   ],
   "steps": [
     {"step_no": 1, "instruction": "Sơ chế và cắt cà chua.", "estimated_minutes": 5},
@@ -138,8 +155,29 @@ Content-Type: application/json
 }
 ```
 
-Response dự kiến HTTP 201 chứa đối tượng recipe ở trạng thái `draft`. Đổi sang `published` qua `PATCH /api/v1/admin/recipes/{id}/status` khi backend kiểm tra đủ thành phần bắt buộc và bước hướng dẫn.
+Response dự kiến HTTP 201 chứa đối tượng recipe ở trạng thái `draft`. Đổi sang `published` qua `PATCH /api/v1/admin/recipes/{id}/status` khi backend kiểm tra đủ thành phần bắt buộc (`>= 1` nguyên liệu bắt buộc `category != 'pantry'`, mọi nguyên liệu `is_active = true`) và bước hướng dẫn (`>= 1` bước, không có bước đơn lẻ nào có `estimated_minutes > prep_minutes + cook_minutes`). Các bất biến này cũng được kiểm tra khi `PATCH /api/v1/admin/recipes/{id}` trên một công thức đang `published`.
 
-## 5. Mã lỗi nghiệp vụ đề xuất
+## 5. Mã lỗi nghiệp vụ chuẩn hóa (20 mã)
 
-`IMAGE_TOO_LARGE`, `UNSUPPORTED_IMAGE_TYPE`, `INVALID_IMAGE`, `MODEL_NOT_READY`, `INVALID_INGREDIENTS`, `SCAN_NOT_OWNED`, `RECIPE_NOT_FOUND`, `RECIPE_NOT_PUBLISHABLE`, `DUPLICATE_SLUG`, `UNAUTHORIZED`, `FORBIDDEN`, `RATE_LIMITED`, `INTERNAL_ERROR`.
+Chi tiết schema `details` của từng mã lỗi xem tại [`api-conventions.md`](./api-conventions.md):
+
+1. `UNAUTHORIZED` (`401`)
+2. `FORBIDDEN` (`403`)
+3. `SCAN_NOT_OWNED` (`404`)
+4. `RECIPE_NOT_FOUND` (`404`)
+5. `RESOURCE_NOT_FOUND` (`404`)
+6. `DUPLICATE_SLUG` (`409`)
+7. `DUPLICATE_MODEL_VERSION` (`409`)
+8. `IMAGE_TOO_LARGE` (`413`)
+9. `UNSUPPORTED_IMAGE_TYPE` (`415`)
+10. `INVALID_IMAGE` (`422`)
+11. `INVALID_INGREDIENTS` (`422`)
+12. `INVALID_QUERY_PARAMS` (`422`)
+13. `VALIDATION_ERROR` (`422`)
+14. `RECIPE_NOT_PUBLISHABLE` (`400`)
+15. `INGREDIENT_IN_USE` (`400`)
+16. `MODEL_NOT_ACTIVATABLE` (`400`)
+17. `INVALID_LABEL_MAPPING` (`400`)
+18. `MODEL_IMMUTABLE` (`400`)
+19. `RATE_LIMITED` (`429`)
+20. `INTERNAL_ERROR` (`500`), `MODEL_NOT_READY` (`503`), `INFERENCE_TIMEOUT` (`504`)
