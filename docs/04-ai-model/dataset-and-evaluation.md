@@ -1,96 +1,89 @@
-# Quy trình dữ liệu và đánh giá AI
+# Dataset, Huấn luyện và Đánh giá Thực nghiệm Mô hình AI
 
-## 1. Nguồn dữ liệu và pháp lý
+**Phiên bản:** `0.9.1-draft` · **Phạm vi kỹ thuật:** Thành phần 01, Thành phần 12.2 (`IoU`, `mAP@50`, `mAP@50:95`) & Quy tắc minh bạch `NFR-11`.
 
-**Ưu tiên:** tự chụp ảnh có quyền sử dụng, tập open data có license rõ ràng, hoặc dữ liệu do thành viên tự cung cấp và đồng ý. Với mỗi nguồn lưu metadata: `source_id`, đường dẫn/trang, tác giả/nhà cung cấp, giấy phép, số lượng ảnh, ngày truy xuất, quyền chỉnh sửa và công bố.
+## 1. Nguồn dữ liệu và nguyên tắc bản quyền ([`ADR-005`](../07-decisions/ADR-005-yolo-licensing.md))
 
-Không được thu thập ảnh bừa từ Google Images/website công thức rồi coi là dữ liệu có giấy phép. Không tự sử dụng ảnh upload của user để train nếu chưa có đồng ý riêng. Không commit ảnh dataset/weights lớn vào Git thường; sử dụng storage có version + manifest/hash.
+Dự án kết hợp có kiểm soát giữa bộ dữ liệu công khai có giấy phép rõ ràng và ảnh nguyên liệu thực tế do nhóm tự chụp trong bối cảnh gian bếp Việt Nam. Mọi nguồn dữ liệu bên ngoài phải được ghi nhận URL, tác giả, giấy phép (`CC0`, `CC-BY`...) và điều kiện phân phối trước khi đưa vào tập huấn luyện; không thu thập ảnh tự động trái điều khoản dịch vụ và không dùng ảnh của người dùng tải lên khi chưa có sự đồng ý tường minh.
 
-## 2. Cấu trúc dataset (format YOLO detect)
-
-```text
-datasets/foodvision-v1/
-  dataset.yaml
-  images/train/ ...
-  images/val/ ...
-  images/test/ ...
-  labels/train/ ...
-  labels/val/ ...
-  labels/test/ ...
-  manifest.csv          # ID ảnh/nguồn/license/split/scene_id
-```
-
-`dataset.yaml` ví dụ, tên lớp và số lượng phải khớp bảng nhãn thật:
+## 2. Cấu trúc Dataset chuẩn Ultralytics YOLO
 
 ```yaml
-path: datasets/foodvision-v1
+# data/ingredients.yaml
+path: ../datasets/foodvision-v1
 train: images/train
 val: images/val
 test: images/test
+
 names:
   0: tomato
   1: egg
   2: potato
-  # ...
+  3: carrot
+  # ... khớp danh sách lớp đã khóa ở mốc dataset_ready (không chứa pantry)
 ```
 
-Mỗi dòng nhãn: `class_index x_center y_center width height` (tất cả bbox xywh chuẩn hóa `[0, 1]`). Bbox trả ra API lại dùng **xyxy** chuẩn hóa trên ảnh đã xoay chuẩn theo EXIF Orientation: hai định dạng **không giống nhau**.
+Mỗi dòng trong tệp nhãn `.txt` tuân theo định dạng `class_index x_center y_center width height` chuẩn hóa trong đoạn `[0, 1]`. Lưu ý: phản hồi của API `POST /api/v1/ai/detect` sử dụng định dạng **`xyxy` (`x1, y1, x2, y2`) chuẩn hóa `[0, 1]` tính trên khung ảnh đã xoay chuẩn theo cờ `EXIF Orientation`** — hai hệ tọa độ này khác nhau và phải được kiểm thử chuyển đổi chính xác ở tầng hậu xử lý.
 
-## 3. Kế hoạch thu thập và split
+## 3. Kế hoạch thu thập và phân chia tập dữ liệu chống rò rỉ
 
-- **Mục tiêu thu thập khởi đầu để kiểm tra tính khả thi:** ít nhất khoảng 80 đối tượng được gán nhãn/lớp; **không phải mức đủ bảo đảm chất lượng**. Ưu tiên tăng mẫu lớp khó và sự đa dạng cảnh, ánh sáng, nền, góc chụp hơn là chỉ tăng số lượng.
-- Split ban đầu đề xuất **70% train / 15% validation / 15% test** ở cấp *scene/source/session*; ảnh cùng phiên chụp và ảnh augment của một ảnh gốc **không được rơi vào các tập khác nhau**.
-- Test giữ cố định, không dùng test để tune confidence/hyperparameter. Ghi seed, phiên bản annotation/dataset và model.
-- Có ảnh **không chứa nguyên liệu**, ảnh nhiều vật thể chồng nhau, ảnh rung/mờ, nền bếp, ánh sáng kém, ảnh thiết bị khác nhau (bao gồm ảnh xoay dọc có cờ EXIF Orientation).
-- Bước kiểm tra annotation: bbox khép kín, đúng lớp, không vượt biên ảnh, không trùng lặp sai, audit ngẫu nhiên và đối chiếu giữa 2 người gán nhãn với lớp khó.
+- **Mục tiêu thu thập khởi đầu (Pilot):** tối thiểu khoảng `80` đối tượng được gán nhãn trên mỗi lớp mục tiêu để kiểm tra tính khả thi; ưu tiên tăng mẫu cho các cặp lớp dễ nhầm (`raw_chicken` vs `raw_pork`, `cucumber` vs `zucchini`, `tofu`) và đa dạng hóa nền bếp, ánh sáng, góc chụp, mức che khuất.
+- **Chia tập `70% train / 15% validation / 15% test` ở cấp `scene/source/session`:** các ảnh chụp trong cùng một phiên hoặc các biến thể augmentation sinh từ cùng một ảnh gốc **tuyệt đối không được rơi vào hai tập khác nhau**.
+- **Đóng băng tập `test`:** tập `test` chỉ dùng đúng cho đánh giá báo cáo cuối cùng; mọi thao tác tinh chỉnh `confidence_threshold`, ngưỡng NMS hay ngưỡng cảnh báo xác nhận HITL $\tau$ đều phải thực hiện trên tập `validation`.
+- **Tập ảnh đối chứng thực tế & ngoài phân phối (OOD):** bổ sung ảnh **không chứa nguyên liệu**, ảnh nhiều vật thể chồng lấp, ảnh rung/mờ, ảnh thiếu sáng, ảnh chụp dọc có cờ `EXIF Orientation != 1` và vật thể ngoài danh mục để kiểm chứng cơ chế cảnh báo HITL ($\text{Review}(x) = 1$) và luồng dự phòng nhập tay (`FR-18`).
+- **Kiểm soát chất lượng gán nhãn:** hộp giới hạn bao sát vật thể, đúng lớp, không vượt biên `[0, 1]`, kiểm tra chéo ngẫu nhiên giữa tối thiểu 2 thành viên trên các lớp khó.
 
-## 4. Protocol huấn luyện
+## 4. Nhật ký bắt buộc khi huấn luyện và kiểm định
 
-| Mục | Phải ghi lại |
+| Hạng mục | Nội dung bắt buộc ghi nhận để tái lập |
 |---|---|
-| Environment | OS, Python, package versions, CPU/GPU/RAM, CUDA nếu có |
-| Model | family/size, weights init, model version, license |
-| Dataset | dataset version/hash, class list, split manifest, license |
-| Training | epochs, batch size, image size, augmentation, optimizer, seed |
-| Tuning | chọn confidence/NMS trên validation; lý do |
-| Artifact | hash của weights, đường dẫn lưu có kiểm soát, model metadata |
-| Evaluation | Precision, Recall, mAP50, mAP50-95, per-class AP50, per-class Recall, per-class `N_test`, confusion/error cases |
-| Performance | p50/p95 inference và API end-to-end, concurrency, peak RAM |
+| `Environment` | Hệ điều hành, phiên bản Python / PyTorch / Ultralytics, thông số CPU / GPU / RAM, CUDA |
+| `Model` | Biến thể YOLO, trọng số khởi tạo, `model_version`, giấy phép sử dụng |
+| `Dataset` | `dataset_version`, mã băm manifest chia tập, danh sách $K$ lớp đã khóa (`dataset_ready`), giấy phép |
+| `Training` | Số `epochs`, `batch_size`, `imgsz`, cấu hình augmentation, optimizer, `seed` |
+| `Tuning` | Ngưỡng phát hiện `confidence_threshold` (khởi điểm `0.25`), ngưỡng NMS IoU, ngưỡng cảnh báo HITL $\tau$ (khởi điểm `0.80`) chọn trên tập `val` |
+| `Artifact` | Đường dẫn lưu trữ có kiểm soát, mã băm SHA-256 của tệp trọng số |
+| `Evaluation` | `Precision`, `Recall`, `F1`, `mAP@50`, `mAP@50:95`, bảng per-class `AP50` / `Recall` / `N_test`, ma trận nhầm lẫn và ca lỗi điển hình |
+| `Performance` | Độ trễ suy luận và API end-to-end (`p50` / `p95`), mức giới hạn luồng đồng thời, RAM đỉnh |
 
-Không ghi "đã đạt 90%" hoặc tương tự khi chưa có log đánh giá thật.
+## 5. Công thức đo lường thực nghiệm AI thị giác (Thành phần 12.2) & Quy tắc `NFR-11`
 
-## 5. Metric, định nghĩa và quy tắc minh bạch đánh giá (`NFR-11`)
+Bộ đo lường của dự án **tách bạch hoàn toàn giữa chất lượng nhận diện thị giác và chất lượng hệ gợi ý món ăn** (đánh giá hệ gợi ý bằng `Precision@5` và `nDCG@5` được quy định tại [`recommendation-design.md`](../05-recommendation/recommendation-design.md)).
 
-- **Precision** = `TP / (TP + FP)`: trong các dự đoán, tỷ lệ đúng.
-- **Recall** = `TP / (TP + FN)`: trong vật thể thật, tỷ lệ phát hiện.
-- **F1** = `2 * P * R / (P + R)`, khi `P + R > 0`.
-- **mAP50** = mean average precision tính ở IoU 0.50 qua toàn bộ các lớp mục tiêu; **mAP50-95** trung bình theo các ngưỡng IoU từ 0.50 đến 0.95. Phải ghi phương pháp tính từ framework.
-- **Latency p95**: thời gian 95th percentile của các lượt đo trên phần cứng báo cáo, không phải lời hứa đoán trước.
+- **IoU (Intersection over Union):**
+  \[
+  \text{IoU}(B_p, B_g) = \frac{|B_p \cap B_g|}{|B_p \cup B_g|}
+  \]
+- **Precision, Recall và F1-score:**
+  \[
+  \text{Precision} = \frac{\text{TP}}{\text{TP} + \text{FP}}, \qquad \text{Recall} = \frac{\text{TP}}{\text{TP} + \text{FN}}, \qquad F_1 = \frac{2 \cdot \text{Precision} \cdot \text{Recall}}{\text{Precision} + \text{Recall}}
+  \]
+- **`mAP@50` và `mAP@50:95` (Mean Average Precision trên dải ngưỡng IoU):**
+  \[
+  \text{mAP@50} = \frac{1}{K} \sum_{c=1}^{K} \text{AP}_{c, 0.50}, \qquad \text{mAP@50:95} = \frac{1}{10K} \sum_{t \in \{0.50, 0.55, \dots, 0.95\}} \sum_{c=1}^{K} \text{AP}_{c,t}
+  \]
+  Trong đó $K$ là tổng số lớp mục tiêu đưa vào đánh giá và $\text{AP}_{c,t}$ là Average Precision của lớp $c$ tại ngưỡng $\text{IoU} = t$, xuất trực tiếp từ công cụ kiểm định chuẩn của Ultralytics:
 
-### Quy tắc đánh giá chất lượng mô hình (`NFR-11`)
+```python
+from ultralytics import YOLO
 
-1. **Chốt danh sách lớp trước khi đánh giá (`dataset_ready`):** Tập lớp mục tiêu của một phiên bản model phải được chốt trước khi chạy đánh giá cuối cùng trên tập test độc lập, dựa trên điều kiện đủ mẫu và chất lượng gán nhãn.
-2. **Cấm loại bỏ lớp yếu sau khi đã chạy đánh giá (No post-hoc class dropping):** Sau khi chạy đánh giá trên tập test, **không được phép loại bỏ các lớp có kết quả thấp khỏi mẫu số tính `mean mAP50`** nhằm làm đẹp chỉ số trung bình.
-3. **Bắt buộc công bố bảng chi tiết từng lớp:** Báo cáo đánh giá bắt buộc công bố đầy đủ bảng **per-class `AP50`**, **per-class `Recall`** và **số lượng mẫu kiểm thử `N_test` của từng lớp** bên cạnh chỉ số `mAP50` tổng thể.
-4. **Lưu ý phương sai thống kê:** Với quy mô thu thập khởi đầu khoảng 80 đối tượng/lớp và tỷ lệ chia 15% test, mỗi lớp chỉ có khoảng `12–15` đối tượng trong tập test (`N_test` nhỏ), dẫn đến phương sai thống kê trên từng lớp cao. Báo cáo phải ghi rõ `N_test` để hội đồng đánh giá khách quan.
-5. **Mục tiêu tham chiếu và mốc chốt:** Ngưỡng tham chiếu dự kiến là `mAP50 >= 0.70` trên tập test độc lập (API detect p95 `<= 10s` trên thiết bị demo). Ngưỡng nghiệm thu chính thức và mốc thời gian chốt sẽ được **AI Lead và Giảng viên hướng dẫn** xác nhận sau khi có kết quả thực nghiệm vòng đầu (Pilot run).
+model = YOLO("models/ingredients_best.pt")
+metrics = model.val(data="data/ingredients.yaml", split="test")
+print(metrics.box.map50)  # mAP@50
+print(metrics.box.map)    # mAP@50:95
+```
 
-## 6. Bộ kịch bản kiểm chứng
+### Quy tắc minh bạch đánh giá mô hình bắt buộc (`NFR-11`)
 
-| ID | Ảnh/test | Tiêu chí ghi nhận |
-|---|---|---|
-| AI-01 | Ảnh có 2–5 loại nguyên liệu | Per-image TP/FP/FN, khả năng hiển thị nhiều bbox |
-| AI-02 | Ảnh một nhãn nhưng nhiều đối tượng | Bbox khác nhau; UI danh sách gộp ID đúng |
-| AI-03 | Ảnh không có nguyên liệu | False positive rate, manual fallback |
-| AI-04 | Ảnh mờ/thiếu sáng/che khuất | Precision/Recall theo nhóm điều kiện |
-| AI-05 | Lớp giống nhau (hành các loại, thịt sống) | Confusion matrix, ví dụ nhầm lẫn |
-| AI-06 | Ảnh hợp lệ nhưng size lớn | Giới hạn decode, benchmark RAM và latency |
-| AI-07 | Class index từ model version mới | Mapping về ingredient chuẩn vẫn chính xác |
+1. **Chốt danh sách lớp trước khi đánh giá (`dataset_ready`):** tập $K$ lớp mục tiêu của một phiên bản model phải được khóa trước khi chạy đánh giá cuối cùng trên tập `test` độc lập.
+2. **Cấm loại bỏ lớp yếu sau khi chạy test (No post-hoc class dropping):** sau khi đã chạy đánh giá trên tập `test`, **nghiêm cấm loại bỏ các lớp có kết quả thấp khỏi mẫu số tính `mAP@50` / `mAP@50:95`** để nâng khống chỉ số trung bình.
+3. **Bắt buộc công bố bảng chi tiết từng lớp:** báo cáo phải công bố đầy đủ **per-class `AP50`**, **per-class `Recall`** và **số lượng mẫu kiểm thử `N_test` của từng lớp** (lưu ý rõ phương sai thống kê cao khi `N_test ≈ 12–15` mẫu ở giai đoạn đầu).
+4. **Mục tiêu tham chiếu:** ngưỡng mục tiêu thiết kế là `mAP@50 >= 0.70` trên tập `test` độc lập và độ trễ API detect `p95 <= 10.0s` trên CPU demo (`<= 3.0s` trên GPU); ngưỡng nghiệm thu chính thức được chốt cùng Giảng viên hướng dẫn sau Pilot run.
 
-## 7. Biểu mẫu báo cáo kết quả (để điền sau khi đo)
+## 6. Biểu mẫu báo cáo kết quả (chỉ điền sau khi chạy thực nghiệm thật)
 
-| Model version | Dataset version | Số lớp mục tiêu | Precision | Recall | mAP50 | mAP50-95 | p95 detect | Ghi chú (kèm bảng per-class `AP50`, `Recall`, `N_test`) |
+| Model version | Dataset version | Số lớp mục tiêu ($K$) | Precision | Recall | mAP@50 | mAP@50:95 | p95 detect | Ghi chú (đính kèm bảng per-class `AP50`, `Recall`, `N_test`) |
 |---|---|---:|---:|---:|---:|---:|---:|---|
-| _Chưa thực nghiệm_ | _Chưa thực nghiệm_ | — | — | — | — | — | — | Không được tự tạo số liệu; không loại lớp yếu sau khi chạy test |
+| _Chưa thực nghiệm_ | _Chưa thực nghiệm_ | — | — | — | — | — | — | Không tự tạo số liệu giả định; cấm loại lớp yếu sau khi chạy test |
 
-**Nguồn chính thức:** https://docs.ultralytics.com/datasets/detect và https://docs.ultralytics.com/tasks/detect. **License:** https://www.ultralytics.com/license.
+**Nguồn tham khảo:** Redmon et al. (*CVPR*, 2016), https://docs.ultralytics.com/datasets/detect, https://docs.ultralytics.com/tasks/detect và https://www.ultralytics.com/license.
