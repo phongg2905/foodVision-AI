@@ -1,0 +1,64 @@
+# =============================================================================
+# FoodVision AI — Root .gitignore
+# =============================================================================
+
+# 1. Environment variables & secrets (NEVER commit service_role or JWT secrets)
+.env
+.env.*
+!.env.example
+
+# 2. Python / FastAPI (backend/ & tests/)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# 3. Node.js / React / Vite (frontend/)
+node_modules/
+frontend/dist/
+frontend/dist-ssr/
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# 4. AI Model Weights, Datasets & Training Runs (ADR-005 / docs/README.md)
+*.pt
+*.pth
+*.onnx
+*.engine
+*.tflite
+*.safetensors
+datasets/
+runs/
+weights/
+wandb/
+
+# 5. Supabase CLI local state
+supabase/.branches
+supabase/.temp
+
+# 6. Temporary Trello exports & OS/Editor files
+*foodvision-ai.json
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
