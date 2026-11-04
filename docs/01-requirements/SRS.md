@@ -1,6 +1,6 @@
 # SRS — Đặc tả Yêu cầu Phần mềm (Software Requirements Specification)
 
-**Mã tài liệu:** `FV-SRS-001` · **Phiên bản:** `0.9.1-draft` · **Ngày cập nhật:** `03/11/2026` · **Trạng thái:** Đề xuất (`Proposed`), chờ nhóm và Giảng viên hướng dẫn phê duyệt để chốt `1.0.0-baseline`.  
+**Mã tài liệu:** `FV-SRS-001` · **Phiên bản:** `1.0.0` · **Ngày cập nhật:** `04/11/2026` · **Trạng thái:** Chính thức (`Approved Baseline`).  
 **Học phần:** Phát triển các hệ thống thông minh  
 **Tên đề tài:** Xây dựng website thông minh gợi ý món ăn từ hình ảnh nguyên liệu sử dụng YOLO  
 **Liên kết nhanh:** [Use Cases](use-cases.md) · [UML Use Case Diagram](use-case-diagram.puml) · [User Stories & Gherkin AC](user-stories.md) · [Traceability Matrix](traceability-matrix.md)
@@ -14,7 +14,7 @@
 | `0.1.0-draft` | 03/11/2026 | Nhóm dự án | Khởi tạo khung tài liệu SRS, 18 FR, 12 NFR, 10 BR ban đầu. |
 | `0.9.0-draft` | 03/11/2026 | Nhóm dự án | Chuẩn hóa SRS theo IEEE 830 / ISO 29148: bổ sung Glossary, bảng Stakeholder & kiểm thử chéo, tách `FR-09a`/`FR-09b`, nâng `FR-15` lên `P0`, bổ sung cơ chế bật/tắt gia vị nền (`category='pantry'`, `excluded_pantry_ids`), quy ước `cook_minutes` gồm thời gian ướp/chờ bắt buộc, tiền xử lý EXIF Orientation, mở rộng `NFR-01`..`NFR-14` và `BR-01`..`BR-12`, đồng bộ hợp đồng OpenAPI và 47 TC. |
 | `0.9.1-draft` | 03/11/2026 | Nhóm dự án | Đồng bộ kiến trúc 7 tầng — 14 thành phần thông minh theo lộ trình 5 giai đoạn: bổ sung tìm kiếm tiếng Việt chuẩn hóa + `pg_trgm`, cơ chế HITL theo ngưỡng tin cậy $\tau$, lộ trình nâng cấp `Scoring v1.0` → `Scoring v1.1` (suy luận 3 trạng thái open-world, lọc dị ứng có kiểm duyệt, độ phủ có trọng số, MCDA 5 tiêu chí, cá nhân hóa Logistic Regression, đa dạng hóa MMR, giải thích XAI), dinh dưỡng hai tầng (`P0` định tính + `P1` USDA trên 100g khi có khối lượng xác thực) và đánh giá thực nghiệm hai lớp (`mAP@50:95` + ablation A/B/C/D `Precision@5`, `nDCG@5`). |
-| `1.0.0-baseline` | _Chờ duyệt_ | Giảng viên & Nhóm | Baseline chính thức sau khi hoàn tất rà soát và ký duyệt. |
+| `1.0.0` | 04/11/2026 | Nhóm dự án (Phong – Thành – Tâm) | Chốt chính thức Baseline đặc tả yêu cầu, phân công đơn trách nhiệm 3 thành viên và ma trận kiểm thử chéo để bắt đầu triển khai 5 giai đoạn. |
 
 ---
 
@@ -209,4 +209,4 @@ Hợp đồng chi tiết từng trường và mã trạng thái HTTP được qu
 - [x] Đã đồng bộ kiến trúc 7 tầng — 14 thành phần thông minh với quy tắc gia vị nền (`category = 'pantry'`, `excluded_pantry_ids`), quy ước `cook_minutes` (gồm thời gian ướp/chờ bắt buộc) và tiền xử lý EXIF Orientation xuyên suốt SRS, Database, OpenAPI, AI, Recommendation và Test Cases.
 - [x] Đã thiết lập bảng phân vai trách nhiệm và quy tắc kiểm thử chéo (Cross-Testing).
 - [x] Nhóm dự án đã điền tên 3 thành viên phụ trách đơn trách nhiệm (**Phong Phạm `TV2` – Minh Thành `TV1` – Tâm Minh `TV3`**) vào Mục 1.3.
-- [ ] Điền tên Giảng viên hướng dẫn và ký duyệt chuyển trạng thái sang `1.0.0-baseline`.
+- [x] Đã chốt chính thức bộ tài liệu phiên bản `1.0.0` (`Approved Baseline`) để triển khai.

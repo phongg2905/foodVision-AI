@@ -1,6 +1,6 @@
 # Thiết kế phân hệ AI — Ingredient Object Detection, CLIP/VLM Fallback & HITL
 
-**Mã:** `FV-AI-001` · **Phiên bản:** `0.9.1-draft` · **Trạng thái:** Proposed · **Phạm vi kỹ thuật:** Thành phần 01 (YOLO Object Detection), Thành phần 02 (CLIP/VLM Candidate Helper), Thành phần 14 (Human-in-the-loop) & [`ADR-010`](../07-decisions/ADR-010-image-exif-and-validation-errors.md).
+**Mã:** `FV-AI-001` · **Phiên bản:** `1.0.0` · **Trạng thái:** Approved Baseline · **Phạm vi kỹ thuật:** Thành phần 01 (YOLO Object Detection), Thành phần 02 (CLIP/VLM Candidate Helper), Thành phần 14 (Human-in-the-loop) & [`ADR-010`](../07-decisions/ADR-010-image-exif-and-validation-errors.md).
 
 ## 1. Cơ sở khoa học và vai trò của YOLO (Thành phần 01)
 

@@ -12,7 +12,7 @@ foodvision-ai/
 ├── backend/                # FastAPI + YOLO/CLIP + Vietnamese Search + Reasoning, MCDA, LR, MMR & USDA
 ├── supabase/               # PostgreSQL >= 15 migrations (pg_trgm, alias, tri thức món ăn, RLS + GRANT)
 ├── tests/                  # Kiểm thử hợp đồng API, bảo mật RLS, 7 bài toán học & thực nghiệm A/B/C/D
-├── docs/                   # Bộ tài liệu đặc tả & thiết kế chuẩn của dự án (0.9.1-draft)
+├── docs/                   # Bộ tài liệu đặc tả & thiết kế chuẩn của dự án (v1.0.0)
 │   ├── 01-requirements/    # SRS, Use Cases, UML Diagram, User Stories & Gherkin AC, RTM
 │   ├── 02-architecture/    # Kiến trúc 7 tầng thông minh, ERD, Data Dictionary, Bảo mật & EXIF privacy
 │   ├── 03-api/             # Quy ước API, OpenAPI 3.1, ví dụ mô phỏng và Postman Collection

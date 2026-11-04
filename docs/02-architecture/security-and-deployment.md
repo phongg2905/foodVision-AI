@@ -1,6 +1,6 @@
 # Bảo mật, quyền riêng tư và triển khai
 
-**Phiên bản:** 0.9.1-draft · **Trạng thái:** Đề xuất; phải kiểm tra khi tích hợp môi trường Supabase/Backend thật.
+**Phiên bản:** `1.0.0` · **Trạng thái:** Chính thức (`Approved Baseline`); bắt buộc kiểm chứng khi tích hợp môi trường Supabase/Backend thật.
 
 ## 1. Threat model ngắn
 

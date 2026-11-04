@@ -1,14 +1,14 @@
 # FoodVision AI — Bộ tài liệu dự án
 
-> **Phiên bản tài liệu:** `0.9.1-draft` (bản đặc tả đề xuất chờ duyệt lên `1.0.0-baseline`)  
-> **Cập nhật:** `03/11/2026`  
-> **Trạng thái:** Chờ nhóm và Giảng viên hướng dẫn phê duyệt trước khi chốt baseline triển khai  
+> **Phiên bản tài liệu:** `1.0.0` (`Approved Baseline`)  
+> **Cập nhật:** `04/11/2026`  
+> **Trạng thái:** Baseline chính thức — Đã khóa đặc tả, kiến trúc 7 tầng (14 thành phần) và hợp đồng API để triển khai 5 giai đoạn  
 > **Học phần:** Phát triển các hệ thống thông minh  
 > **Loại sản phẩm:** Website thông minh gợi ý món ăn từ ảnh nguyên liệu
 
 ## 1. Mục đích và tư tưởng thiết kế
 
-Thư mục `docs/` là **nguồn chuẩn (single source of truth) về yêu cầu, kiến trúc và thuật toán** của FoodVision AI. Tất cả tài liệu tại đây mô tả **thiết kế kỹ thuật và kế hoạch kiểm chứng**, không đồng nghĩa rằng chức năng đã được lập trình xong hay đã có số liệu thực nghiệm. Ngay khi Giảng viên hướng dẫn và nhóm duyệt baseline (`1.0.0-baseline`), mọi thay đổi về nghiệp vụ, mô hình dữ liệu, hợp đồng API và thuật toán AI/Recommendation phải đi kèm pull request cập nhật tài liệu liên quan.
+Thư mục `docs/` là **nguồn chuẩn (single source of truth) về yêu cầu, kiến trúc và thuật toán** của FoodVision AI. Tất cả tài liệu tại đây mô tả **thiết kế kỹ thuật và kế hoạch kiểm chứng**, không đồng nghĩa rằng chức năng đã được lập trình xong hay đã có số liệu thực nghiệm. Kể từ khi chốt baseline chính thức (`1.0.0`), mọi thay đổi về nghiệp vụ, mô hình dữ liệu, hợp đồng API và thuật toán AI/Recommendation phải đi kèm pull request cập nhật tài liệu liên quan.
 
 **Tên đề tài đề xuất:** Xây dựng website thông minh gợi ý món ăn từ hình ảnh nguyên liệu sử dụng YOLO.
 

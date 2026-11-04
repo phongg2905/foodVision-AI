@@ -1,5 +1,13 @@
 # Documentation changelog
 
+## [1.0.0] — 04/11/2026 (Chốt chính thức Baseline Đặc tả, Kiến trúc 7 tầng & Hợp đồng API)
+
+- **Phát hành chính thức bộ tài liệu chuẩn `1.0.0` (`Approved Baseline`):**
+  - Khoá toàn bộ yêu cầu (`19 FR`, `14 NFR`, `12 BR`, `10 UC`, `14 US`, `30 Gherkin ACs`), kiến trúc 7 tầng — 14 thành phần thông minh (`TP 01`..`TP 14`), mô hình dữ liệu PostgreSQL `>= 15` (`16` bảng cốt lõi + `4` bảng mở rộng), hợp đồng `OpenAPI 3.1.0` (`25 paths` / `33 operations`, `20` mã lỗi chuẩn) và kế hoạch kiểm định `47 TC` + `7 MATH` + `10 DEF`.
+  - Phân công **Đơn trách nhiệm (`Single Owner`)** và **Ma trận Kiểm thử chéo (`Cross-Testing`)** cho 3 thành viên chính thức trong `SRS.md` (Mục 1.3) và trên bảng Trello 5 giai đoạn: **Minh Thành (`TV1` — AI, ML & Data Content Lead)**, **Phong Phạm (`TV2` — Backend, DB, Reasoning & Recommendation Lead)**, **Tâm Minh (`TV3` — Frontend, HITL/XAI & QA Lead)**.
+  - Chuyển trạng thái toàn bộ 12 hồ sơ quyết định kiến trúc (`ADR-001`..`ADR-012`) từ `Proposed` sang `Accepted`.
+  - Giữ nguyên trạng thái thực thi kiểm thử (`Planned` / `Not run`) và quy tắc minh bạch thực nghiệm `NFR-11` cho tới khi hoàn tất đo đạc thực nghiệm ở Giai đoạn 5.
+
 ## [0.9.1-draft] — 03/11/2026 (Đồng bộ kiến trúc thông minh 14 thành phần trên nền `0.9.0-draft`)
 
 - **Kiến trúc 7 tầng & Tích hợp hệ thống thông minh (`README.md`, `docs/README.md`, `02-architecture/`):**
@@ -51,6 +59,6 @@
 ## Quy ước phiên bản tiếp theo
 
 - `0.9.x-draft`: chỉnh sửa theo góp ý rà soát và đồng bộ thiết kế thuật toán trước khi ký duyệt baseline.
-- `1.0.0-baseline`: phiên bản baseline chính thức sau khi nhóm và Giảng viên hướng dẫn phê duyệt.
+- `1.0.0`: phiên bản baseline chính thức đã khóa đặc tả, kiến trúc 7 tầng và hợp đồng API để triển khai.
 - `1.x.0`: mở rộng thành phần thông minh theo lộ trình giai đoạn, thêm yêu cầu/field không phá tương thích hoặc nâng cấp thuật toán có chủ đích (`Scoring v1.1`).
 - `2.0.0`: thay đổi breaking đối với API contract, schema cốt lõi hoặc luồng nghiệp vụ chính, bắt buộc rà soát lại RTM và ADR.

@@ -1,6 +1,6 @@
 # ADR-009 — Quy ước tính thời gian ướp/chờ/hầm bắt buộc vào `cook_minutes` và kiểm tra tính nhất quán thời gian
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 03/11/2026
 - **Context:** Nhiều món ăn có thời gian ướp nguyên liệu, chờ ngấm gia vị hoặc ninh/hầm bắt buộc (ví dụ ướp thịt 20 phút, hầm 40 phút). Nếu chỉ tính thời gian đứng đảo trên bếp vào `cook_minutes`, tổng thời gian `total_minutes = prep_minutes + cook_minutes` sẽ thấp giả tạo, làm bộ lọc `max_total_minutes` và điểm thời gian `T(r)` sai lệch so với thực tế trải nghiệm của người nấu.
 - **Decision:**

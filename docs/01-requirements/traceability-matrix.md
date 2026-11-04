@@ -1,6 +1,6 @@
 # Ma trận Truy vết Yêu cầu (Requirement Traceability Matrix — RTM)
 
-**Phiên bản:** `0.9.1-draft` · **Trạng thái:** `Planned` (chưa đánh dấu `Pass` cho tới khi có bằng chứng thực nghiệm và kiểm thử chéo).  
+**Phiên bản:** `1.0.0` · **Trạng thái kiểm thử:** `Planned` (chưa đánh dấu `Pass` cho tới khi có bằng chứng thực nghiệm và kiểm thử chéo).  
 **Đối chiếu:** [SRS](SRS.md) · [Use Cases](use-cases.md) · [User Stories & AC](user-stories.md) · [OpenAPI 3.1](../03-api/openapi.yaml) · [Test Cases](../06-testing/test-cases.md)
 
 > **Quy tắc phân quyền sở hữu (`Primary Owner`):** Mỗi yêu cầu chỉ gắn **một vai trò chịu trách nhiệm chính** (`PM / Content Lead`, `BE / DB Lead`, `AI Lead`, hoặc `FE / QA Lead`) để rõ đầu mối giải trình. Việc nghiệm thu tuân thủ nguyên tắc **kiểm thử chéo (Cross-Testing)** quy định tại Mục 1.3 của [`SRS.md`](SRS.md).

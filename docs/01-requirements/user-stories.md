@@ -1,6 +1,6 @@
 # User Stories và Tiêu chí Chấp nhận (Gherkin Acceptance Criteria)
 
-**Phiên bản:** `0.9.1-draft` · **Trạng thái:** Đề xuất (`Proposed`) · **Đối chiếu:** [SRS](SRS.md), [Use Cases](use-cases.md), [Traceability Matrix](traceability-matrix.md)
+**Phiên bản:** `1.0.0` · **Trạng thái:** Chính thức (`Approved Baseline`) · **Đối chiếu:** [SRS](SRS.md), [Use Cases](use-cases.md), [Traceability Matrix](traceability-matrix.md)
 
 **Quy ước thiết kế:**
 1. Mỗi User Story (`US-01`..`US-14`) ánh xạ trực tiếp tới các yêu cầu chức năng (`FR-01`..`FR-18`).

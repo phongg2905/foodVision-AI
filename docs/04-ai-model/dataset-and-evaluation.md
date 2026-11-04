@@ -1,6 +1,6 @@
 # Dataset, Huấn luyện và Đánh giá Thực nghiệm Mô hình AI
 
-**Phiên bản:** `0.9.1-draft` · **Phạm vi kỹ thuật:** Thành phần 01, Thành phần 12.2 (`IoU`, `mAP@50`, `mAP@50:95`) & Quy tắc minh bạch `NFR-11`.
+**Phiên bản:** `1.0.0` · **Phạm vi kỹ thuật:** Thành phần 01, Thành phần 12.2 (`IoU`, `mAP@50`, `mAP@50:95`) & Quy tắc minh bạch `NFR-11`.
 
 ## 1. Nguồn dữ liệu và nguyên tắc bản quyền ([`ADR-005`](../07-decisions/ADR-005-yolo-licensing.md))
 

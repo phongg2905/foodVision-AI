@@ -1,6 +1,6 @@
 # ADR-011 — Kế thừa quyền tác nhân (`Admin --|> User --|> Guest`) và lộ trình triển khai xác thực (`FR-09a` / `FR-09b`)
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 03/11/2026
 - **Context:**
   1. Các công cụ quản trị (`FR-13`..`FR-15`) thuộc mức ưu tiên `P0` (bắt buộc có trong MVP để nhập công thức, nguyên liệu và kích hoạt model AI), nhưng tính năng quản lý tài khoản trước đây (`FR-09`) lại được xếp ở mức `P1`, gây phụ thuộc ngược (Admin không thể đăng nhập ở giai đoạn P0 nếu chưa có xác thực).

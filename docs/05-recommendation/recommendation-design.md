@@ -1,6 +1,6 @@
 # Thiết kế hệ thống suy luận, xếp hạng và cá nhân hóa gợi ý món ăn
 
-**Mã:** `FV-REC-001` · **Phiên bản:** `0.9.1-draft` · **Trạng thái:** Proposed · **Phạm vi kỹ thuật:** Hợp đồng MVP (`Scoring v1.0`, [`ADR-008`](../07-decisions/ADR-008-pantry-ingredients-handling.md)) & Kiến trúc thông minh mở rộng (`Scoring v1.1` — Thành phần 04, 05, 06, 07, 08, 09, 10, 12, 14).
+**Mã:** `FV-REC-001` · **Phiên bản:** `1.0.0` · **Trạng thái:** Approved Baseline · **Phạm vi kỹ thuật:** Hợp đồng MVP (`Scoring v1.0`, [`ADR-008`](../07-decisions/ADR-008-pantry-ingredients-handling.md)) & Kiến trúc thông minh mở rộng (`Scoring v1.1` — Thành phần 04, 05, 06, 07, 08, 09, 10, 12, 14).
 
 ## 1. Phân lớp lộ trình thuật toán và tính tương thích hợp đồng API
 

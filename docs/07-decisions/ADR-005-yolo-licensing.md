@@ -1,6 +1,6 @@
 # ADR-005 — Kiểm soát giấy phép YOLO và dữ liệu
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 03/11/2026
 - **Context:** Ultralytics phân phối phần mềm/model theo các điều khoản AGPL-3.0/Enterprise; ảnh và công thức từ Internet cũng có bản quyền riêng.
 - **Decision:** trong đồ án phải ghi rõ model/weights/framework và license, xem lại điều khoản hiện hành trước khi phân phối ứng dụng hoặc triển khai public; có thể phải công khai source theo AGPL hoặc mua license phù hợp. Không khẳng định học thuật = được miễn license. Mọi nguồn dataset/công thức/ảnh phải có quyền dùng.

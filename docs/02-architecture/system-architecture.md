@@ -1,6 +1,6 @@
 # Thiết kế kiến trúc hệ thống — System Architecture
 
-**Mã tài liệu:** `FV-ARCH-001` · **Phiên bản:** `0.9.1-draft` · **Trạng thái:** Đề xuất (`Proposed`) · **Phạm vi:** Kiến trúc 7 tầng tích hợp 14 thành phần thông minh và các quyết định [`ADR-001`](../07-decisions/ADR-001-web-fastapi.md)…[`ADR-012`](../07-decisions/ADR-012-feedback-uniqueness-and-context.md).
+**Mã tài liệu:** `FV-ARCH-001` · **Phiên bản:** `1.0.0` · **Trạng thái:** Chính thức (`Approved Baseline`) · **Phạm vi:** Kiến trúc 7 tầng tích hợp 14 thành phần thông minh và các quyết định [`ADR-001`](../07-decisions/ADR-001-web-fastapi.md)…[`ADR-012`](../07-decisions/ADR-012-feedback-uniqueness-and-context.md).
 
 ## 1. Kiến trúc 7 tầng thông minh và nguyên tắc phân tách trách nhiệm
 

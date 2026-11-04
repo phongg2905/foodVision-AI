@@ -1,6 +1,6 @@
 # Thiết kế Database, Cơ sở Tri thức và Tìm kiếm Tiếng Việt
 
-**Phiên bản:** 0.9.1-draft · **DB:** PostgreSQL >= 15 (Supabase) · **Trạng thái:** Đề xuất, chờ duyệt baseline
+**Phiên bản:** `1.0.0` · **DB:** PostgreSQL >= 15 (Supabase) · **Trạng thái:** Chính thức (`Approved Baseline`)
 
 ## 1. Cơ sở biểu diễn tri thức nguyên liệu – món ăn (Thành phần 03)
 

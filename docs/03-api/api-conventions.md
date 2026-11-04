@@ -1,6 +1,6 @@
 # API Conventions — FoodVision AI v1
 
-**Phiên bản:** 0.9.1-draft · **Hợp đồng máy đọc:** [`openapi.yaml`](./openapi.yaml)
+**Phiên bản:** `1.0.0` · **Hợp đồng máy đọc:** [`openapi.yaml`](./openapi.yaml)
 
 ## 1. Cơ sở
 

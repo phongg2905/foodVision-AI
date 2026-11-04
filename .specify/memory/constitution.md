@@ -3,7 +3,7 @@
 ## Core Principles
 
 ### I. Docs-as-Single-Source-of-Truth & Traceability
-Thư mục `docs/` (phiên bản `0.9.1-draft` tiến tới `1.0.0-baseline`) là nguồn chân lý chuẩn (Single Source of Truth) về yêu cầu, kiến trúc, hợp đồng dữ liệu và thuật toán của dự án.
+Thư mục `docs/` (phiên bản `1.0.0` tiến tới `1.0.0-baseline`) là nguồn chân lý chuẩn (Single Source of Truth) về yêu cầu, kiến trúc, hợp đồng dữ liệu và thuật toán của dự án.
 - Mọi tính năng, kế hoạch (`plan.md`) và danh sách công việc (`tasks.md`) sinh ra qua Spec Kit **PHẢI** tham chiếu trực tiếp đến các mã định danh trong `docs/`: `FR-01`..`FR-18`, `NFR-01`..`NFR-14`, `BR-01`..`BR-12`, `UC-01`..`UC-10`, `US-01`..`US-14`, `AC-01`..`AC-28`, `TC-01`..`TC-47`, `MATH-01`..`MATH-07`, `DEF-01`..`DEF-10` và `ADR-001`..`ADR-012`.
 - Không sao chép dư thừa hoặc tự ý thay đổi công thức toán học, cấu trúc bảng hay quy tắc nghiệp vụ trong `specs/` trái với `docs/`. Nếu cần thay đổi thiết kế, **PHẢI** cập nhật đồng bộ tài liệu tương ứng trong `docs/` và ghi nhận ADR mới nếu ảnh hưởng kiến trúc.
 

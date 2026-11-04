@@ -1,6 +1,6 @@
 # Test Cases — Danh sách Kiểm thử Chi tiết & Bộ Kịch bản Bảo vệ Học phần
 
-**Phiên bản:** `0.9.1-draft` · **Trạng thái mặc định tất cả case:** `Not run`.  
+**Phiên bản:** `1.0.0` · **Trạng thái mặc định tất cả case:** `Not run`.  
 **Tiền điều kiện chung:** API/Frontend chạy trên môi trường test, dữ liệu migration + seed khớp mô tả, người kiểm thử chéo ghi rõ `commit SHA`.  
 **Mã phân nhóm:** `DEF` (10 kịch bản bảo vệ học phần cho kiến trúc 14 thành phần), `TC` (47 ca kiểm thử chức năng theo `FR`), `SEC` (bảo mật/quyền riêng tư), `API` (hợp đồng), `AI` (thị giác & thực nghiệm gợi ý), `UI` (giao diện), `PERF` (hiệu năng), `LEGAL` (pháp lý/bản quyền), `OPS` (vận hành), `MATH` (unit test công thức toán học).
 

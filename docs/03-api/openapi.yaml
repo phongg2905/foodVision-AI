@@ -1,7 +1,7 @@
-# Proposed design contract; not an implementation report.
+# Official v1.0.0 API design contract.
 openapi: 3.1.0
 info:
-  title: FoodVision AI REST API — Proposed Contract
+  title: FoodVision AI REST API — Official Contract
   version: 1.0.0
   description: Hợp đồng thiết kế cho đồ án Phát triển các hệ thống thông minh, chưa khẳng định các endpoint đã triển
     khai. Body và dữ liệu ví dụ thuộc docs/03-api.

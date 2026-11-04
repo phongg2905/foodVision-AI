@@ -1,6 +1,6 @@
 # Test Plan — Kế hoạch Kiểm thử & Kiểm định Thực nghiệm
 
-**Mã:** `FV-TEST-001` · **Phiên bản:** `0.9.1-draft` · **Trạng thái:** `Planned` · **Đối chiếu:** [SRS](../01-requirements/SRS.md), [Traceability Matrix](../01-requirements/traceability-matrix.md), [Dataset & Evaluation](../04-ai-model/dataset-and-evaluation.md).
+**Mã:** `FV-TEST-001` · **Phiên bản:** `1.0.0` · **Trạng thái thực thi:** `Planned` · **Đối chiếu:** [SRS](../01-requirements/SRS.md), [Traceability Matrix](../01-requirements/traceability-matrix.md), [Dataset & Evaluation](../04-ai-model/dataset-and-evaluation.md).
 
 ## 1. Mục tiêu, 5 trục kiểm thử độc lập và Kiểm thử chéo
 

@@ -1,6 +1,6 @@
 {
   "info": {
-    "name": "FoodVision AI — API Contract v1 (skeleton)",
+    "name": "FoodVision AI — API Contract v1.0.0",
     "description": "Import vào Postman, đặt baseUrl và Supabase token khi test. Ví dụ UUID/dữ liệu chỉ minh họa; chưa phải API đã hoạt động.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },

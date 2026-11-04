@@ -1,6 +1,6 @@
 # ADR-001 — Frontend React và Backend FastAPI tách biệt
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 03/11/2026
 - **Context:** cần website responsive, giao diện người dùng hiện đại, Python để nạp/tích hợp YOLO và tính thuật toán gợi ý; FE/BE cần phát triển song song.
 - **Decision:** React + TypeScript + Vite + Tailwind; backend Python FastAPI expose REST JSON và multipart upload theo OpenAPI.

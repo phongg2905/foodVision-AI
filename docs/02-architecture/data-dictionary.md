@@ -1,6 +1,6 @@
 # Data Dictionary — PostgreSQL (>= 15)
 
-**Quy ước:** `PK` khóa chính; `FK` khóa ngoại; `UQ` duy nhất; `NN` NOT NULL; `?` nullable; `ts` = `timestamptz`. Kiểu `text` có thể đặt giới hạn độ dài bằng `CHECK` tại migration. Dưới đây là **schema thiết kế (`0.9.1-draft`)**, bao gồm **16 bảng cốt lõi của MVP (`P0`)** và **4 bảng mở rộng Giai đoạn 2–4** cho lọc dị ứng, dinh dưỡng định lượng USDA cùng cá nhân hóa. Các cột đánh dấu *(Mở rộng GĐ 2–4)* đều có `DEFAULT` hoặc `NULL` để tương thích ngược 100% với hợp đồng `openapi.yaml` hiện hành.
+**Quy ước:** `PK` khóa chính; `FK` khóa ngoại; `UQ` duy nhất; `NN` NOT NULL; `?` nullable; `ts` = `timestamptz`. Kiểu `text` có thể đặt giới hạn độ dài bằng `CHECK` tại migration. Dưới đây là **schema thiết kế chuẩn (`1.0.0`)**, bao gồm **16 bảng cốt lõi của MVP (`P0`)** và **4 bảng mở rộng Giai đoạn 2–4** cho lọc dị ứng, dinh dưỡng định lượng USDA cùng cá nhân hóa. Các cột đánh dấu *(Mở rộng GĐ 2–4)* đều có `DEFAULT` hoặc `NULL` để tương thích ngược 100% với hợp đồng `openapi.yaml` hiện hành.
 
 ## 1. `profiles` (liên kết Supabase Auth)
 

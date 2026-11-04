@@ -1,6 +1,6 @@
 # Nguồn tham khảo khoa học, kỹ thuật và nguyên tắc dẫn nguồn
 
-**Ngày rà soát:** `03/11/2026` · **Phiên bản:** `0.9.1-draft`. Danh mục dưới đây tổng hợp đầy đủ các công trình khoa học nền tảng của 14 thành phần thông minh và tài liệu kỹ thuật chính thức của các công cụ sử dụng, **không phải bằng chứng rằng mô hình của nhóm đã huấn luyện xong hoặc đạt một mức độ chính xác cụ thể**.
+**Ngày rà soát:** `04/11/2026` · **Phiên bản:** `1.0.0`. Danh mục dưới đây tổng hợp đầy đủ các công trình khoa học nền tảng của 14 thành phần thông minh và tài liệu kỹ thuật chính thức của các công cụ sử dụng, **không phải bằng chứng rằng mô hình của nhóm đã huấn luyện xong hoặc đạt một mức độ chính xác cụ thể**.
 
 ## 1. Tài liệu khoa học nền tảng (theo 14 thành phần thông minh)
 

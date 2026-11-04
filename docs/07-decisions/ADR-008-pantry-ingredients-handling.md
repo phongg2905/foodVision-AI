@@ -1,6 +1,6 @@
 # ADR-008 — Cơ chế bật/tắt gia vị nền gia dụng (`category = 'pantry'`) và tác động lên thuật toán gợi ý
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 03/11/2026
 - **Context:** Các công thức nấu ăn luôn cần các gia vị nền cơ bản trong bếp (muối, đường, nước mắm, dầu ăn, tiêu xay) và nước lọc. Mô hình YOLO Object Detection không thể nhận diện tin cậy các chất lỏng/bột đựng trong chai lọ (ví dụ phân biệt nước mắm với xì dầu, muối với đường), trong khi bắt người dùng nhập tay từng gia vị ở mỗi lần quét sẽ gây phiền hà. Tuy nhiên, nếu loại bỏ hoàn toàn gia vị nền khỏi thuật toán chấm điểm, người dùng đang hết một gia vị thiết yếu (như hết nước mắm) vẫn bị gợi ý món ở nhóm `"ready"`.
 - **Decision:**

@@ -1,6 +1,6 @@
 # Checklist Nghiệm thu & Kịch bản Demo Bảo vệ Học phần
 
-**Phiên bản:** `0.9.1-draft` · **Trạng thái:** chưa thực thi. Chỉ đánh dấu hoàn thành sau khi có mã nguồn, dữ liệu seed hợp lệ, bằng chứng thực nghiệm và xác nhận kiểm thử chéo.
+**Phiên bản:** `1.0.0` · **Trạng thái thực thi:** `Not run` (chưa thực thi). Chỉ đánh dấu hoàn thành sau khi có mã nguồn, dữ liệu seed hợp lệ, bằng chứng thực nghiệm và xác nhận kiểm thử chéo.
 
 ## 1. Kiểm tra trước buổi bảo vệ
 

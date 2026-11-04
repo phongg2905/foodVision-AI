@@ -1,6 +1,6 @@
 # ADR-010 — Tiền xử lý EXIF Orientation, xóa metadata GPS/EXIF và chuẩn hóa mã lỗi HTTP (`400` vs `404` vs `409` vs `415` vs `422` vs `504`)
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 03/11/2026
 - **Context:**
   1. Ảnh chụp từ camera điện thoại thường lưu pixel nằm ngang kèm cờ `EXIF Orientation` và tọa độ GPS nhạy cảm. Nếu đưa thẳng vào YOLO mà không xoay theo EXIF Orientation, ảnh bị nghiêng 90°/180° làm giảm độ chính xác nhận diện và lệch tọa độ `bbox` hiển thị trên trình duyệt.

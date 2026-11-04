@@ -1,6 +1,6 @@
 # Chính sách Dinh dưỡng Hai Tầng, Quy đổi Khẩu phần & Quản trị Nội dung Công thức
 
-**Phiên bản:** `0.9.1-draft` · **Phạm vi kỹ thuật:** Thành phần 10 (Verified Recipe Retrieval & Portion Scaling), Thành phần 11 (USDA FoodData Central & Qualitative Nutrition), [`ADR-004`](../07-decisions/ADR-004-nutrition.md) & [`ADR-009`](../07-decisions/ADR-009-cooking-and-waiting-time.md).
+**Phiên bản:** `1.0.0` · **Phạm vi kỹ thuật:** Thành phần 10 (Verified Recipe Retrieval & Portion Scaling), Thành phần 11 (USDA FoodData Central & Qualitative Nutrition), [`ADR-004`](../07-decisions/ADR-004-nutrition.md) & [`ADR-009`](../07-decisions/ADR-009-cooking-and-waiting-time.md).
 
 ## 1. Ranh giới an toàn về thông tin dinh dưỡng (`NFR-07`, `BR-03`, [`ADR-004`](../07-decisions/ADR-004-nutrition.md))
 

@@ -1,6 +1,6 @@
 # Danh mục Nhãn Thị giác & Chuẩn hóa Nguyên liệu Tiếng Việt
 
-**Phiên bản:** `0.9.1-draft` · **Trạng thái:** 20 lớp ứng viên khởi điểm (Proposed). Danh sách lớp chính thức chỉ được khóa ở mốc `dataset_ready` trước khi chạy đánh giá cuối cùng trên tập `test` độc lập (`NFR-11`).
+**Phiên bản:** `1.0.0` · **Trạng thái:** 20 lớp ứng viên khởi điểm (`Approved Baseline`). Danh sách lớp chính thức chỉ được khóa ở mốc `dataset_ready` trước khi chạy đánh giá cuối cùng trên tập `test` độc lập (`NFR-11`).
 
 ## 1. Bảng 20 lớp thị giác ứng viên ban đầu
 

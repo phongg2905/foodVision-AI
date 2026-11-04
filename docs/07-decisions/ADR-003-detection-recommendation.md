@@ -1,6 +1,6 @@
 # ADR-003 — Tách Tầng Nhận thức Thị giác và Hệ Suy luận – Xếp hạng – Cá nhân hóa
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 03/11/2026
 - **Context:** Học phần *Phát triển các hệ thống thông minh* đòi hỏi kiến trúc đa tầng có cơ sở khoa học, giải thích được quyết định và kiểm chứng được bằng thước đo định lượng. Mô hình YOLO chỉ phát hiện đối tượng nhìn thấy trong ảnh, không biết nguyên liệu ngoài khung hình (như gia vị trong bếp hoặc nguyên liệu cất trong tủ) và không chứa tri thức chế biến hay sở thích người dùng.
 - **Decision:**

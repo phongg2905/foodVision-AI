@@ -1,4 +1,4 @@
-# 04 — AI Model Design (`0.9.1-draft` — Nhận thức Thị giác & HITL)
+# 04 — AI Model Design (`1.0.0` — Nhận thức Thị giác & HITL)
 
 - [ai-model-design.md](ai-model-design.md): kiến trúc nhận diện YOLO (Thành phần 01), tiền xử lý `EXIF Orientation` & xóa `EXIF/GPS` ([`ADR-010`](../07-decisions/ADR-010-image-exif-and-validation-errors.md)), lớp hỗ trợ ứng viên CLIP/VLM cho vùng ảnh khó (Thành phần 02), cơ chế cảnh báo xác nhận Human-in-the-loop (Thành phần 14), quy tắc bất biến & rollback model version.
 - [label-catalog.md](label-catalog.md): bộ nhãn đề xuất ban đầu 20 lớp (`category != 'pantry'`), liên kết chuẩn hóa tiếng Việt/`pg_trgm`/alias (Thành phần 13) và vòng đời nghiệm thu nhãn.

@@ -1,6 +1,6 @@
 # ADR-004 — Chính sách Dinh dưỡng Hai Tầng: Nhãn Định tính (`P0`) & Ước tính USDA theo Định lượng Chuẩn (`P1`)
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 03/11/2026
 - **Context:** Một ảnh RGB chụp nguyên liệu tại nhà không có vật chuẩn kích thước, không cho biết khối lượng gram thực tế hay tỷ lệ hao hụt/ngấm dầu khi nấu. Suy đoán số `kcal` trực tiếp từ ảnh sẽ tạo sai số lớn; tuy nhiên, ở giai đoạn mở rộng khi công thức đã được biên tập định lượng `grams` chuẩn theo khẩu phần, hệ thống cần cơ sở toán học minh bạch để ước tính dinh dưỡng tham khảo.
 - **Decision:** Áp dụng chính sách dinh dưỡng hai tầng có kiểm soát theo lộ trình:

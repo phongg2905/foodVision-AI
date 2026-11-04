@@ -1,6 +1,6 @@
 # Đặc tả Use Case — FoodVision AI
 
-**Phiên bản:** `0.9.1-draft` · **Trạng thái:** Đề xuất (`Proposed`) · **Đối chiếu:** [SRS](SRS.md), [UML Use Case Diagram](use-case-diagram.puml), [User Stories](user-stories.md), [Traceability Matrix](traceability-matrix.md)
+**Phiên bản:** `1.0.0` · **Trạng thái:** Chính thức (`Approved Baseline`) · **Đối chiếu:** [SRS](SRS.md), [UML Use Case Diagram](use-case-diagram.puml), [User Stories](user-stories.md), [Traceability Matrix](traceability-matrix.md)
 
 ---
 

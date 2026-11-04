@@ -1,6 +1,6 @@
 # ADR-012 — Khóa duy nhất theo ngữ cảnh (`UNIQUE NULLS NOT DISTINCT`) và cơ chế xóa lan truyền (`ON DELETE CASCADE`) cho đánh giá gợi ý
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 03/11/2026
 - **Context:**
   1. Bảng `recommendation_feedback` lưu đánh giá mức độ hữu ích (`1..5`) của người dùng đối với công thức được gợi ý, có thể gắn với một phiên quét cụ thể (`scan_session_id` khác `NULL`) hoặc khi duyệt tự do (`scan_session_id IS NULL`). Trong chuẩn SQL thông thường, ràng buộc `UNIQUE (user_id, recipe_id, scan_session_id)` coi các giá trị `NULL` là khác nhau, dẫn đến một người dùng có thể gửi trùng lặp vô hạn đánh giá khi `scan_session_id IS NULL`.
