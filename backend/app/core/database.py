@@ -13,6 +13,19 @@ from typing import Any, Protocol
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from app.core.config import settings
+from app.core.seed_fixtures import (
+    build_default_seed_ingredients,
+    build_default_seed_recipes,
+)
+from app.schemas.catalog import Ingredient, IngredientCategory, NutritionTag
+from app.schemas.recipes import (
+    CuisineCode,
+    NutritionEvidence,
+    RecipeDetail,
+    RecipeIngredientView,
+    RecipeStepView,
+    RecipeSummary,
+)
 from app.services.vietnamese_search import norm_vi, rank_ingredient_candidates
 
 
@@ -35,18 +48,27 @@ class IngredientRecord:
     id: str
     slug: str
     name_vi: str
-    category: str
+    category: IngredientCategory
     is_active: bool = True
     fdc_id: str | None = None
     aliases: list[str] = field(default_factory=list)
     allergen_ids: list[str] = field(default_factory=list)
+
+    def to_schema(self) -> Ingredient:
+        return Ingredient(
+            id=self.id,
+            slug=self.slug,
+            name_vi=self.name_vi,
+            category=self.category,
+            is_active=self.is_active,
+        )
 
 
 @dataclass
 class RecipeIngredientRecord:
     ingredient_id: str
     name_vi: str
-    category: str
+    category: IngredientCategory
     is_required: bool
     role: str = "essential"
     weight: float = 1.0
@@ -54,12 +76,29 @@ class RecipeIngredientRecord:
     display_quantity: str | None = None
     sort_order: int = 0
 
+    def to_view(self) -> RecipeIngredientView:
+        return RecipeIngredientView(
+            ingredient_id=self.ingredient_id,
+            name_vi=self.name_vi,
+            category=self.category,
+            is_required=self.is_required,
+            display_quantity=self.display_quantity,
+            sort_order=self.sort_order,
+        )
+
 
 @dataclass
 class RecipeStepRecord:
     step_no: int
     instruction: str
     estimated_minutes: int | None = None
+
+    def to_view(self) -> RecipeStepView:
+        return RecipeStepView(
+            step_no=self.step_no,
+            instruction=self.instruction,
+            estimated_minutes=self.estimated_minutes,
+        )
 
 
 @dataclass
@@ -72,13 +111,26 @@ class NutritionEvidenceRecord:
     source_urls: list[str]
     note: str | None = None
 
+    def to_view(self) -> NutritionEvidence:
+        return NutritionEvidence(
+            tag=NutritionTag(
+                id=self.tag_id,
+                code=self.tag_code,
+                name_vi=self.tag_name_vi,
+                description=self.tag_description,
+                is_active=self.tag_is_active,
+            ),
+            source_urls=self.source_urls,
+            note=self.note,
+        )
+
 
 @dataclass
 class RecipeRecord:
     id: str
     slug: str
     name_vi: str
-    cuisine_code: str
+    cuisine_code: CuisineCode
     prep_minutes: int
     cook_minutes: int
     status: str = "published"
@@ -101,9 +153,49 @@ class RecipeRecord:
     def total_minutes(self) -> int:
         return self.prep_minutes + self.cook_minutes
 
+    def to_summary(self) -> RecipeSummary:
+        return RecipeSummary(
+            id=self.id,
+            slug=self.slug,
+            name_vi=self.name_vi,
+            cuisine_code=self.cuisine_code,
+            prep_minutes=self.prep_minutes,
+            cook_minutes=self.cook_minutes,
+            total_minutes=self.total_minutes,
+            cover_image_url=self.cover_image_url,
+        )
+
+    def to_detail(self) -> RecipeDetail:
+        return RecipeDetail(
+            id=self.id,
+            slug=self.slug,
+            name_vi=self.name_vi,
+            cuisine_code=self.cuisine_code,
+            prep_minutes=self.prep_minutes,
+            cook_minutes=self.cook_minutes,
+            total_minutes=self.total_minutes,
+            cover_image_url=self.cover_image_url,
+            description=self.description,
+            country_code=self.country_code,
+            ingredients=[ing.to_view() for ing in self.ingredients],
+            steps=[st.to_view() for st in self.steps],
+            nutrition_evidence=[ne.to_view() for ne in self.nutrition_evidence],
+            source_name=self.source_name,
+            source_url=self.source_url,
+            content_license=self.content_license,
+        )
+
+
+@dataclass
+class ScanSessionRecord:
+    id: str
+    user_id: str
+    model_id: str
+    ingredient_ids: list[str] = field(default_factory=list)
+
 
 class CatalogRepository(Protocol):
-    """Repository interface for Stage 1 Catalog, Recipes, and Reasoning."""
+    """Repository interface for Stage 1 & Stage 2 Catalog, Recipes, Reasoning, and Scan Sessions."""
 
     def check_health(self) -> bool: ...
 
@@ -133,6 +225,13 @@ class CatalogRepository(Protocol):
 
     def get_all_published_recipes(self) -> list[RecipeRecord]: ...
 
+    def verify_and_sync_scan_ingredients(
+        self,
+        scan_id: str,
+        user_id: str | None,
+        ingredient_ids: list[str],
+    ) -> bool: ...
+
 
 class InMemoryCatalogRepository:
     """In-memory store pre-populated with canonical baseline fixtures for testing & dev fallback."""
@@ -141,15 +240,35 @@ class InMemoryCatalogRepository:
         self,
         ingredients: list[IngredientRecord] | None = None,
         recipes: list[RecipeRecord] | None = None,
+        scan_sessions: list[ScanSessionRecord] | None = None,
     ) -> None:
-        seed_ings = _default_seed_ingredients() if ingredients is None else ingredients
-        seed_recs = _default_seed_recipes() if recipes is None else recipes
-        self._ingredients: dict[str, IngredientRecord] = {
-            ing.id: ing for ing in seed_ings
+        seed_ings = build_default_seed_ingredients() if ingredients is None else ingredients
+        seed_recs = build_default_seed_recipes() if recipes is None else recipes
+        self._ingredients: dict[str, IngredientRecord] = {ing.id: ing for ing in seed_ings}
+        self._recipes: dict[str, RecipeRecord] = {rec.id: rec for rec in seed_recs}
+        self._scan_sessions: dict[str, ScanSessionRecord] = {
+            ss.id: ss for ss in (scan_sessions or [])
         }
-        self._recipes: dict[str, RecipeRecord] = {
-            rec.id: rec for rec in seed_recs
-        }
+
+    def register_scan_session(self, scan_session: ScanSessionRecord) -> None:
+        self._scan_sessions[scan_session.id] = scan_session
+
+    def get_scan_session(self, scan_id: str) -> ScanSessionRecord | None:
+        return self._scan_sessions.get(scan_id)
+
+    def verify_and_sync_scan_ingredients(
+        self,
+        scan_id: str,
+        user_id: str | None,
+        ingredient_ids: list[str],
+    ) -> bool:
+        if not user_id:
+            return False
+        session = self._scan_sessions.get(scan_id)
+        if session is None or session.user_id != user_id:
+            return False
+        session.ingredient_ids = list(ingredient_ids)
+        return True
 
     def check_health(self) -> bool:
         return True
@@ -229,6 +348,18 @@ class InMemoryCatalogRepository:
         return [r for r in self._recipes.values() if r.status == "published"]
 
 
+def _row_to_ingredient(row: dict[str, Any]) -> IngredientRecord:
+    """Convert a PostgreSQL dict row into a typed IngredientRecord."""
+    return IngredientRecord(
+        id=row["id"],
+        slug=row["slug"],
+        name_vi=row["name_vi"],
+        category=row["category"],
+        is_active=bool(row["is_active"]),
+        fdc_id=row.get("fdc_id"),
+    )
+
+
 class PostgresCatalogRepository:
     """PostgreSQL repository executing queries against Supabase PostgreSQL >= 15."""
 
@@ -260,11 +391,14 @@ class PostgresCatalogRepository:
         offset: int = 0,
     ) -> tuple[list[IngredientRecord], int]:
         where_clauses = ["i.is_active = true"]
-        params: list[Any] = []
+        named_params: dict[str, Any] = {
+            "limit": limit,
+            "offset": offset,
+        }
 
         if category:
-            where_clauses.append("i.category = %s")
-            params.append(category)
+            where_clauses.append("i.category = %(category)s")
+            named_params["category"] = category
         if exclude_pantry:
             where_clauses.append("i.category <> 'pantry'")
 
@@ -272,7 +406,13 @@ class PostgresCatalogRepository:
 
         with self._connect() as conn, conn.cursor() as cur:
             if q and q.strip():
-                nq = norm_vi(q)
+                named_params.update(
+                    {
+                        "q_raw": q.strip(),
+                        "nq": norm_vi(q),
+                        "thr": settings.trgm_similarity_threshold,
+                    }
+                )
                 sql = f"""
                     WITH matched AS (
                         SELECT
@@ -284,46 +424,38 @@ class PostgresCatalogRepository:
                             i.fdc_id,
                             MIN(
                                 CASE
-                                    WHEN lower(i.slug) = lower(%s) OR lower(i.name_vi) = lower(%s)
-                                         OR lower(a.alias) = lower(%s) THEN 1
-                                    WHEN public.norm_vi(i.name_vi) = %s OR a.normalized_alias = %s THEN 2
-                                    WHEN similarity(public.norm_vi(i.name_vi), %s) >= %s
-                                         OR similarity(COALESCE(a.normalized_alias, ''), %s) >= %s THEN 3
+                                    WHEN lower(i.slug) = lower(%(q_raw)s)
+                                         OR lower(i.name_vi) = lower(%(q_raw)s)
+                                         OR lower(a.alias) = lower(%(q_raw)s) THEN 1
+                                    WHEN public.norm_vi(i.name_vi) = %(nq)s
+                                         OR a.normalized_alias = %(nq)s THEN 2
+                                    WHEN similarity(public.norm_vi(i.name_vi), %(nq)s) >= %(thr)s
+                                         OR similarity(COALESCE(a.normalized_alias, ''), %(nq)s) >= %(thr)s THEN 3
                                     ELSE 4
                                 END
                             ) AS match_tier,
                             GREATEST(
-                                similarity(public.norm_vi(i.name_vi), %s),
-                                COALESCE(MAX(similarity(a.normalized_alias, %s)), 0.0)
+                                similarity(public.norm_vi(i.name_vi), %(nq)s),
+                                COALESCE(MAX(similarity(a.normalized_alias, %(nq)s)), 0.0)
                             ) AS sim_score
                         FROM public.ingredients i
                         LEFT JOIN public.ingredient_aliases a ON a.ingredient_id = i.id
                         WHERE {where_sql}
                           AND (
-                              lower(i.slug) = lower(%s)
-                              OR public.norm_vi(i.name_vi) LIKE '%%' || %s || '%%'
-                              OR a.normalized_alias LIKE '%%' || %s || '%%'
-                              OR similarity(public.norm_vi(i.name_vi), %s) >= %s
-                              OR similarity(COALESCE(a.normalized_alias, ''), %s) >= %s
+                              lower(i.slug) = lower(%(q_raw)s)
+                              OR public.norm_vi(i.name_vi) LIKE '%%' || %(nq)s || '%%'
+                              OR a.normalized_alias LIKE '%%' || %(nq)s || '%%'
+                              OR similarity(public.norm_vi(i.name_vi), %(nq)s) >= %(thr)s
+                              OR similarity(COALESCE(a.normalized_alias, ''), %(nq)s) >= %(thr)s
                           )
                         GROUP BY i.id, i.slug, i.name_vi, i.category, i.is_active, i.fdc_id
                     )
                     SELECT *, COUNT(*) OVER() AS total_count
                     FROM matched
                     ORDER BY match_tier ASC, sim_score DESC, slug ASC
-                    LIMIT %s OFFSET %s
+                    LIMIT %(limit)s OFFSET %(offset)s
                 """
-                thr = settings.trgm_similarity_threshold
-                q_params = [
-                    q.strip(), q.strip(), q.strip(),
-                    nq, nq,
-                    nq, thr, nq, thr,
-                    nq, nq,
-                    *params,
-                    q.strip(), nq, nq, nq, thr, nq, thr,
-                    limit, offset,
-                ]
-                cur.execute(sql, q_params)
+                cur.execute(sql, named_params)
                 rows = cur.fetchall()
             else:
                 sql = f"""
@@ -338,24 +470,13 @@ class PostgresCatalogRepository:
                     FROM public.ingredients i
                     WHERE {where_sql}
                     ORDER BY i.slug ASC, i.id ASC
-                    LIMIT %s OFFSET %s
+                    LIMIT %(limit)s OFFSET %(offset)s
                 """
-                cur.execute(sql, [*params, limit, offset])
+                cur.execute(sql, named_params)
                 rows = cur.fetchall()
 
         total = int(rows[0]["total_count"]) if rows else 0
-        items = [
-            IngredientRecord(
-                id=r["id"],
-                slug=r["slug"],
-                name_vi=r["name_vi"],
-                category=r["category"],
-                is_active=bool(r["is_active"]),
-                fdc_id=r.get("fdc_id"),
-            )
-            for r in rows
-        ]
-        return items, total
+        return [_row_to_ingredient(r) for r in rows], total
 
     def get_ingredients_by_ids(self, ingredient_ids: list[str]) -> dict[str, IngredientRecord]:
         if not ingredient_ids:
@@ -370,17 +491,7 @@ class PostgresCatalogRepository:
                 (ingredient_ids,),
             )
             rows = cur.fetchall()
-        return {
-            r["id"]: IngredientRecord(
-                id=r["id"],
-                slug=r["slug"],
-                name_vi=r["name_vi"],
-                category=r["category"],
-                is_active=bool(r["is_active"]),
-                fdc_id=r.get("fdc_id"),
-            )
-            for r in rows
-        }
+        return {r["id"]: _row_to_ingredient(r) for r in rows}
 
     def get_active_pantry_ingredients(self) -> dict[str, IngredientRecord]:
         with self._connect() as conn, conn.cursor() as cur:
@@ -392,17 +503,7 @@ class PostgresCatalogRepository:
                 """
             )
             rows = cur.fetchall()
-        return {
-            r["id"]: IngredientRecord(
-                id=r["id"],
-                slug=r["slug"],
-                name_vi=r["name_vi"],
-                category=r["category"],
-                is_active=bool(r["is_active"]),
-                fdc_id=r.get("fdc_id"),
-            )
-            for r in rows
-        }
+        return {r["id"]: _row_to_ingredient(r) for r in rows}
 
     def list_published_recipes(
         self,
@@ -611,321 +712,49 @@ class PostgresCatalogRepository:
                 detailed.append(detail)
         return detailed
 
+    def verify_and_sync_scan_ingredients(
+        self,
+        scan_id: str,
+        user_id: str | None,
+        ingredient_ids: list[str],
+    ) -> bool:
+        if not user_id:
+            return False
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT user_id::text AS user_id
+                FROM public.scan_sessions
+                WHERE id::text = %s
+                """,
+                (scan_id,),
+            )
+            row = cur.fetchone()
+            if not row or row["user_id"] != user_id:
+                return False
+
+            cur.execute(
+                "DELETE FROM public.scan_ingredients WHERE scan_session_id::text = %s",
+                (scan_id,),
+            )
+            for iid in ingredient_ids:
+                cur.execute(
+                    """
+                    INSERT INTO public.scan_ingredients (scan_session_id, ingredient_id, provenance)
+                    VALUES (%s::uuid, %s::uuid, 'corrected')
+                    ON CONFLICT (scan_session_id, ingredient_id) DO NOTHING
+                    """,
+                    (scan_id, iid),
+                )
+            conn.commit()
+        return True
+
 
 _default_repo: CatalogRepository | None = None
 
-
-def _default_seed_ingredients() -> list[IngredientRecord]:
-    return [
-        IngredientRecord(
-            id="11111111-1111-4111-8111-111111111101",
-            slug="ca-chua",
-            name_vi="Cà chua",
-            category="vegetable",
-            is_active=True,
-            aliases=["cà chua đỏ", "tomato"],
-        ),
-        IngredientRecord(
-            id="11111111-1111-4111-8111-111111111102",
-            slug="trung-ga",
-            name_vi="Trứng gà",
-            category="protein",
-            is_active=True,
-            aliases=["trứng", "hột gà"],
-            allergen_ids=["egg"],
-        ),
-        IngredientRecord(
-            id="11111111-1111-4111-8111-111111111103",
-            slug="dau-hu",
-            name_vi="Đậu hũ",
-            category="protein",
-            is_active=True,
-            aliases=["đậu phụ", "tàu hũ", "đậu khuôn"],
-            allergen_ids=["soy"],
-        ),
-        IngredientRecord(
-            id="11111111-1111-4111-8111-111111111104",
-            slug="thit-ba-chi",
-            name_vi="Thịt ba chỉ",
-            category="protein",
-            is_active=True,
-            aliases=["thịt ba rọi", "thịt heo ba chỉ"],
-        ),
-        IngredientRecord(
-            id="11111111-1111-4111-8111-111111111105",
-            slug="hanh-la",
-            name_vi="Hành lá",
-            category="spice",
-            is_active=True,
-            aliases=["hành hoa"],
-        ),
-        IngredientRecord(
-            id="11111111-1111-4111-8111-111111111106",
-            slug="muoi",
-            name_vi="Muối",
-            category="pantry",
-            is_active=True,
-            aliases=["muối ăn", "muối tinh"],
-        ),
-        IngredientRecord(
-            id="11111111-1111-4111-8111-111111111107",
-            slug="nuoc-mam",
-            name_vi="Nước mắm",
-            category="pantry",
-            is_active=True,
-            aliases=["nước mắm truyền thống"],
-            allergen_ids=["fish"],
-        ),
-        IngredientRecord(
-            id="11111111-1111-4111-8111-111111111108",
-            slug="dau-an",
-            name_vi="Dầu ăn",
-            category="pantry",
-            is_active=True,
-            aliases=["dầu thực vật"],
-        ),
-    ]
-
-
-def _default_seed_recipes() -> list[RecipeRecord]:
-    return [
-        RecipeRecord(
-            id="22222222-2222-4222-8222-222222222201",
-            slug="dau-hu-sot-ca-chua",
-            name_vi="Đậu hũ sốt cà chua",
-            cuisine_code="VN",
-            prep_minutes=10,
-            cook_minutes=15,
-            status="published",
-            description="Món đậu hũ sốt cà chua thanh đạm, đưa cơm.",
-            country_code="VN",
-            cooking_method="braise",
-            required_equipment=["pan", "stove"],
-            base_servings=2,
-            quality_score=0.95,
-            source_name="FoodVision Editorial",
-            source_url="https://foodvision.local/recipes/dau-hu-sot-ca-chua",
-            content_license="CC-BY-4.0",
-            allergen_ids=["soy"],
-            ingredients=[
-                RecipeIngredientRecord(
-                    ingredient_id="11111111-1111-4111-8111-111111111103",
-                    name_vi="Đậu hũ",
-                    category="protein",
-                    is_required=True,
-                    role="essential",
-                    weight=1.0,
-                    grams=200.0,
-                    display_quantity="2 bìa",
-                    sort_order=1,
-                ),
-                RecipeIngredientRecord(
-                    ingredient_id="11111111-1111-4111-8111-111111111101",
-                    name_vi="Cà chua",
-                    category="vegetable",
-                    is_required=True,
-                    role="essential",
-                    weight=0.9,
-                    grams=150.0,
-                    display_quantity="2 quả",
-                    sort_order=2,
-                ),
-                RecipeIngredientRecord(
-                    ingredient_id="11111111-1111-4111-8111-111111111105",
-                    name_vi="Hành lá",
-                    category="spice",
-                    is_required=False,
-                    role="garnish",
-                    weight=0.2,
-                    grams=15.0,
-                    display_quantity="2 nhánh",
-                    sort_order=3,
-                ),
-                RecipeIngredientRecord(
-                    ingredient_id="11111111-1111-4111-8111-111111111106",
-                    name_vi="Muối",
-                    category="pantry",
-                    is_required=True,
-                    role="seasoning",
-                    weight=0.1,
-                    grams=5.0,
-                    display_quantity="1 muỗng cà phê",
-                    sort_order=4,
-                ),
-                RecipeIngredientRecord(
-                    ingredient_id="11111111-1111-4111-8111-111111111108",
-                    name_vi="Dầu ăn",
-                    category="pantry",
-                    is_required=True,
-                    role="seasoning",
-                    weight=0.1,
-                    grams=15.0,
-                    display_quantity="1 muỗng canh",
-                    sort_order=5,
-                ),
-            ],
-            steps=[
-                RecipeStepRecord(
-                    step_no=1,
-                    instruction="Cắt đậu hũ thành miếng vuông vừa ăn, chiên vàng đều các mặt.",
-                    estimated_minutes=7,
-                ),
-                RecipeStepRecord(
-                    step_no=2,
-                    instruction="Băm nhỏ cà chua, xào nhừ với muối rồi cho đậu hũ vào rim 8 phút.",
-                    estimated_minutes=8,
-                ),
-            ],
-            nutrition_evidence=[
-                NutritionEvidenceRecord(
-                    tag_id="33333333-3333-4333-8333-333333333301",
-                    tag_code="HIGH_PROTEIN_PLANT",
-                    tag_name_vi="Giàu đạm thực vật",
-                    tag_description="Cung cấp protein thực vật lành mạnh từ đậu nành.",
-                    tag_is_active=True,
-                    source_urls=["https://fdc.nal.usda.gov/"],
-                    note="Đậu hũ và cà chua cung cấp lycopene và đạm thực vật.",
-                )
-            ],
-        ),
-        RecipeRecord(
-            id="22222222-2222-4222-8222-222222222202",
-            slug="canh-ca-chua-trung",
-            name_vi="Canh cà chua trứng",
-            cuisine_code="VN",
-            prep_minutes=5,
-            cook_minutes=10,
-            status="published",
-            description="Canh trứng cà chua thanh mát nấu nhanh trong 15 phút.",
-            country_code="VN",
-            cooking_method="boil",
-            required_equipment=["pot", "stove"],
-            base_servings=2,
-            quality_score=0.92,
-            allergen_ids=["egg"],
-            ingredients=[
-                RecipeIngredientRecord(
-                    ingredient_id="11111111-1111-4111-8111-111111111101",
-                    name_vi="Cà chua",
-                    category="vegetable",
-                    is_required=True,
-                    role="essential",
-                    weight=0.9,
-                    grams=150.0,
-                    display_quantity="2 quả",
-                    sort_order=1,
-                ),
-                RecipeIngredientRecord(
-                    ingredient_id="11111111-1111-4111-8111-111111111102",
-                    name_vi="Trứng gà",
-                    category="protein",
-                    is_required=True,
-                    role="essential",
-                    weight=1.0,
-                    grams=100.0,
-                    display_quantity="2 quả",
-                    sort_order=2,
-                ),
-                RecipeIngredientRecord(
-                    ingredient_id="11111111-1111-4111-8111-111111111106",
-                    name_vi="Muối",
-                    category="pantry",
-                    is_required=True,
-                    role="seasoning",
-                    weight=0.1,
-                    grams=5.0,
-                    display_quantity="1 muỗng cà phê",
-                    sort_order=3,
-                ),
-            ],
-            steps=[
-                RecipeStepRecord(
-                    step_no=1,
-                    instruction="Xào cà chua với chút muối rồi thêm 500ml nước đun sôi.",
-                    estimated_minutes=5,
-                ),
-                RecipeStepRecord(
-                    step_no=2,
-                    instruction="Đánh tan trứng gà, đổ từ từ vào nồi nước sôi và khuấy nhẹ tạo vân mây.",
-                    estimated_minutes=5,
-                ),
-            ],
-        ),
-        RecipeRecord(
-            id="22222222-2222-4222-8222-222222222203",
-            slug="thit-kho-trung",
-            name_vi="Thịt kho trứng",
-            cuisine_code="VN",
-            prep_minutes=15,
-            cook_minutes=45,
-            status="published",
-            description="Thịt ba chỉ kho trứng gà đậm đà truyền thống.",
-            country_code="VN",
-            cooking_method="braise",
-            required_equipment=["pot", "stove"],
-            base_servings=4,
-            quality_score=0.96,
-            allergen_ids=["egg", "fish"],
-            ingredients=[
-                RecipeIngredientRecord(
-                    ingredient_id="11111111-1111-4111-8111-111111111104",
-                    name_vi="Thịt ba chỉ",
-                    category="protein",
-                    is_required=True,
-                    role="essential",
-                    weight=1.0,
-                    grams=300.0,
-                    display_quantity="300g",
-                    sort_order=1,
-                ),
-                RecipeIngredientRecord(
-                    ingredient_id="11111111-1111-4111-8111-111111111102",
-                    name_vi="Trứng gà",
-                    category="protein",
-                    is_required=True,
-                    role="essential",
-                    weight=0.8,
-                    grams=150.0,
-                    display_quantity="3 quả",
-                    sort_order=2,
-                ),
-                RecipeIngredientRecord(
-                    ingredient_id="11111111-1111-4111-8111-111111111107",
-                    name_vi="Nước mắm",
-                    category="pantry",
-                    is_required=True,
-                    role="seasoning",
-                    weight=0.2,
-                    grams=30.0,
-                    display_quantity="2 muỗng canh",
-                    sort_order=3,
-                ),
-            ],
-            steps=[
-                RecipeStepRecord(
-                    step_no=1,
-                    instruction="Ướp thịt ba chỉ với nước mắm trong 15 phút.",
-                    estimated_minutes=15,
-                ),
-                RecipeStepRecord(
-                    step_no=2,
-                    instruction="Kho thịt và trứng đã luộc trên lửa nhỏ trong 45 phút đến khi mềm.",
-                    estimated_minutes=45,
-                ),
-            ],
-        ),
-        RecipeRecord(
-            id="22222222-2222-4222-8222-222222222299",
-            slug="mon-nhap-chua-duyet",
-            name_vi="Món nháp chưa duyệt",
-            cuisine_code="VN",
-            prep_minutes=10,
-            cook_minutes=10,
-            status="draft",
-            ingredients=[],
-            steps=[],
-        ),
-    ]
+# Backward-compatible aliases for seed fixture builders
+_default_seed_ingredients = build_default_seed_ingredients
+_default_seed_recipes = build_default_seed_recipes
 
 
 def get_catalog_repo() -> CatalogRepository:
