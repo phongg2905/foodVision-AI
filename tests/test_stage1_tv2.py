@@ -15,63 +15,33 @@ Covers:
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
 import pytest
 from fastapi.testclient import TestClient
 
-# Ensure `backend` is on sys.path so `from app....` imports resolve cleanly
-REPO_ROOT = Path(__file__).resolve().parents[1]
-BACKEND_DIR = REPO_ROOT / "backend"
-if str(BACKEND_DIR) not in sys.path:
-    sys.path.insert(0, str(BACKEND_DIR))
-
-from app.core.database import (  # noqa: E402
-    InMemoryCatalogRepository,
-    get_catalog_repo,
-    sanitize_psycopg_dsn,
+from app.core.database import InMemoryCatalogRepository, sanitize_psycopg_dsn
+from app.core.errors import AppError
+from app.core.seed_fixtures import (
+    ING_CA_CHUA,
+    ING_DAU_HU,
+    ING_MUOI,
+    ING_TRUNG_GA,
+    REC_CANH_CA_CHUA_TRUNG,
+    REC_DAU_HU_SOT_CA,
+    REC_DRAFT,
+    REC_THIT_KHO_TRUNG,
 )
-from app.core.errors import AppError  # noqa: E402
-from app.main import create_app  # noqa: E402
-from app.schemas.reasoning import ReasoningInput  # noqa: E402
-from app.services.reasoning import (  # noqa: E402
+from app.schemas.reasoning import ReasoningInput
+from app.services.reasoning import (
     evaluate_recipe_reasoning,
     filter_candidate_recipes,
     validate_and_resolve_ingredients,
 )
-from app.services.vietnamese_search import (  # noqa: E402
+from app.services.vietnamese_search import (
     norm_vi,
     rank_ingredient_candidates,
     trigram_similarity,
 )
-
-# Deterministic seed UUIDs from InMemoryCatalogRepository
-ING_CA_CHUA = "11111111-1111-4111-8111-111111111101"
-ING_TRUNG_GA = "11111111-1111-4111-8111-111111111102"
-ING_DAU_HU = "11111111-1111-4111-8111-111111111103"
-ING_THIT_BA_CHI = "11111111-1111-4111-8111-111111111104"
-ING_HANH_LA = "11111111-1111-4111-8111-111111111105"
-ING_MUOI = "11111111-1111-4111-8111-111111111106"  # pantry
-ING_NUOC_MAM = "11111111-1111-4111-8111-111111111107"  # pantry
-ING_DAU_AN = "11111111-1111-4111-8111-111111111108"  # pantry
-
-REC_DAU_HU_SOT_CA = "22222222-2222-4222-8222-222222222201"  # published
-REC_CANH_CA_CHUA_TRUNG = "22222222-2222-4222-8222-222222222202"  # published
-REC_THIT_KHO_TRUNG = "22222222-2222-4222-8222-222222222203"  # published
-REC_DRAFT = "22222222-2222-4222-8222-222222222299"  # draft
-
-
-@pytest.fixture()
-def repo() -> InMemoryCatalogRepository:
-    return InMemoryCatalogRepository()
-
-
-@pytest.fixture()
-def client(repo: InMemoryCatalogRepository) -> TestClient:
-    app = create_app()
-    app.dependency_overrides[get_catalog_repo] = lambda: repo
-    return TestClient(app)
+from tests.conftest import REPO_ROOT
 
 
 # ==============================================================================
@@ -185,20 +155,40 @@ def test_health_endpoint_returns_ok_and_request_id(client: TestClient) -> None:
 
 
 def test_ingredients_endpoint_contradiction_returns_422_tc10(client: TestClient) -> None:
-    """TC-10: category=pantry & exclude_pantry=true must return 422 INVALID_QUERY_PARAMS."""
+    """TC-10 & TC-36(4): category=pantry & exclude_pantry=true must return 422 INVALID_QUERY_PARAMS."""
     res = client.get("/api/v1/ingredients?category=pantry&exclude_pantry=true")
     assert res.status_code == 422
     payload = res.json()
     assert payload["code"] == "INVALID_QUERY_PARAMS"
+    assert payload["details"]["params"] == ["category", "exclude_pantry"]
+    assert payload["details"]["reason"] == "conflicting_pantry_filters"
 
 
 def test_ingredients_endpoint_cache_control_and_exclude_pantry(client: TestClient) -> None:
-    # Without `q`, Cache-Control header is set (`NFR-03`)
+    # TC-36(1) & (3): Without `q`, Cache-Control header is `public, max-age=300` (`NFR-03`)
     res = client.get("/api/v1/ingredients?exclude_pantry=true")
     assert res.status_code == 200
     assert res.headers.get("Cache-Control") == "public, max-age=300"
     data = res.json()
     assert all(item["category"] != "pantry" for item in data["items"])
+    assert all(item["is_active"] is True for item in data["items"])
+
+    # TC-31 & TC-36(3): Filtering category=pantry returns all 5 default active pantry seasonings
+    res_pantry = client.get("/api/v1/ingredients?category=pantry")
+    assert res_pantry.status_code == 200
+    pantry_data = res_pantry.json()
+    assert pantry_data["total"] == 5
+    pantry_slugs = {item["slug"] for item in pantry_data["items"]}
+    assert pantry_slugs == {"muoi", "duong", "nuoc-mam", "dau-an", "tieu-xay"}
+
+    # TC-36(2): Searching with `?q=dau phu` matches alias `Đậu hũ` and returns `Cache-Control: no-store`
+    res_q = client.get("/api/v1/ingredients?q=dau phu")
+    assert res_q.status_code == 200
+    assert res_q.headers.get("Cache-Control") == "no-store"
+    q_items = res_q.json()["items"]
+    assert len(q_items) >= 1
+    assert q_items[0]["id"] == ING_DAU_HU
+    assert q_items[0]["name_vi"] == "Đậu hũ"
 
 
 def test_recipes_list_and_detail_endpoints_tc01_to_tc04(client: TestClient) -> None:

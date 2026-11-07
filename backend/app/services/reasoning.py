@@ -3,13 +3,14 @@ r"""Component 04 (TP 04): Rule-Based Open-World 3-Valued Reasoning & Hard Constr
 Implements:
 1. Strict input validation separating main ingredients (ingredient_ids, category != 'pantry')
    and excluded pantry seasonings (excluded_pantry_ids, category == 'pantry').
-   Raises HTTP 422 INVALID_INGREDIENTS with details.invalid_ingredient_ids on any violation (TC-11).
+   Raises HTTP 422 INVALID_INGREDIENTS with details (`invalid_ids`, `invalid_ingredient_ids`, `reason`)
+   on any violation (`TC-11`, `TC-37`, `api-conventions.md` Error #4).
 2. Open-World 3-valued state assignment for each ingredient i:
    - confirmed_available: i in U or i in (Pantry \ X)
    - confirmed_missing  : i in X or i in M_main (explicitly marked missing)
    - unknown            : main ingredient not in U and not in M_main
 3. Hard constraints filtering (before scoring):
-   - Verified recipe status == 'published' (TP 10)
+   - Verified recipe status == 'published' (TP 10) and |R_main| >= 1 (BR-01)
    - At least 1 matched main ingredient: |(R_main U O_main) n U| >= 1 (C > 0)
    - Cuisine filter: cuisine_code in cuisine_codes (when cuisine_codes is non-empty)
    - Time filter: total_minutes = prep_minutes + cook_minutes <= max_total_minutes
@@ -39,10 +40,12 @@ def validate_and_resolve_ingredients(
 ) -> tuple[list[str], list[str], dict[str, IngredientRecord]]:
     """Validate ingredient_ids (main) and excluded_pantry_ids (pantry) against active catalog.
 
-    Enforces FR-05, FR-06, BR-04, and TC-11:
+    Enforces FR-05, FR-06, BR-04, TC-11, TC-37, and `api-conventions.md` Error #4:
     - ingredient_ids must have >= 1 item, all existing, is_active=True, and category != 'pantry'.
     - excluded_pantry_ids (optional) must all exist, is_active=True, and category == 'pantry'.
-    - Any violation raises 422 INVALID_INGREDIENTS with invalid_ingredient_ids in details.
+    - Any violation raises 422 INVALID_INGREDIENTS with `invalid_ids`, `invalid_ingredient_ids`,
+      and `reason` in ("empty_main_ingredients", "pantry_in_main_list",
+      "non_pantry_in_excluded_list", "unknown_or_inactive_id").
     """
     excluded_pantry_ids = excluded_pantry_ids or []
     if not ingredient_ids:
@@ -50,10 +53,13 @@ def validate_and_resolve_ingredients(
             status_code=422,
             code="INVALID_INGREDIENTS",
             message="Danh sách nguyên liệu chính (ingredient_ids) phải có ít nhất 1 phần tử.",
-            details={"invalid_ingredient_ids": []},
+            details={
+                "invalid_ids": [],
+                "invalid_ingredient_ids": [],
+                "reason": "empty_main_ingredients",
+            },
         )
 
-    # Deduplicate while preserving order
     dedup_main = list(dict.fromkeys(ingredient_ids))
     dedup_pantry = list(dict.fromkeys(excluded_pantry_ids))
 
@@ -61,24 +67,42 @@ def validate_and_resolve_ingredients(
     found_map = repo.get_ingredients_by_ids(all_requested)
 
     invalid_ids: list[str] = []
+    reason: str | None = None
 
     for iid in dedup_main:
         rec = found_map.get(iid)
-        if rec is None or not rec.is_active or rec.category == "pantry":
+        if rec is None or not rec.is_active:
             invalid_ids.append(iid)
+            if reason is None:
+                reason = "unknown_or_inactive_id"
+        elif rec.category == "pantry":
+            invalid_ids.append(iid)
+            if reason is None:
+                reason = "pantry_in_main_list"
 
     for pid in dedup_pantry:
         rec = found_map.get(pid)
-        if rec is None or not rec.is_active or rec.category != "pantry":
+        if rec is None or not rec.is_active:
             if pid not in invalid_ids:
                 invalid_ids.append(pid)
+            if reason is None:
+                reason = "unknown_or_inactive_id"
+        elif rec.category != "pantry":
+            if pid not in invalid_ids:
+                invalid_ids.append(pid)
+            if reason is None:
+                reason = "non_pantry_in_excluded_list"
 
     if invalid_ids:
         raise AppError(
             status_code=422,
             code="INVALID_INGREDIENTS",
             message="Một hoặc nhiều UUID nguyên liệu không tồn tại, đang ngưng hoạt động hoặc sai phân nhóm chính/pantry.",
-            details={"invalid_ingredient_ids": invalid_ids},
+            details={
+                "invalid_ids": invalid_ids,
+                "invalid_ingredient_ids": invalid_ids,
+                "reason": reason or "unknown_or_inactive_id",
+            },
         )
 
     return dedup_main, dedup_pantry, found_map
@@ -131,11 +155,14 @@ def evaluate_recipe_reasoning(
     missing_required_ids = sorted(set(missing_req_main + missing_pantry))
     missing_optional_ids = sorted(iid for iid in o_main if iid not in u_set)
 
-    # Hard constraints check
+    # Hard constraints check (`recommendation-design.md` Section 4 & Section 8)
     blocked_reasons: list[str] = []
 
     if recipe.status != "published":
         blocked_reasons.append("not_published")
+
+    if not r_main:
+        blocked_reasons.append("missing_required_main_ingredient")
 
     has_main_overlap = len(matched_main_ids) >= 1
     if not has_main_overlap:
