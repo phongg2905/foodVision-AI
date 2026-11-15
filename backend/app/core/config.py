@@ -75,6 +75,9 @@ class Settings:
     default_review_threshold: float = field(
         default_factory=lambda: float(os.getenv("DEFAULT_REVIEW_THRESHOLD", "0.80"))
     )
+    default_reference_minutes: int = field(
+        default_factory=lambda: int(os.getenv("DEFAULT_REFERENCE_MINUTES", "15"))
+    )
     model_artifact_path: str = field(
         default_factory=lambda: os.getenv(
             "MODEL_ARTIFACT_PATH", "weights/yolo/ingredients_best.pt"
