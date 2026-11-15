@@ -31,6 +31,7 @@ from app.services.reasoning import (  # noqa: E402
     evaluate_recipe_reasoning,
     validate_and_resolve_ingredients,
 )
+from app.services.scoring import score_recipe_unified  # noqa: E402
 from app.services.vietnamese_search import norm_vi  # noqa: E402
 
 SEED_SQL_PATH = REPO_ROOT / "supabase" / "seed.sql"
@@ -187,18 +188,27 @@ def test_seed_recipes_satisfy_br01_across_vn_eu_us_and_reasoning_engine() -> Non
     assert "Cà chua nhồi thịt sốt trứng" in recipe_names
     assert "Trứng xào cà chua" in recipe_names
 
+    # CONFLICT-RESOLVED: Parse v1.1.0 ADR-013 recipe_ingredients tuples with role ('core'/'secondary'/'spice'/'optional'),
+    # dish_role ('main'/'sub') and 4-2-1-0 weight scale synchronized with PR #11.
     rec_ing_block = _extract_insert_block(sql_text, "recipe_ingredients")
     rec_ing_rows = re.findall(
-        r"\(\s*'([0-9a-f-]{36})'\s*,\s*'([0-9a-f-]{36})'\s*,\s*(true|false)\s*,\s*'(primary|essential|secondary)'\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*'([^']+)'\s*,\s*(\d+)\s*\)",
+        r"\(\s*'([0-9a-f-]{36})'\s*,\s*'([0-9a-f-]{36})'\s*,\s*(true|false)\s*,\s*'(core|secondary|spice|optional)'\s*,\s*'(main|sub)'\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*'([^']+)'\s*,\s*(\d+)\s*\)",
         rec_ing_block,
     )
+    assert len(rec_ing_rows) >= 40
     steps_block = _extract_insert_block(sql_text, "recipe_steps")
     step_rows = re.findall(
         r"\(\s*'([0-9a-f-]{36})'\s*,\s*(\d+)\s*,\s*'([^']+)'\s*,\s*(\d+)\s*\)",
         steps_block,
     )
 
-    # Verify BR-01 & BR-05 on every seeded recipe and run Stage 1 Reasoning Engine
+    # Verify BR-01, BR-05 & ADR-013 4-2-1-0 weights on every seeded recipe and run Stage 1 Reasoning Engine
+    expected_role_weights = {
+        "core": 4.0,
+        "secondary": 2.0,
+        "spice": 1.0,
+        "optional": 0.0,
+    }
     ing_records = [
         IngredientRecord(
             id=v["id"],
@@ -213,6 +223,7 @@ def test_seed_recipes_satisfy_br01_across_vn_eu_us_and_reasoning_engine() -> Non
     rec_records: list[RecipeRecord] = []
     for rid, slug, name_vi, desc, cuisine, country, method, _eq, servings, prep, cook in recipe_rows:
         total_min = int(prep) + int(cook)
+        assert total_min > 0
         r_ings = [
             RecipeIngredientRecord(
                 ingredient_id=iid,
@@ -220,14 +231,23 @@ def test_seed_recipes_satisfy_br01_across_vn_eu_us_and_reasoning_engine() -> Non
                 category=ingredients[iid]["category"],
                 is_required=(req == "true"),
                 role=role,
+                dish_role=dish_role,
                 weight=float(w),
                 grams=float(g),
                 display_quantity=qty,
                 sort_order=int(order),
             )
-            for r_id, iid, req, role, w, g, qty, order in rec_ing_rows
+            for r_id, iid, req, role, dish_role, w, g, qty, order in rec_ing_rows
             if r_id == rid
         ]
+        for ri in r_ings:
+            assert ri.weight == expected_role_weights[ri.role]
+            if ri.is_required:
+                assert ri.role in {"core", "secondary", "spice"}
+                assert ri.weight > 0
+            else:
+                assert ri.role == "optional"
+                assert ri.weight == 0.0
         r_steps = [
             RecipeStepRecord(step_no=int(sno), instruction=inst, estimated_minutes=int(est))
             for r_id, sno, inst, est in step_rows
@@ -287,3 +307,58 @@ def test_seed_recipes_satisfy_br01_across_vn_eu_us_and_reasoning_engine() -> Non
     assert outcome_missing_pantry.missing_required_ingredient_ids == [
         "11111111-1111-4111-8111-111111111107"
     ]
+
+    # Verify ADR-013 Unified MCDA 4-Criteria scores (S=95.0, S=90.0, S=83.75) on seeded recipes
+    pantry_ids = set(repo.get_active_pantry_ingredients().keys())
+    trung_xao = next(r for r in rec_records if r.slug == "trung-xao-ca-chua")
+    ev_ready = evaluate_recipe_reasoning(
+        recipe=trung_xao,
+        params=ReasoningInput(
+            ingredient_ids=[
+                "11111111-1111-4111-8111-111111111101",
+                "11111111-1111-4111-8111-111111111102",
+            ],
+            excluded_pantry_ids=[],
+        ),
+        active_pantry_ids=pantry_ids,
+    )
+    scored_ready = score_recipe_unified(
+        trung_xao,
+        ev_ready,
+        ingredient_ids=[
+            "11111111-1111-4111-8111-111111111101",
+            "11111111-1111-4111-8111-111111111102",
+        ],
+        main_ingredient_ids=[],
+        desired_hours=100.0,
+        favorite_ingredient_ids=[],
+    )
+    assert scored_ready.score == 95.0
+
+    dau_hu = next(r for r in rec_records if r.slug == "dau-hu-sot-ca-chua")
+    ev_dau_hu = evaluate_recipe_reasoning(
+        recipe=dau_hu,
+        params=ReasoningInput(
+            ingredient_ids=[
+                "11111111-1111-4111-8111-111111111103",
+                "11111111-1111-4111-8111-111111111101",
+            ],
+            excluded_pantry_ids=[],
+        ),
+        active_pantry_ids=pantry_ids,
+    )
+    scored_dau_hu = score_recipe_unified(
+        dau_hu,
+        ev_dau_hu,
+        ingredient_ids=[
+            "11111111-1111-4111-8111-111111111103",
+            "11111111-1111-4111-8111-111111111101",
+        ],
+        main_ingredient_ids=["11111111-1111-4111-8111-111111111103"],
+        desired_hours=0.25,
+        favorite_ingredient_ids=[
+            "11111111-1111-4111-8111-111111111103",
+            "11111111-1111-4111-8111-111111111104",
+        ],
+    )
+    assert scored_dau_hu.score == 83.75
