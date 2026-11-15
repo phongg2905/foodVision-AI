@@ -1,12 +1,12 @@
-"""Stage 2 Automated Verification Suite for TV2 (Phong Phạm).
+"""Stage 2 Automated Verification Suite for TV2 (Phong Phạm) — Unified MCDA (`ADR-013`).
 
 Covers:
-- Card 1 (`[GĐ2 - TP05, TP06, TP07]`):
-  - MVP Rule-Based Scoring v1.0 (`C, E, T, P, S`) — all 7 canonical math cases from Table E.1 in `test-cases.md`
-    (`S = 89.0`, `S = 68.1`, `S = 100.0`, `S = 54.5`, `C = 0`, `max_total_minutes`, `preferred_cuisine_codes`)
-  - TP 05 Weighted Ingredient Coverage (`MATH-03`: `6/9 ≈ 0.667` and `5/9 ≈ 0.556`)
+- Card 1 (`[GĐ2 - TP05, TP06, TP07, TP14]`):
+  - Unified 4-Criteria MCDA (`C, G, T, P, S`) — all 7 canonical math cases from Table E.1 in `test-cases.md`
+    (`S = 95.0`, `S = 100.0`, `S = 90.0`, `S = 75.0`, `S = 83.75`, `C = 0` BLOCKED, `allergic_ingredient_ids` BLOCKED)
+  - TP 05 Weighted Ingredient Coverage `4-2-1-0` (`MATH-03`: `6/8 = 0.75`)
   - TP 06 Tversky Similarity Baseline B (`MATH-04`: `T_{0.3, 2.0} = 0.60`)
-  - TP 07 & TP 14 MCDA 5-Criteria Scoring v1.1 & Linear XAI Breakdown (`MATH-05`: `[33.33, 25.00, 15.00, 2.50, 5.00] -> 80.83`)
+  - TP 07 & TP 14 Linear XAI Breakdown (`MATH-05`: `[50.00, 21.25, 7.50, 5.00] -> 83.75`)
 - Card 2 (`[GĐ2 - TP09]`):
   - TP 09 Maximal Marginal Relevance (MMR) Top-K Diversification (`MATH-06`: `0.412 < 0.556`)
   - `POST /api/v1/recommendations` contract (`TC-10`..`TC-14`, `TC-32`..`TC-35`, `TC-37`)
@@ -33,6 +33,8 @@ from app.core.database import (
 )
 from app.core.seed_fixtures import (
     ING_CA_CHUA,
+    ING_DAU_AN,
+    ING_DAU_HU,
     ING_HANH_LA,
     ING_INACTIVE,
     ING_MUOI,
@@ -40,13 +42,18 @@ from app.core.seed_fixtures import (
     ING_THIT_BA_CHI,
     ING_TRUNG_GA,
     REC_CANH_CA_CHUA_TRUNG,
+    REC_DAU_HU_SOT_CA,
     REC_THIT_KHO_TRUNG,
     REC_TRUNG_XAO_CA_CHUA,
 )
 from app.main import create_app
 from app.schemas.reasoning import ReasoningInput
 from app.schemas.recipes import CuisineCode, RecipeSummary
-from app.schemas.recommendations import RecommendationItem, ScoreBreakdown
+from app.schemas.recommendations import (
+    RecommendationItem,
+    ScoreBreakdown,
+    ScoreContributions,
+)
 from app.services.coverage import (
     compute_tversky_similarity,
     compute_weighted_coverage,
@@ -54,42 +61,62 @@ from app.services.coverage import (
 from app.services.mmr import compute_mmr_score, rerank_with_mmr
 from app.services.reasoning import evaluate_recipe_reasoning
 from app.services.scoring import (
-    compute_mcda_v1_1_from_features,
-    compute_mvp_score_components,
-    score_recipe_mcda_v1_1,
-    score_recipe_v1_0,
+    compute_main_role_score_g,
+    compute_unified_mcda_score,
+    score_recipe_unified,
 )
 
 
 # ==============================================================================
-# 1. MVP Contract Scoring v1.0 — Table E.1 (All 7 Mathematical Test Cases)
+# 1. Unified 4-Criteria MCDA (`ADR-013`) — Table E.1 (All 7 Canonical Cases)
 # ==============================================================================
 
 
-def test_scoring_v1_0_all_7_canonical_cases_table_e1(
+def test_unified_mcda_all_7_canonical_cases_table_e1(
     repo: InMemoryCatalogRepository,
 ) -> None:
     """Verify all 7 canonical cases in Table E.1 of `docs/06-testing/test-cases.md`."""
     pantry_ids = set(repo.get_active_pantry_ingredients().keys())
     trung_xao = repo.get_published_recipe_by_id(REC_TRUNG_XAO_CA_CHUA)
+    dau_hu = repo.get_published_recipe_by_id(REC_DAU_HU_SOT_CA)
     assert trung_xao is not None
+    assert dau_hu is not None
 
-    # Case 1: 2/2 required main (Trứng gà, Cà chua), 0/1 optional main (Hành lá), X=[], 13m -> S = 89.0, ready
+    # Case 1: Enough Cà chua + Trứng gà (w=4+4), all kitchen spices (w=1+1), skip main=[], desired_hours=100.0, Guest F_u=[] -> S = 95.0
     ev1 = evaluate_recipe_reasoning(
         trung_xao,
         ReasoningInput(ingredient_ids=[ING_CA_CHUA, ING_TRUNG_GA], excluded_pantry_ids=[]),
         pantry_ids,
     )
-    item1 = score_recipe_v1_0(trung_xao, ev1)
+    item1 = score_recipe_unified(
+        trung_xao,
+        ev1,
+        ingredient_ids=[ING_CA_CHUA, ING_TRUNG_GA],
+        main_ingredient_ids=[],
+        desired_hours=100.0,
+        favorite_ingredient_ids=[],
+    )
     assert item1.availability == "ready"
-    assert item1.score == 89.0
-    assert item1.score_breakdown.C == 0.8
-    assert item1.score_breakdown.E == 1.0
-    assert item1.score_breakdown.T == 1.0
-    assert item1.score_breakdown.P == 1.0
+    assert item1.reasoning_status == "READY"
+    assert item1.score == 95.0
+    assert item1.score_breakdown == ScoreBreakdown(C=1.0, G=1.0, T=1.0, P=0.5)
+    assert item1.score_contributions == ScoreContributions(C=50.0, G=25.0, T=15.0, P=5.0)
+    # Adding optional garnish Hành lá (`w=0`) keeps C=1.0 and G ignores nothing or adjusts cleanly; verify optional is in missing_optional_ingredient_ids
+    assert item1.missing_optional_ingredient_ids == [ING_HANH_LA]
 
-    # Case 2: 2/2 required main, 0/1 optional main, X=[ING_NUOC_MAM], 13m -> S = 68.1, missing
-    ev2 = evaluate_recipe_reasoning(
+    # Case 2: Same + full match on favorite_ingredient_ids=[Cà chua, Trứng gà] -> P=1.0, S = 100.0
+    item2 = score_recipe_unified(
+        trung_xao,
+        ev1,
+        ingredient_ids=[ING_CA_CHUA, ING_TRUNG_GA],
+        favorite_ingredient_ids=[ING_CA_CHUA, ING_TRUNG_GA],
+    )
+    assert item2.score == 100.0
+    assert item2.score_breakdown.P == 1.0
+    assert item2.score_contributions.P == 10.0
+
+    # Case 3: Exclude Nước mắm (`X=[ING_NUOC_MAM]`, w=1/10) -> C=0.9, S = 90.0, MISSING_CONFIRMED ("missing")
+    ev3 = evaluate_recipe_reasoning(
         trung_xao,
         ReasoningInput(
             ingredient_ids=[ING_CA_CHUA, ING_TRUNG_GA],
@@ -97,103 +124,96 @@ def test_scoring_v1_0_all_7_canonical_cases_table_e1(
         ),
         pantry_ids,
     )
-    item2 = score_recipe_v1_0(trung_xao, ev2)
-    assert item2.availability == "missing"
-    assert item2.score == 68.1
-    assert item2.missing_required_ingredient_ids == [ING_NUOC_MAM]
-    assert round(item2.score_breakdown.C, 3) == 0.571
-    assert round(item2.score_breakdown.E, 3) == 0.667
-
-    # Case 3: All 3 main ingredients (Cà chua, Trứng gà, Hành lá), X=[], 13m -> S = 100.0, ready
-    ev3 = evaluate_recipe_reasoning(
+    item3 = score_recipe_unified(
         trung_xao,
-        ReasoningInput(
-            ingredient_ids=[ING_CA_CHUA, ING_TRUNG_GA, ING_HANH_LA],
-            excluded_pantry_ids=[],
-        ),
-        pantry_ids,
+        ev3,
+        ingredient_ids=[ING_CA_CHUA, ING_TRUNG_GA],
     )
-    item3 = score_recipe_v1_0(trung_xao, ev3)
-    assert item3.availability == "ready"
-    assert item3.score == 100.0
-    assert item3.score_breakdown.C == 1.0
-    assert item3.score_breakdown.E == 1.0
+    assert item3.availability == "missing"
+    assert item3.reasoning_status == "MISSING_CONFIRMED"
+    assert item3.score == 90.0
+    assert item3.score_breakdown.C == 0.9
+    assert item3.missing_required_ingredient_ids == [ING_NUOC_MAM]
 
-    # Case 4: Only 1/2 required main (Cà chua), 0/1 optional main, X=[], 13m -> S = 54.5, missing
+    # Case 4: Only 1 scanned ingredient `U=[ING_CA_CHUA]` (`w=4` + spices `2` = `6/10`) -> C=0.6, S = 75.0, UNKNOWN ("missing")
     ev4 = evaluate_recipe_reasoning(
         trung_xao,
         ReasoningInput(ingredient_ids=[ING_CA_CHUA], excluded_pantry_ids=[]),
         pantry_ids,
     )
-    item4 = score_recipe_v1_0(trung_xao, ev4)
+    item4 = score_recipe_unified(
+        trung_xao,
+        ev4,
+        ingredient_ids=[ING_CA_CHUA],
+    )
     assert item4.availability == "missing"
-    assert item4.score == 54.5
-    assert item4.score_breakdown.C == 0.4
-    assert item4.score_breakdown.E == 0.5
+    assert item4.reasoning_status == "UNKNOWN"
+    assert item4.score == 75.0
+    assert item4.score_breakdown.C == 0.6
+    assert item4.missing_required_ingredient_ids == [ING_TRUNG_GA]
 
-    # Case 5: No required/optional main ingredient in U (only Thịt ba chỉ for Trứng xào cà chua) -> BLOCKED
+    # Case 5: Đậu hũ sốt cà chua (30m = 0.50h), U=[Đậu hũ, Cà chua], main=[Đậu hũ], desired_hours=0.25, F_u=[Đậu hũ, Thịt ba chỉ]
+    # -> C=1.0, G=0.85, T=0.5, P=0.5 -> [50.0, 21.25, 7.5, 5.0] -> S = 83.75
     ev5 = evaluate_recipe_reasoning(
+        dau_hu,
+        ReasoningInput(ingredient_ids=[ING_DAU_HU, ING_CA_CHUA], excluded_pantry_ids=[]),
+        pantry_ids,
+    )
+    item5 = score_recipe_unified(
+        dau_hu,
+        ev5,
+        ingredient_ids=[ING_DAU_HU, ING_CA_CHUA],
+        main_ingredient_ids=[ING_DAU_HU],
+        desired_hours=0.25,
+        favorite_ingredient_ids=[ING_DAU_HU, ING_THIT_BA_CHI],
+    )
+    assert item5.availability == "ready"
+    assert item5.score == 83.75
+    assert item5.score_breakdown == ScoreBreakdown(C=1.0, G=0.85, T=0.5, P=0.5)
+    assert item5.score_contributions == ScoreContributions(C=50.0, G=21.25, T=7.5, P=5.0)
+
+    # Also verify Cách B G(r) sensitivity when skipping main vs choosing sub ingredient as main
+    assert compute_main_role_score_g(dau_hu, [ING_DAU_HU, ING_CA_CHUA], []) == pytest.approx(0.75)
+    assert compute_main_role_score_g(
+        dau_hu, [ING_DAU_HU, ING_CA_CHUA], [ING_CA_CHUA]
+    ) == pytest.approx(0.65)
+
+    # Case 6: No matched non-pantry ingredient in U (only Thịt ba chỉ for Trứng xào cà chua) -> BLOCKED
+    ev6 = evaluate_recipe_reasoning(
         trung_xao,
         ReasoningInput(ingredient_ids=[ING_THIT_BA_CHI], excluded_pantry_ids=[]),
         pantry_ids,
     )
-    assert ev5.status_v1_1 == "BLOCKED"
-    assert "no_matched_main_ingredient" in ev5.blocked_reasons
+    assert ev6.status_v1_1 == "BLOCKED"
+    assert "no_matched_main_ingredient" in ev6.blocked_reasons
 
-    # Case 6: 60-minute recipe (Thịt kho trứng) with max_total_minutes=15 -> BLOCKED before scoring
-    thit_kho = repo.get_published_recipe_by_id(REC_THIT_KHO_TRUNG)
-    assert thit_kho is not None
-    ev6 = evaluate_recipe_reasoning(
-        thit_kho,
+    # Case 7: Recipe contains an ingredient in `allergic_ingredient_ids` -> BLOCKED before scoring
+    ev7 = evaluate_recipe_reasoning(
+        trung_xao,
         ReasoningInput(
-            ingredient_ids=[ING_THIT_BA_CHI, ING_TRUNG_GA],
-            max_total_minutes=15,
+            ingredient_ids=[ING_CA_CHUA, ING_TRUNG_GA],
+            allergic_ingredient_ids=[ING_TRUNG_GA],
         ),
         pantry_ids,
     )
-    assert ev6.status_v1_1 == "BLOCKED"
-    assert "exceeds_max_total_minutes" in ev6.blocked_reasons
-
-    # Case 7: Soft preference mismatch (`P = 0.0`) reduces total score by exactly 10.0 points
-    score_p1, _ = compute_mvp_score_components(
-        required_main_count=2,
-        matched_required_main_count=2,
-        optional_main_count=1,
-        matched_optional_main_count=0,
-        missing_pantry_count=0,
-        total_minutes=13,
-        cuisine_code="US",
-        preferred_cuisine_codes=[],
-    )
-    score_p0, br_p0 = compute_mvp_score_components(
-        required_main_count=2,
-        matched_required_main_count=2,
-        optional_main_count=1,
-        matched_optional_main_count=0,
-        missing_pantry_count=0,
-        total_minutes=13,
-        cuisine_code="US",
-        preferred_cuisine_codes=["VN"],
-    )
-    assert br_p0.P == 0.0
-    assert round(score_p1 - score_p0, 1) == 10.0
+    assert ev7.status_v1_1 == "BLOCKED"
+    assert "allergen_violation" in ev7.blocked_reasons
 
 
 # ==============================================================================
-# 2. TP 05 Weighted Coverage (`MATH-03`) & TP 06 Tversky Baseline B (`MATH-04`)
+# 2. TP 05 Weighted Coverage `4-2-1-0` (`MATH-03`) & TP 06 Tversky Baseline B (`MATH-04`)
 # ==============================================================================
 
 
 def test_tp05_weighted_coverage_math03() -> None:
-    """MATH-03: weights={ca_chua:4, trung:3, dau:1, muoi:1}, available={ca_chua, dau, muoi} -> C = 6/9."""
-    weights = {"ca_chua": 4.0, "trung": 3.0, "dau": 1.0, "muoi": 1.0}
-    c_val = compute_weighted_coverage(weights, {"ca_chua", "dau", "muoi"})
-    assert round(c_val, 3) == 0.667
-    assert abs(c_val - (6.0 / 9.0)) < 1e-9
+    """MATH-03: weights={dau_hu:4, ca_chua:2, dau:1, muoi:1}, available={dau_hu, dau, muoi} -> C = 6/8 = 0.75."""
+    weights = {"dau_hu": 4.0, "ca_chua": 2.0, "dau": 1.0, "muoi": 1.0}
+    c_val = compute_weighted_coverage(weights, {"dau_hu", "dau", "muoi"})
+    assert c_val == pytest.approx(0.75, abs=1e-9)
 
-    # When muoi is excluded in X -> confirmed_available = {ca_chua, dau} -> C = 5/9 ≈ 0.556
-    c_val_no_salt = compute_weighted_coverage(weights, {"ca_chua", "dau"})
-    assert round(c_val_no_salt, 3) == 0.556
+    # When muoi is excluded -> confirmed_available = {dau_hu, dau} -> C = 5/8 = 0.625
+    c_val_no_salt = compute_weighted_coverage(weights, {"dau_hu", "dau"})
+    assert c_val_no_salt == pytest.approx(0.625, abs=1e-9)
 
 
 def test_tp06_tversky_similarity_baseline_b_math04() -> None:
@@ -208,48 +228,25 @@ def test_tp06_tversky_similarity_baseline_b_math04() -> None:
 
 
 # ==============================================================================
-# 3. TP 07 & TP 14 MCDA 5-Criteria Scoring v1.1 & Linear XAI Breakdown (`MATH-05`)
+# 3. TP 07 & TP 14 Unified MCDA & Linear XAI Breakdown (`MATH-05`)
 # ==============================================================================
 
 
-def test_tp07_and_tp14_mcda_v1_1_and_xai_breakdown_math05(
-    repo: InMemoryCatalogRepository,
-) -> None:
-    """MATH-05: C=6/9, G=1, T=1, P=0.5, Q=1 -> [33.33, 25.00, 15.00, 2.50, 5.00] -> S_base = 80.83."""
-    score_base, _feats, contribs = compute_mcda_v1_1_from_features(
-        c_val=6.0 / 9.0,
-        g_val=1.0,
-        t_val=1.0,
+def test_tp07_and_tp14_unified_mcda_and_xai_breakdown_math05() -> None:
+    """MATH-05: C=1.0, G=0.85, T=0.5, P=0.5 -> [50.00, 21.25, 7.50, 5.00] -> S = 83.75."""
+    score, breakdown, contribs = compute_unified_mcda_score(
+        c_val=1.0,
+        g_val=0.85,
+        t_val=0.5,
         p_val=0.5,
-        q_val=1.0,
     )
-    assert contribs.C == 33.33
-    assert contribs.G == 25.00
-    assert contribs.T == 15.00
-    assert contribs.P == 2.50
-    assert contribs.Q == 5.00
-    assert score_base == 80.83
-
-    # Also verify end-to-end on Trứng xào cà chua with U={Cà chua}, X=[]
-    pantry_ids = set(repo.get_active_pantry_ingredients().keys())
-    trung_xao = repo.get_published_recipe_by_id(REC_TRUNG_XAO_CA_CHUA)
-    assert trung_xao is not None
-    ev = evaluate_recipe_reasoning(
-        trung_xao,
-        ReasoningInput(ingredient_ids=[ING_CA_CHUA], excluded_pantry_ids=[]),
-        pantry_ids,
-    )
-    confirmed_avail = {ING_CA_CHUA} | pantry_ids
-    mcda_eval = score_recipe_mcda_v1_1(
-        recipe=trung_xao,
-        evaluation=ev,
-        confirmed_available_ids=confirmed_avail,
-        focus_ids={ING_CA_CHUA},
-        preferred_cuisine_codes=[],
-        ref_minutes=15,
-    )
-    assert mcda_eval.state == "UNKNOWN"
-    assert mcda_eval.score_base == 80.83
+    assert breakdown == ScoreBreakdown(C=1.0, G=0.85, T=0.5, P=0.5)
+    assert contribs.C == 50.00
+    assert contribs.G == 21.25
+    assert contribs.T == 7.50
+    assert contribs.P == 5.00
+    assert score == 83.75
+    assert round(contribs.C + contribs.G + contribs.T + contribs.P, 2) == score
 
 
 # ==============================================================================
@@ -259,8 +256,12 @@ def test_tp07_and_tp14_mcda_v1_1_and_xai_breakdown_math05(
 
 def test_tp09_mmr_diversification_math06() -> None:
     """MATH-06: lambda_mmr=0.7; Variant Soup (Rel=0.91, Sim=0.75 -> 0.412) vs Spaghetti (Rel=0.88, Sim=0.20 -> 0.556)."""
-    mmr_soup_variant = compute_mmr_score(rel_score=0.91, max_similarity_to_selected=0.75, lambda_mmr=0.7)
-    mmr_spaghetti = compute_mmr_score(rel_score=0.88, max_similarity_to_selected=0.20, lambda_mmr=0.7)
+    mmr_soup_variant = compute_mmr_score(
+        rel_score=0.91, max_similarity_to_selected=0.75, lambda_mmr=0.7
+    )
+    mmr_spaghetti = compute_mmr_score(
+        rel_score=0.88, max_similarity_to_selected=0.20, lambda_mmr=0.7
+    )
     assert mmr_soup_variant == pytest.approx(0.412, abs=1e-6)
     assert mmr_spaghetti == pytest.approx(0.556, abs=1e-6)
     assert mmr_spaghetti > mmr_soup_variant
@@ -278,11 +279,13 @@ def test_tp09_mmr_diversification_math06() -> None:
                 cover_image_url=None,
             ),
             availability="ready",
+            reasoning_status="READY",
             score=score,
             matched_ingredient_ids=[ING_CA_CHUA],
             missing_required_ingredient_ids=[],
             missing_optional_ingredient_ids=[],
-            score_breakdown=ScoreBreakdown(C=1.0, E=1.0, T=1.0, P=1.0),
+            score_breakdown=ScoreBreakdown(C=1.0, G=1.0, T=1.0, P=0.5),
+            score_contributions=ScoreContributions(C=50.0, G=25.0, T=15.0, P=5.0),
             explanation_vi="OK",
         )
 
@@ -314,8 +317,8 @@ def test_tp09_mmr_diversification_math06() -> None:
 
 
 def test_post_recommendations_endpoint_contract_and_filters(client: TestClient) -> None:
-    # TC-10 & TC-12: Have Cà chua & Trứng gà, X=[] -> Canh cà chua trứng (100.0, ready) & Trứng xào cà chua (89.0, ready)
-    # appear before Đậu hũ sốt cà chua (missing Đậu hũ) and Thịt kho trứng (missing Thịt ba chỉ)
+    # TC-10 & TC-12: Have Cà chua & Trứng gà, default Guest payload -> Canh cà chua trứng (95.0, ready) & Trứng xào cà chua (95.0, ready)
+    # appear strictly before Đậu hũ sốt cà chua (missing Đậu hũ) and Thịt kho trứng (missing Thịt ba chỉ)
     res = client.post(
         "/api/v1/recommendations",
         json={
@@ -330,16 +333,16 @@ def test_post_recommendations_endpoint_contract_and_filters(client: TestClient) 
     assert data["total"] == 4
     items = data["items"]
     availabilities = [it["availability"] for it in items]
-    # All "ready" items must come strictly before "missing" items
     assert availabilities == ["ready", "ready", "missing", "missing"]
 
     by_id = {it["recipe"]["id"]: it for it in items}
-    assert by_id[REC_TRUNG_XAO_CA_CHUA]["score"] == 89.0
+    assert by_id[REC_TRUNG_XAO_CA_CHUA]["score"] == 95.0
     assert by_id[REC_TRUNG_XAO_CA_CHUA]["availability"] == "ready"
-    assert by_id[REC_CANH_CA_CHUA_TRUNG]["score"] == 100.0
+    assert by_id[REC_TRUNG_XAO_CA_CHUA]["reasoning_status"] == "READY"
+    assert by_id[REC_CANH_CA_CHUA_TRUNG]["score"] == 95.0
     assert by_id[REC_CANH_CA_CHUA_TRUNG]["availability"] == "ready"
 
-    # TC-32: Exclude Nước mắm (`X=[ING_NUOC_MAM]`) -> Trứng xào cà chua drops to 68.1 and "missing"
+    # TC-32: Exclude Nước mắm (`X=[ING_NUOC_MAM]`) -> Trứng xào cà chua drops to 90.0 and "missing" (`MISSING_CONFIRMED`)
     res_excl = client.post(
         "/api/v1/recommendations",
         json={
@@ -350,9 +353,24 @@ def test_post_recommendations_endpoint_contract_and_filters(client: TestClient) 
     assert res_excl.status_code == 200
     by_id_excl = {it["recipe"]["id"]: it for it in res_excl.json()["items"]}
     tx = by_id_excl[REC_TRUNG_XAO_CA_CHUA]
-    assert tx["score"] == 68.1
+    assert tx["score"] == 90.0
     assert tx["availability"] == "missing"
+    assert tx["reasoning_status"] == "MISSING_CONFIRMED"
     assert tx["missing_required_ingredient_ids"] == [ING_NUOC_MAM]
+
+    # Explicit `kitchen_spice_ids` (only Dầu ăn & Muối, no Nước mắm) also marks Nước mắm as confirmed missing
+    res_kitchen = client.post(
+        "/api/v1/recommendations",
+        json={
+            "ingredient_ids": [ING_CA_CHUA, ING_TRUNG_GA],
+            "kitchen_spice_ids": [ING_DAU_AN, ING_MUOI],
+        },
+    )
+    assert res_kitchen.status_code == 200
+    by_id_kitchen = {it["recipe"]["id"]: it for it in res_kitchen.json()["items"]}
+    assert by_id_kitchen[REC_TRUNG_XAO_CA_CHUA]["score"] == 90.0
+    assert by_id_kitchen[REC_TRUNG_XAO_CA_CHUA]["reasoning_status"] == "MISSING_CONFIRMED"
+    assert by_id_kitchen[REC_CANH_CA_CHUA_TRUNG]["availability"] == "ready"
 
     # TC-33: include_missing=False -> returns ONLY "ready" recipes
     res_ready_only = client.post(
@@ -379,18 +397,29 @@ def test_post_recommendations_endpoint_contract_and_filters(client: TestClient) 
     assert res_cuisine_hard.status_code == 200
     assert res_cuisine_hard.json()["total"] == 0
 
-    # TC-35: Soft preference `preferred_cuisine_codes=["US"]` keeps VN recipes but sets P=0.0 (-10.0 pts)
-    res_pref = client.post(
+    # TC-35: Personalization fields (`main_ingredient_ids`, `desired_hours`, `favorite_ingredient_ids`) -> S = 83.75
+    res_pers = client.post(
         "/api/v1/recommendations",
         json={
-            "ingredient_ids": [ING_CA_CHUA, ING_TRUNG_GA],
-            "preferred_cuisine_codes": ["US"],
+            "ingredient_ids": [ING_DAU_HU, ING_CA_CHUA],
+            "main_ingredient_ids": [ING_DAU_HU],
+            "desired_hours": 0.25,
+            "favorite_ingredient_ids": [ING_DAU_HU, ING_THIT_BA_CHI],
+            "allergic_ingredient_ids": [ING_TRUNG_GA],
         },
     )
-    assert res_pref.status_code == 200
-    by_id_pref = {it["recipe"]["id"]: it for it in res_pref.json()["items"]}
-    assert by_id_pref[REC_TRUNG_XAO_CA_CHUA]["score_breakdown"]["P"] == 0.0
-    assert by_id_pref[REC_TRUNG_XAO_CA_CHUA]["score"] == 79.0  # 89.0 - 10.0
+    assert res_pers.status_code == 200
+    pers_items = res_pers.json()["items"]
+    # Egg recipes are hard-blocked by allergic_ingredient_ids=[ING_TRUNG_GA], leaving only Đậu hũ sốt cà chua!
+    assert len(pers_items) == 1
+    assert pers_items[0]["recipe"]["id"] == REC_DAU_HU_SOT_CA
+    assert pers_items[0]["score"] == 83.75
+    assert pers_items[0]["score_contributions"] == {
+        "C": 50.0,
+        "G": 21.25,
+        "T": 7.5,
+        "P": 5.0,
+    }
 
     # TC-34: No recipe matches both main ingredient and max_total_minutes=15 -> 200 OK with items=[]
     res_empty = client.post(
@@ -438,6 +467,17 @@ def test_post_recommendations_endpoint_contract_and_filters(client: TestClient) 
     assert err3["code"] == "INVALID_INGREDIENTS"
     assert err3["details"]["invalid_ids"] == [ING_INACTIVE]
     assert err3["details"]["reason"] == "unknown_or_inactive_id"
+
+    # TC-37(4): `main_ingredient_ids` not a subset of `ingredient_ids` -> 422 INVALID_INGREDIENTS (`main_not_in_ingredient_ids`)
+    res_invalid_4 = client.post(
+        "/api/v1/recommendations",
+        json={
+            "ingredient_ids": [ING_CA_CHUA],
+            "main_ingredient_ids": [ING_TRUNG_GA],
+        },
+    )
+    assert res_invalid_4.status_code == 422
+    assert res_invalid_4.json()["details"]["reason"] == "main_not_in_ingredient_ids"
 
 
 # ==============================================================================
@@ -515,7 +555,8 @@ def test_perf02_recommendations_latency_under_1s_for_500_published_recipes() -> 
                         name_vi="Cà chua" if i % 2 == 0 else "Trứng gà",
                         category="vegetable" if i % 2 == 0 else "protein",
                         is_required=True,
-                        role="primary",
+                        role="core",
+                        dish_role="main",
                         weight=4.0,
                         sort_order=1,
                     ),
@@ -524,7 +565,8 @@ def test_perf02_recommendations_latency_under_1s_for_500_published_recipes() -> 
                         name_vi="Muối",
                         category="pantry",
                         is_required=True,
-                        role="secondary",
+                        role="spice",
+                        dish_role="sub",
                         weight=1.0,
                         sort_order=2,
                     ),

@@ -1,4 +1,4 @@
-"""Recommendation Endpoint (`POST /api/v1/recommendations`) — TP 04, TP 05, TP 07, TP 09, TP 14."""
+"""Recommendation Endpoint (`POST /api/v1/recommendations`) — TP 04, TP 05, TP 07, TP 09, TP 14 (`ADR-013`)."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from app.core.errors import AppError
 from app.schemas.reasoning import ReasoningInput
 from app.schemas.recommendations import RecommendRequest, RecommendResponse
 from app.services.reasoning import filter_candidate_recipes, validate_and_resolve_ingredients
-from app.services.scoring import rank_recommendations_v1_0, score_recipe_v1_0
+from app.services.scoring import rank_recommendations, score_recipe_unified
 
 router = APIRouter(tags=["Recommendations"])
 
@@ -21,12 +21,16 @@ def recommend_recipes(
     user_id: str | None = Depends(get_optional_user_id),
     repo: CatalogRepository = Depends(get_catalog_repo),
 ) -> RecommendResponse:
-    """Rank and recommend published recipes from confirmed ingredients (`FR-06`, `FR-07`, `TC-10`..`TC-14`, `TC-32`..`TC-37`, `SEC-06`)."""
-    # 1. Validate ingredient_ids (main) and excluded_pantry_ids (pantry) (`TC-37`)
+    """Rank and recommend published recipes from confirmed ingredients (`FR-06`, `FR-07`, `ADR-013`)."""
+    # 1. Validate ingredient lists and structural invariants (`TC-11`, `TC-37`)
     dedup_main, dedup_pantry, found_map = validate_and_resolve_ingredients(
         repo=repo,
         ingredient_ids=payload.ingredient_ids,
         excluded_pantry_ids=payload.excluded_pantry_ids,
+        main_ingredient_ids=payload.main_ingredient_ids,
+        kitchen_spice_ids=payload.kitchen_spice_ids,
+        allergic_ingredient_ids=payload.allergic_ingredient_ids,
+        favorite_ingredient_ids=payload.favorite_ingredient_ids,
     )
 
     # 2. If scan_id is provided, verify ownership and sync scan_ingredients (`TC-20`, `SEC-06`)
@@ -54,25 +58,31 @@ def recommend_recipes(
     # 3. Filter feasible candidate recipes via TP 04 Open-World 3-Valued Reasoning & Hard Constraints
     reasoning_input = ReasoningInput(
         ingredient_ids=dedup_main,
+        main_ingredient_ids=payload.main_ingredient_ids,
+        kitchen_spice_ids=payload.kitchen_spice_ids,
         excluded_pantry_ids=dedup_pantry,
+        allergic_ingredient_ids=payload.allergic_ingredient_ids,
+        favorite_ingredient_ids=payload.favorite_ingredient_ids,
         max_total_minutes=payload.max_total_minutes,
         cuisine_codes=payload.cuisine_codes,
-        preferred_cuisine_codes=payload.preferred_cuisine_codes,
         include_missing=payload.include_missing,
     )
     feasible_pairs = filter_candidate_recipes(repo=repo, params=reasoning_input)
 
-    # 4. Score each feasible recipe (`Scoring v1.0`) and rank (`ready` before `missing`, score DESC)
+    # 4. Score each feasible recipe (`Unified MCDA C, G, T, P`) and rank (`ready` before `missing`, score DESC)
     scored_items = [
-        score_recipe_v1_0(
+        score_recipe_unified(
             recipe=rec,
             evaluation=ev,
-            preferred_cuisine_codes=payload.preferred_cuisine_codes,
+            ingredient_ids=dedup_main,
+            main_ingredient_ids=payload.main_ingredient_ids,
+            desired_hours=payload.desired_hours,
+            favorite_ingredient_ids=payload.favorite_ingredient_ids,
             ingredient_map=found_map,
         )
         for rec, ev in feasible_pairs
     ]
-    ranked_items = rank_recommendations_v1_0(scored_items)
+    ranked_items = rank_recommendations(scored_items)
 
     total = len(ranked_items)
     return RecommendResponse(

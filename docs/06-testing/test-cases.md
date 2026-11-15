@@ -1,6 +1,6 @@
 # Test Cases — Danh sách Kiểm thử Chi tiết & Bộ Kịch bản Bảo vệ Học phần
 
-**Phiên bản:** `1.0.0` · **Trạng thái mặc định tất cả case:** `Not run`.  
+**Phiên bản:** `1.1.0` · **Trạng thái mặc định tất cả case:** `Not run`.  
 **Tiền điều kiện chung:** API/Frontend chạy trên môi trường test, dữ liệu migration + seed khớp mô tả, người kiểm thử chéo ghi rõ `commit SHA`.  
 **Mã phân nhóm:** `DEF` (10 kịch bản bảo vệ học phần cho kiến trúc 14 thành phần), `TC` (47 ca kiểm thử chức năng theo `FR`), `SEC` (bảo mật/quyền riêng tư), `API` (hợp đồng), `AI` (thị giác & thực nghiệm gợi ý), `UI` (giao diện), `PERF` (hiệu năng), `LEGAL` (pháp lý/bản quyền), `OPS` (vận hành), `MATH` (unit test công thức toán học).
 
@@ -12,14 +12,14 @@
 |---|---|---|---|---|
 | **DEF-01** | TP 01, 14 | **Nhận diện đúng:** tải ảnh rõ quả cà chua (bao gồm ảnh chụp dọc điện thoại) | Tự xoay chuẩn EXIF, trả `bbox` chuẩn hóa và nhãn `Cà chua` ở trạng thái cho phép người dùng xác nhận | `TC-07`, `TC-43`, `AI-01` |
 | **DEF-02** | TP 01, 02, 14 | **Ảnh mờ / vật thể ngoài danh mục:** tải ảnh rung mờ hoặc vật thể lạ | Hệ thống không tự chốt nhãn sai; trả `detections=[]` hoặc bật cảnh báo xác nhận HITL ($\text{conf} < \tau$) và cho sửa/nhập tay | `TC-27`, `AI-03` |
-| **DEF-03** | TP 04, 14 | **Chưa biết (Open-World — `Scoring v1.1`):** chỉ xác nhận có cà chua (kèm dầu, muối), chưa khai báo trứng | Trạng thái trứng = `unknown`; món *"Cà chua xào trứng"* có `availability = "unknown"`, không gắn *"Nấu ngay"* | `MATH-02` |
-| **DEF-04** | TP 04 | **Xác nhận thiếu thật:** người dùng báo thiếu nguyên liệu chính hoặc tắt gia vị nền bắt buộc (`excluded_pantry_ids`) | Món chuyển sang nhóm thiếu (`missing` ở `v1.0` / `missing_confirmed` ở `v1.1`), liệt kê chính xác nguyên liệu/gia vị cần mua thêm | `TC-11`, `TC-31`, `TC-32` |
-| **DEF-05** | TP 03, 04 | **Lọc cứng an toàn dị ứng (`Scoring v1.1`):** người dùng khai báo dị ứng trứng (`egg`) | Mọi món chứa thành phần mang tác nhân `egg` (theo `ingredient_allergens` đã kiểm duyệt) bị `BLOCKED` trước xếp hạng và `0%` xuất hiện lại sau MMR | `MATH-02` |
+| **DEF-03** | TP 04, 14 | **Chưa biết (Open-World — `TP 04`):** chỉ xác nhận có cà chua (kèm dầu, nước mắm), chưa khai báo trứng | Trạng thái trứng = `unknown`; món *"Trứng xào cà chua"* có `reasoning_status = "UNKNOWN"` (`availability = "missing"`), không gắn *"Nấu ngay"* | `MATH-02` |
+| **DEF-04** | TP 04 | **Xác nhận thiếu thật:** người dùng báo thiếu nguyên liệu hoặc tắt gia vị bắt buộc (`excluded_pantry_ids`) | Món chuyển sang `availability = "missing"` (`reasoning_status = "MISSING_CONFIRMED"`), liệt kê chính xác nguyên liệu/gia vị cần mua thêm | `TC-11`, `TC-31`, `TC-32` |
+| **DEF-05** | TP 03, 04 | **Lọc cứng an toàn dị ứng (`ADR-013`):** người dùng khai báo dị ứng nguyên liệu trứng (`allergic_ingredient_ids`) hoặc tác nhân `egg` | Mọi món chứa thành phần dị ứng bị `BLOCKED` trước xếp hạng và `0%` xuất hiện lại sau MMR | `MATH-02` |
 | **DEF-06** | TP 13 | **Tìm kiếm tiếng Việt & đồng nghĩa:** nhập `ca chua`, `cà chua`, `dau hu`, `đậu phụ` | Cả 4 chuỗi đều ánh xạ chính xác về đúng mã `ingredient_id` chuẩn của *Cà chua* và *Đậu hũ* qua chuẩn hóa Unicode + `pg_trgm` | `TC-23`, `TC-36`, `MATH-07` |
 | **DEF-07** | TP 05, 06, 12 | **Thực nghiệm đối chứng Ranker:** chạy trên tập $\ge 100$ tình huống chấm độc lập | Xuất bảng so sánh khách quan `nDCG@5` và `Precision@5` giữa các biến thể **A – B (Tversky) – C (Weighted + MCDA + MMR) – D (LR)** | `AI-04` |
 | **DEF-08** | TP 08 | **Cá nhân hóa Logistic Regression:** cùng nguyên liệu đầu vào, 2 User có lịch sử `favorites`/`feedback` khác nhau | Thứ tự Top-K thay đổi phù hợp xu hướng sở thích đã học ($\theta_u$), đồng thời người dùng mới ($\lambda_{\text{pers}}=0$) vẫn nhận kết quả ổn định từ $S_{\text{base}}$ | `TC-17`, `TC-45`, `MATH-05` |
 | **DEF-09** | TP 10, 11 | **Quy đổi khẩu phần & Dinh dưỡng hai tầng:** xem món ở Tầng 1 (`P0`) và đổi khẩu phần từ `2` lên `4` người ở món có đủ `grams` Tầng 2 (`P1`) | Tầng 1 chỉ hiện nhãn định tính kèm nguồn; Tầng 2 tính `kcal` theo USDA tăng tỷ lệ đúng công thức $\sum (m_i/100)V_{i,k}$ kèm cảnh báo; tuyệt đối không đoán `gram` từ ảnh | `TC-03`, `TC-15`, `MATH-07` |
-| **DEF-10** | TP 07, 09, 14 | **Giải thích XAI & Đa dạng hóa MMR:** kiểm tra bảng phân rã điểm và danh sách Top-K | Ở `v1.0` điểm khớp `89.0`/`68.1`; ở `v1.1` tổng 5 điểm thành phần khớp khít điểm MCDA (`33.33+25.00+15.00+2.50+5.00 = 80.83`) và MMR giảm trùng lặp món cùng kiểu nấu | `TC-12`, `MATH-05`, `MATH-06` |
+| **DEF-10** | TP 07, 09, 14 | **Giải thích XAI & Đa dạng hóa MMR:** kiểm tra bảng phân rã điểm và danh sách Top-K | Tổng 4 điểm thành phần khớp khít công thức `S = 100*(0.50*C + 0.25*G + 0.15*T + 0.10*P)` (`50.0 + 25.0 + 15.0 + 5.0 = 95.0` hoặc `50.0 + 21.25 + 7.50 + 5.0 = 83.75`) và MMR giảm trùng lặp món cùng kiểu nấu | `TC-12`, `MATH-05`, `MATH-06` |
 
 ---
 
@@ -38,7 +38,7 @@
 | TC-09 | FR-05 | User xóa tất cả `ingredient_ids` chính | UI ngăn gửi recommend; có hướng dẫn thêm tay tối thiểu 1 nguyên liệu chính |
 | TC-10 | FR-06 | Recipe cần trứng+cà chua đều có, gia vị nền mặc định đủ (`excluded_pantry_ids=[]`) | `availability="ready"`, `missing_required_ingredient_ids=[]` |
 | TC-11 | FR-06 | Recipe cần gà+cà chua, user chỉ có cà chua | `availability="missing"`, gà nằm trong `missing_required_ingredient_ids` |
-| TC-12 | FR-06 | Cùng dữ liệu, so điểm tính tay và API | Khớp công thức `Scoring v1.0` `S = round(100*(0.55*C + 0.25*E + 0.10*T + 0.10*P), 1)`, xếp nhóm `ready` trước `missing` |
+| TC-12 | FR-06 | Cùng dữ liệu, so điểm tính tay và API | Khớp công thức hợp nhất `S = round(100*(0.50*C + 0.25*G + 0.15*T + 0.10*P), 2)`, xếp nhóm `ready` trước `missing` |
 | TC-13 | FR-07 | `cuisine_codes=["VN"]` | Chỉ trả món thuộc `VN`, không có món `EU`/`US` |
 | TC-14 | FR-07 | `max_total_minutes=15`, món `5+10` và `15+20` | Chỉ có món 15 phút; món 35 phút bị loại trước khi chấm điểm |
 | TC-15 | FR-08 | Xem recipe có tag / không tag dinh dưỡng | Tag có `source_url` + tuyên bố miễn trừ định lượng/dị ứng; không có `kcal`/`gram` suy ra từ ảnh |
@@ -58,10 +58,10 @@
 | TC-29 | FR-04 | Gọi `POST /ai/detect` khi hệ thống chưa có model nào ở trạng thái `active` | Trả `503 MODEL_NOT_READY`, không crash worker |
 | TC-30 | FR-04 | Gọi `POST /ai/detect` khi tác vụ suy luận vượt ngưỡng timeout cấu hình | Backend hủy tác vụ, giải phóng bộ nhớ tạm và trả `504 INFERENCE_TIMEOUT` |
 | TC-31 | FR-05 | Màn hình xác nhận nguyên liệu hiển thị thanh gia vị sẵn có (`category='pantry'`) | Mặc định bật sẵn 5 gia vị nền; khi người dùng tắt "Nước mắm", payload gửi `excluded_pantry_ids: ["55555555-5555-4555-8555-555555555555"]` |
-| TC-32 | FR-06 | Công thức "Trứng xào cà chua" có gia vị bắt buộc "Nước mắm"; gửi `excluded_pantry_ids=[nuoc_mam_id]` | `E=2/3`, `C=2/3.5`, `S=68.1`, `availability="missing"`, `missing_required_ingredient_ids` chứa `nuoc_mam_id` |
+| TC-32 | FR-06 | Công thức "Trứng xào cà chua" có gia vị bắt buộc "Nước mắm" (`w=1/10`); gửi `excluded_pantry_ids=[nuoc_mam_id]` | `C=9/10=0.9`, `S=90.0`, `availability="missing"` (`MISSING_CONFIRMED`), `missing_required_ingredient_ids` chứa `nuoc_mam_id` |
 | TC-33 | FR-06 | Gửi `POST /recommendations` với `include_missing=false` | Chỉ trả về các món có `availability="ready"`, loại bỏ toàn bộ món `"missing"` |
-| TC-34 | FR-06 | Gửi `POST /recommendations` khi không có công thức nào khớp nguyên liệu chính (`C=0`) hoặc bộ lọc | Trả `200 OK` với `items=[]`, `total=0`; không bịa công thức |
-| TC-35 | FR-07 | Gửi `preferred_cuisine_codes=["VN"]` (không đặt `cuisine_codes`) | Món `VN` nhận `P=1.0`; món `EU`/`US` vẫn được giữ lại nhưng nhận `P=0.0` (giảm `10.0` điểm tổng ở `v1.0`) |
+| TC-34 | FR-06 | Gửi `POST /recommendations` khi không có công thức nào khớp nguyên liệu (`C=0`) hoặc vi phạm dị ứng | Trả `200 OK` với `items=[]`, `total=0`; không bịa công thức |
+| TC-35 | FR-07 | Kiểm tra `desired_hours` (`0.25h` trên món `0.50h`), `main_ingredient_ids` (`0.7 / 0.3`) và `favorite_ingredient_ids` | `T=0.5`, `G=0.85`, `P=0.5` (hoặc `0.5` trung lập khi `favorite_ingredient_ids=[]`), tổng `S=83.75` |
 | TC-36 | FR-05 | Kiểm tra `GET /ingredients`: (1) gọi không token + kiểm tra `Cache-Control`; (2) tìm `?q=dau phu` (`no-store`); (3) lọc `category=pantry` và `exclude_pantry=true`; (4) gửi `category=pantry&exclude_pantry=true` | (1) `200 OK` chỉ trả nguyên liệu `is_active=true` kèm `max-age=300`; (2) khớp alias `Đậu hũ` với `Cache-Control: no-store`; (3) lọc đúng nhóm; (4) trả `422 INVALID_QUERY_PARAMS` |
 | TC-37 | FR-05 | Kiểm tra `POST /recommendations`: (1) gửi UUID `pantry` trong `ingredient_ids`; (2) gửi UUID nguyên liệu chính (`category != 'pantry'`) trong `excluded_pantry_ids`; (3) gửi UUID không tồn tại hoặc `inactive` | Cả 3 bước đều bị chặn với `422 INVALID_INGREDIENTS` kèm chi tiết `details` tương ứng |
 | TC-38 | FR-13 | Kiểm tra điều kiện công bố và sửa món `published`: (1) publish món chỉ có nguyên liệu `pantry`; (2) publish món chứa nguyên liệu `is_active=false`; (3) publish món có 1 bước với `estimated_minutes > prep_minutes + cook_minutes`; (4) gọi `PATCH /admin/recipes/{id}` trên món **đang `published`** làm vi phạm một trong các điều kiện trên | Cả 4 bước đều bị chặn với `400 RECIPE_NOT_PUBLISHABLE` và giữ nguyên trạng thái/dữ liệu hợp lệ trước đó |
@@ -118,29 +118,29 @@
 
 ## E. Unit Tests Công thức Toán học (`pytest`)
 
-### E.1. Hợp đồng cốt lõi MVP (`Scoring v1.0`)
+### E.1. Hợp đồng chấm điểm MCDA 4 tiêu chí hợp nhất (`ADR-013`)
 
-| Trường hợp kiểm thử | `C / E / T / P` | Kết quả kỳ vọng |
+| Trường hợp kiểm thử | `C / G / T / P` | Kết quả kỳ vọng |
 |---|---|---|
-| 2 required chính đều có, 1 optional chính thiếu, đủ gia vị nền (`X=[]`), món 13 phút, không preference | `C=0.8, E=1.0, T=1.0, P=1.0` | `S = 89.0`, `availability = "ready"` |
-| 2 required chính đều có, 1 optional chính thiếu, **bỏ chọn 1 gia vị bắt buộc** (`X=[nuoc_mam]`), món 13 phút, không preference | `C=2/3.5 (≈0.571), E=2/3 (≈0.667), T=1.0, P=1.0` | `S = 68.1`, `availability = "missing"` |
-| Cả 3 nguyên liệu chính đều có, đủ gia vị nền (`X=[]`), món 13 phút, không preference | `C=1.0, E=1.0, T=1.0, P=1.0` | `S = 100.0`, `availability = "ready"` |
-| Chỉ có 1/2 required chính, optional chính thiếu, đủ gia vị nền (`X=[]`), món 13 phút | `C=0.4, E=0.5, T=1.0, P=1.0` | `S = 54.5`, `availability = "missing"` |
-| Không có required/optional chính nào trùng với `U` (dù đủ toàn bộ gia vị nền) | `C=0` | Bị loại khỏi tập ứng viên |
-| Món 35 phút với `max_total_minutes=15` | Không chấm | Bị lọc cứng trước khi chấm điểm |
-| Món thuộc `US` nhưng `preferred_cuisine_codes=["VN"]`, không lọc cứng | `P=0.0` | Điểm giảm `10.0` so với khi `P=1.0` |
+| Đủ Cà chua + Trứng gà (`w=4+4`), đủ gia vị bếp (`w=1+1`), bỏ qua chọn chính, mặc định `100h`, Guest `F_u=[]` | `C=1.0, G=1.0, T=1.0, P=0.5` | `S = 95.0`, `availability = "ready"` (`READY`) |
+| Đủ Cà chua + Trứng gà + khớp đủ `F_u=[Cà chua, Trứng gà]` | `C=1.0, G=1.0, T=1.0, P=1.0` | `S = 100.0`, `availability = "ready"` (`READY`) |
+| Đủ Cà chua + Trứng gà nhưng tắt gia vị bắt buộc Nước mắm (`X=[nuoc_mam]`) | `C=0.9, G=1.0, T=1.0, P=0.5` | `S = 90.0`, `availability = "missing"` (`MISSING_CONFIRMED`) |
+| Chỉ quét 1 quả Cà chua (`U=[Cà chua]`), chưa rõ Trứng gà, đủ gia vị bếp | `C=0.6, G=1.0, T=1.0, P=0.5` | `S = 75.0`, `availability = "missing"` (`UNKNOWN`) |
+| Món Đậu hũ sốt cà chua (`30p = 0.50h`), `U=[Đậu hũ, Cà chua]`, chọn `main=[Đậu hũ]`, `desired_hours=0.25`, `F_u=[Đậu hũ, Thịt ba chỉ]` | `C=1.0, G=0.85, T=0.5, P=0.5` | `S = 83.75`, đóng góp `[50.0, 21.25, 7.5, 5.0]` |
+| Không có nguyên liệu nào trong món trùng với `U` (dù đủ toàn bộ gia vị bếp) | `BLOCKED` | Bị loại khỏi tập ứng viên |
+| Món chứa nguyên liệu thuộc `allergic_ingredient_ids` | `BLOCKED` | Bị lọc cứng tuyệt đối trước khi chấm điểm |
 
-### E.2. Cấu hình thông minh mở rộng (`Scoring v1.1` & 14 Thành phần — `MATH-01`..`MATH-07`)
+### E.2. Bộ kiểm thử 14 Thành phần Thông minh (`MATH-01`..`MATH-07`)
 
 | Mã Unit Test | Thành phần kiểm chứng | Đầu vào kiểm thử chuẩn | Kết quả kỳ vọng chính xác |
 |---|---|---|---|
-| **MATH-01** | **IoU NMS (TP 01) & CLIP Cosine (TP 02)** | Hai box $[10,10,20,20]$ và $[12,12,22,22]$; hai vector $v=(0.8,0.6)$, $t_1=(0.9,0.436)$ | $\text{IoU} = 64/136 \approx 0.471$ (hoặc ví dụ chuẩn $40/70 \approx 0.571$); $\text{sim}(v, t_1) \approx 0.982$ / $0.975$ đúng công thức tích vô hướng chuẩn hóa |
-| **MATH-02** | **Suy luận 3 trạng thái & Lọc dị ứng (TP 04)** | (1) `required={ca_chua, trung, dau, muoi}`, `available={ca_chua:True, trung:None, dau:True, muoi:True}`; (2) Món chứa `trung` (`allergen=egg`) với `excluded_allergens={egg}` | (1) Trạng thái = `UNKNOWN` (không gắn `READY`, không gắn `MISSING_CONFIRMED`); (2) Trạng thái = `BLOCKED` ngay trước bước chấm điểm |
-| **MATH-03** | **Weighted Coverage (TP 05)** | Trọng số `{ca_chua:4, trung:3, dau:1, muoi:1}`, xác nhận có `{ca_chua, dau, muoi}` | $C = (4 + 1 + 1) / (4 + 3 + 1 + 1) = 6/9 \approx 0.667$ |
-| **MATH-04** | **Tversky Baseline B (TP 05, 06)** | $A=\{ca\_chua, dau, muoi\}$, $R=\{ca\_chua, trung, dau, muoi\}$, $\alpha=0.3, \beta=2.0$ | $T_{0.3, 2.0} = 3 / (3 + 0.3\times 0 + 2.0\times 1) = 3/5 = 0.60$ |
-| **MATH-05** | **MCDA, Giải thích XAI & LR (TP 07, 08, 14)** | $C=6/9, G=1, T=1, P=0.5, Q=1$, trọng số `(0.50, 0.25, 0.15, 0.05, 0.05)`; LR với $x=[1,1,0], \theta=[0.2,0.3,-0.1], y=1, \eta=0.1$ | Đóng góp XAI `[33.33, 25.00, 15.00, 2.50, 5.00]`, tổng $S_{\text{base}} = 80.83$; LR $p = \sigma(0.5) \approx 0.622$, khi $\lambda_{\text{pers}}=0$ thì $S_{\text{final}} = S_{\text{base}}$ |
-| **MATH-06** | **MMR Reranking (TP 09)** | $\lambda_{\text{mmr}}=0.7$; Canh biến thể $(\text{Rel}=0.91, \text{Sim}=0.75)$ so với Mì Ý $(\text{Rel}=0.88, \text{Sim}=0.20)$ | $\text{MMR}_{\text{canh}} = 0.7(0.91) - 0.3(0.75) = 0.412 < \text{MMR}_{\text{miY}} = 0.7(0.88) - 0.3(0.20) = 0.556 \implies$ chọn Mì Ý trước |
-| **MATH-07** | **Khẩu phần, USDA & Tiếng Việt (TP 10, 11, 13)** | $100\text{ g}$ cà chua ($18\text{ kcal}/100\text{ g}$) + $60\text{ g}$ trứng ($144\text{ kcal}/100\text{ g}$), nhân đôi khẩu phần; `Norm("Đậu phụ")` | Gốc $= 18 + 86.4 = 104.4\text{ kcal}$ (hoặc $104.5\text{ kcal}$ theo bảng FDC cụ thể), nhân đôi $= 208.8\text{ kcal}$; `Norm("Đậu phụ") == "dau phu"` khớp mã `tofu` |
+| **MATH-01** | **IoU NMS (TP 01) & CLIP Cosine (TP 02)** | Hai box $[10,10,20,20]$ và $[12,12,22,22]$; hai vector $v=(0.8,0.6)$, $t_1=(0.9,0.4)$ | $\text{IoU} = 64/136 \approx 0.471$; $\text{sim}(v, t_1) = 0.96 / \sqrt{0.97} \approx 0.975$ |
+| **MATH-02** | **Suy luận 3 trạng thái & Lọc dị ứng (TP 04)** | (1) `required={ca_chua, trung, dau, muoi}`, `available={ca_chua:True, trung:None, dau:True, muoi:True}`; (2) Món chứa `trung` với `allergic_ingredient_ids={trung}` | (1) Trạng thái = `UNKNOWN` (không gắn `READY`, không gắn `MISSING_CONFIRMED`); (2) Trạng thái = `BLOCKED` ngay trước bước chấm điểm |
+| **MATH-03** | **Weighted Coverage `4-2-1` (TP 05)** | Trọng số `{dau_hu:4, ca_chua:2, dau:1, muoi:1}`, xác nhận có `{dau_hu, dau, muoi}` | $C = (4 + 1 + 1) / (4 + 2 + 1 + 1) = 6/8 = 0.75$ |
+| **MATH-04** | **Tversky Baseline B (TP 06)** | $A=\{ca\_chua, dau, muoi\}$, $R=\{ca\_chua, trung, dau, muoi\}$, $\alpha=0.3, \beta=2.0$ | $T_{0.3, 2.0} = 3 / (3 + 0.3\times 0 + 2.0\times 1) = 3/5 = 0.60$ |
+| **MATH-05** | **MCDA `C,G,T,P`, XAI & LR (TP 07, 08, 14)** | $C=1.0, G=0.85, T=0.5, P=0.5$, trọng số `(0.50, 0.25, 0.15, 0.10)`; LR với $x=[1,1,0], \theta=[0.2,0.3,-0.1], y=1, \eta=0.1$ | Đóng góp XAI `[50.00, 21.25, 7.50, 5.00]`, tổng $S = 83.75$; LR $p = \sigma(0.5) \approx 0.622$, khi $\lambda_{\text{pers}}=0$ thì $S_{\text{final}} = S$ |
+| **MATH-06** | **MMR Reranking (TP 09)** | $\lambda_{\text{mmr}}=0.7$; Canh biến thể $(\text{Rel}=0.91, \text{Sim}=0.75)$ so với Mì Ý $(\text{Rel}=0.88, \text{Sim}=0.20)$ | $\text{MMR}_{\text{canh}} = 0.412 < \text{MMR}_{\text{miY}} = 0.556 \implies$ chọn Mì Ý trước |
+| **MATH-07** | **Khẩu phần, USDA & Tiếng Việt (TP 10, 11, 13)** | $100\text{ g}$ cà chua ($18\text{ kcal}/100\text{ g}$) + $60\text{ g}$ trứng ($144\text{ kcal}/100\text{ g}$), nhân đôi khẩu phần; `Norm("Đậu phụ")` | Gốc $= 18 + 86.4 = 104.4\text{ kcal}$, nhân đôi $= 208.8\text{ kcal}$; `Norm("Đậu phụ") == "dau phu"` khớp mã `tofu` |
 
 ---
 

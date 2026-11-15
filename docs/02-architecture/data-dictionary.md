@@ -88,7 +88,7 @@ Unique `(model_id, class_index)`; bảng ánh xạ của model `active`/`archive
 | created_at | ts | NN, DEFAULT now() | Ngày tạo |
 | updated_at | ts | NN, DEFAULT now() | Ngày cập nhật |
 
-`total_minutes = prep_minutes + cook_minutes` là **thuộc tính tính toán ở API**, không tạo cột lưu trữ. Công thức ở trạng thái `published` bắt buộc có ít nhất 1 bước nấu, ít nhất 1 nguyên liệu bắt buộc thuộc nhóm chính (`category != 'pantry'`), mọi nguyên liệu trong món đều `is_active = true`, và không có bước đơn lẻ nào có `estimated_minutes > prep_minutes + cook_minutes` (`400 RECIPE_NOT_PUBLISHABLE`).
+`total_minutes = prep_minutes + cook_minutes` (`CHECK (prep_minutes + cook_minutes > 0)`) và `total_hours = total_minutes / 60.0` (đơn vị giờ dùng cho tiêu chí thời gian $T(r)$) là **thuộc tính tính toán ở API**, không tạo cột lưu trữ dư thừa. Công thức ở trạng thái `published` bắt buộc có ít nhất 1 bước nấu, ít nhất 1 nguyên liệu bắt buộc thuộc nhóm chính (`category != 'pantry'`), mọi nguyên liệu trong món đều `is_active = true`, và không có bước đơn lẻ nào có `estimated_minutes > prep_minutes + cook_minutes` (`400 RECIPE_NOT_PUBLISHABLE`).
 
 ## 7. `recipe_ingredients`
 
@@ -96,9 +96,10 @@ Unique `(model_id, class_index)`; bảng ánh xạ của model `active`/`archive
 |---|---|---|---|
 | recipe_id | uuid | PK, FK→`recipes.id` (`ON DELETE CASCADE`) | Công thức |
 | ingredient_id | uuid | PK, FK→`ingredients.id` (`ON DELETE RESTRICT`) | Nguyên liệu |
-| is_required | boolean | NN, DEFAULT true | Nguyên liệu bắt buộc để xét `ready`/`missing` (MVP `v1.0`) và `READY`/`UNKNOWN`/`MISSING_CONFIRMED` (`v1.1`) |
-| role | varchar(16) | NN, DEFAULT `'essential'`, CHECK(`primary`/`essential`/`secondary`) | *(Mở rộng GĐ 2)* Vai trò nguyên liệu trong món (chính / thiết yếu / phụ) phục vụ tiêu chí $G$ |
-| weight | numeric(6,2) | NN, DEFAULT 1.00, CHECK `> 0` | *(Mở rộng GĐ 2)* Trọng số $w_{r,i}$ theo từng món cho Weighted Coverage (khi đồng nhất `1.00` sẽ suy biến về tỷ lệ phần tử của `v1.0`) |
+| is_required | boolean | NN, DEFAULT true | Nguyên liệu bắt buộc thuộc $R_r$ (`true`) hay tùy chọn (`false`, không đưa vào tập bắt buộc $R_r$) |
+| role | varchar(16) | NN, DEFAULT `'core'`, CHECK(`core`/`secondary`/`spice`/`optional`) | Nhóm phân loại ảnh hưởng đến món ăn: `core` (cốt lõi, $w=4$), `secondary` (phụ quan trọng, $w=2$), `spice` (gia vị/hỗ trợ, $w=1$), `optional` (tùy chọn, $w=0$) |
+| dish_role | varchar(8) | NN, DEFAULT `'main'`, CHECK(`main`/`sub`) | Tag vai trò chính/phụ trong món ăn phục vụ tiêu chí $G(r)$ (`main` $\to g(i,r)=1.0$, `sub` $\to g(i,r)=0.5$) |
+| weight | numeric(6,2) | NN, DEFAULT 4.00, CHECK `(is_required AND weight > 0) OR (NOT is_required AND weight >= 0)` | Trọng số $w_{r,i}$ lưu cho mỗi nguyên liệu theo quy tắc `4 - 2 - 1 - 0` để tính độ đủ $C(r, A)$ |
 | grams | numeric(8,2) | ?, CHECK `> 0` | *(Mở rộng GĐ 3)* Khối lượng ăn được ($m_i$, tính bằng gram) ứng với `base_servings` cho quy đổi khẩu phần & dinh dưỡng USDA |
 | display_quantity | text | ? | Chuỗi hiển thị định lượng thân thiện (`2 quả`, `1 muỗng canh`) |
 | scaling_note | text | ? | *(Mở rộng GĐ 3)* Lưu ý khi nhân khẩu phần không tuyến tính (gia vị/nhiệt/thời gian) |
@@ -204,7 +205,7 @@ Ràng buộc duy nhất: `UNIQUE NULLS NOT DISTINCT (user_id, recipe_id, scan_se
 | after_json | jsonb | ? | Giá trị sau (đã loại bí mật/PII) |
 | created_at | ts | NN, DEFAULT now() | Thời điểm ghi |
 
-## 17. Các bảng mở rộng Giai đoạn 2–4 (`Scoring v1.1` & Dinh dưỡng Tầng 2)
+## 17. Các bảng mở rộng Giai đoạn 2–4 (Cá nhân hóa, Dị ứng & Dinh dưỡng Tầng 2 — `ADR-013`)
 
 ### 17.1. `allergens` và `ingredient_allergens` (Giai đoạn 2 — Kiểm tra $\text{DietOK}$)
 
@@ -230,14 +231,17 @@ Ràng buộc duy nhất: `UNIQUE NULLS NOT DISTINCT (user_id, recipe_id, scan_se
 | source_url | text | NN | Đường dẫn bản ghi USDA FoodData Central hoặc bảng thành phần chuẩn |
 | reviewed_at | ts | ? | Thời điểm kiểm duyệt ánh xạ |
 
-### 17.3. `user_preferences` (Giai đoạn 2 & 4 — Ràng buộc bếp/dị ứng & Logistic Regression)
+### 17.3. `user_preferences` (Hồ sơ cá nhân hóa theo nguyên liệu & Mở rộng học sở thích)
 
 | Cột | Kiểu | Ràng buộc | Ý nghĩa |
 |---|---|---|---|
 | user_id | uuid | PK, FK→`profiles.id` (`ON DELETE CASCADE`) | Chủ hồ sơ |
-| excluded_allergen_ids | jsonb | NN, DEFAULT `'[]'` | Danh sách UUID tác nhân dị ứng cần lọc cứng (`BLOCKED`) |
+| allergic_ingredient_ids | jsonb | NN, DEFAULT `'[]'` | Danh sách UUID nguyên liệu người dùng bị dị ứng — lọc cứng (`BLOCKED`) |
+| kitchen_spice_ids | jsonb | NN, DEFAULT `'[]'` | Danh sách UUID gia vị có sẵn trong bếp (`category = 'pantry'`) — nạp vào tập $A$ khi tính $C(r, A)$ |
+| favorite_ingredient_ids | jsonb | NN, DEFAULT `'[]'` | Danh sách UUID nguyên liệu yêu thích của người dùng ($F_u$) — tính điểm sở thích $P(r)$ |
+| excluded_allergen_ids | jsonb | NN, DEFAULT `'[]'` | Danh sách mã/UUID nhóm tác nhân dị ứng bổ trợ (`egg`, `soy`, `fish`...) |
 | available_equipment | jsonb | ? | Thiết bị bếp hiện có (`null` = không giới hạn) |
-| lr_weights | jsonb | ? | Vector tham số $\theta_u$ của mô hình Logistic Regression cá nhân hóa (Thành phần 08) |
+| lr_weights | jsonb | ? | Vector tham số $\theta_u$ của mô hình Logistic Regression mở rộng (Thành phần 08) |
 | feedback_count | integer | NN, DEFAULT 0, CHECK `>= 0` | Số phản hồi hợp lệ để điều chỉnh hệ số $\lambda_{\text{pers}}$ (Cold-start) |
 | lr_model_version | text | ? | Phiên bản cấu trúc đặc trưng $x_r$ đang áp dụng |
 | updated_at | ts | NN, DEFAULT now() | Thời điểm cập nhật gần nhất |

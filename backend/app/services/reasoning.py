@@ -1,23 +1,26 @@
-r"""Component 04 (TP 04): Rule-Based Open-World 3-Valued Reasoning & Hard Constraints.
+r"""Component 04 (TP 04): Rule-Based Open-World 3-Valued Reasoning & Hard Constraints (`ADR-013`).
 
 Implements:
-1. Strict input validation separating main ingredients (ingredient_ids, category != 'pantry')
-   and excluded pantry seasonings (excluded_pantry_ids, category == 'pantry').
-   Raises HTTP 422 INVALID_INGREDIENTS with details (`invalid_ids`, `invalid_ingredient_ids`, `reason`)
+1. Strict input validation separating non-pantry ingredients (`ingredient_ids`, `category != 'pantry'`),
+   selected main ingredients (`main_ingredient_ids` subset of `ingredient_ids`),
+   kitchen spices (`kitchen_spice_ids`, `category == 'pantry'`),
+   excluded pantry seasonings (`excluded_pantry_ids`, `category == 'pantry'`),
+   and personalization lists (`allergic_ingredient_ids`, `favorite_ingredient_ids`).
+   Raises HTTP 422 `INVALID_INGREDIENTS` with details (`invalid_ids`, `invalid_ingredient_ids`, `reason`)
    on any violation (`TC-11`, `TC-37`, `api-conventions.md` Error #4).
 2. Open-World 3-valued state assignment for each ingredient i:
-   - confirmed_available: i in U or i in (Pantry \ X)
-   - confirmed_missing  : i in X or i in M_main (explicitly marked missing)
-   - unknown            : main ingredient not in U and not in M_main
+   - confirmed_available: i in U or i in S_bep (where S_bep = (kitchen_spice_ids or Pantry) \ X)
+   - confirmed_missing  : i in (Pantry \ S_bep) or i in X or i in M_main
+   - unknown            : non-pantry ingredient not in U and not in M_main
 3. Hard constraints filtering (before scoring):
    - Verified recipe status == 'published' (TP 10) and |R_main| >= 1 (BR-01)
-   - At least 1 matched main ingredient: |(R_main U O_main) n U| >= 1 (C > 0)
+   - At least 1 matched non-pantry ingredient: |(R_main U O_main) n U| >= 1
    - Cuisine filter: cuisine_code in cuisine_codes (when cuisine_codes is non-empty)
-   - Time filter: total_minutes = prep_minutes + cook_minutes <= max_total_minutes
-   - DietOK(r, u): no ingredient in r carries an allergen in excluded_allergen_ids
+   - Hard time filter: total_minutes = prep_minutes + cook_minutes <= max_total_minutes (when set)
+   - DietOK(r, u): no ingredient in r belongs to `allergic_ingredient_ids` or carries an allergen in `excluded_allergen_ids`
    - EquipOK(r, u): required_equipment is subset of available_equipment (when specified)
-4. Classification into 4 v1.1 states (BLOCKED, READY, UNKNOWN, MISSING_CONFIRMED)
-   and deterministic mapping to v1.0 contract enum ("ready", "missing").
+4. Classification into 4 reasoning states (`BLOCKED`, `READY`, `UNKNOWN`, `MISSING_CONFIRMED`)
+   and deterministic mapping to contract `availability` enum (`"ready"`, `"missing"`).
 """
 
 from __future__ import annotations
@@ -37,22 +40,30 @@ def validate_and_resolve_ingredients(
     repo: CatalogRepository,
     ingredient_ids: list[str],
     excluded_pantry_ids: list[str] | None = None,
+    main_ingredient_ids: list[str] | None = None,
+    kitchen_spice_ids: list[str] | None = None,
+    allergic_ingredient_ids: list[str] | None = None,
+    favorite_ingredient_ids: list[str] | None = None,
 ) -> tuple[list[str], list[str], dict[str, IngredientRecord]]:
-    """Validate ingredient_ids (main) and excluded_pantry_ids (pantry) against active catalog.
+    """Validate ingredient lists against active catalog and structural subset/category invariants.
 
-    Enforces FR-05, FR-06, BR-04, TC-11, TC-37, and `api-conventions.md` Error #4:
-    - ingredient_ids must have >= 1 item, all existing, is_active=True, and category != 'pantry'.
-    - excluded_pantry_ids (optional) must all exist, is_active=True, and category == 'pantry'.
-    - Any violation raises 422 INVALID_INGREDIENTS with `invalid_ids`, `invalid_ingredient_ids`,
-      and `reason` in ("empty_main_ingredients", "pantry_in_main_list",
-      "non_pantry_in_excluded_list", "unknown_or_inactive_id").
+    Enforces FR-05, FR-06, BR-04, TC-11, TC-37, ADR-013, and `api-conventions.md` Error #4:
+    - `ingredient_ids`: >= 1 item, all existing, `is_active=True`, and `category != 'pantry'`.
+    - `main_ingredient_ids`: optional subset of `ingredient_ids`.
+    - `excluded_pantry_ids`: optional, all existing, `is_active=True`, and `category == 'pantry'`.
+    - `kitchen_spice_ids`: optional (when not None), all existing, `is_active=True`, and `category == 'pantry'`.
+    - `allergic_ingredient_ids` & `favorite_ingredient_ids`: optional, all existing and `is_active=True`.
     """
     excluded_pantry_ids = excluded_pantry_ids or []
+    main_ingredient_ids = main_ingredient_ids or []
+    allergic_ingredient_ids = allergic_ingredient_ids or []
+    favorite_ingredient_ids = favorite_ingredient_ids or []
+
     if not ingredient_ids:
         raise AppError(
             status_code=422,
             code="INVALID_INGREDIENTS",
-            message="Danh sách nguyên liệu chính (ingredient_ids) phải có ít nhất 1 phần tử.",
+            message="Danh sách nguyên liệu (ingredient_ids) phải có ít nhất 1 phần tử.",
             details={
                 "invalid_ids": [],
                 "invalid_ingredient_ids": [],
@@ -62,42 +73,75 @@ def validate_and_resolve_ingredients(
 
     dedup_main = list(dict.fromkeys(ingredient_ids))
     dedup_pantry = list(dict.fromkeys(excluded_pantry_ids))
+    dedup_selected_main = list(dict.fromkeys(main_ingredient_ids))
+    dedup_spices = list(dict.fromkeys(kitchen_spice_ids)) if kitchen_spice_ids is not None else []
+    dedup_allergic = list(dict.fromkeys(allergic_ingredient_ids))
+    dedup_favorite = list(dict.fromkeys(favorite_ingredient_ids))
 
-    all_requested = list(dict.fromkeys(dedup_main + dedup_pantry))
+    all_requested = list(
+        dict.fromkeys(
+            dedup_main
+            + dedup_pantry
+            + dedup_selected_main
+            + dedup_spices
+            + dedup_allergic
+            + dedup_favorite
+        )
+    )
     found_map = repo.get_ingredients_by_ids(all_requested)
 
     invalid_ids: list[str] = []
     reason: str | None = None
 
+    def _mark_invalid(iid: str, err_reason: str) -> None:
+        nonlocal reason
+        if iid not in invalid_ids:
+            invalid_ids.append(iid)
+        if reason is None:
+            reason = err_reason
+
     for iid in dedup_main:
         rec = found_map.get(iid)
         if rec is None or not rec.is_active:
-            invalid_ids.append(iid)
-            if reason is None:
-                reason = "unknown_or_inactive_id"
+            _mark_invalid(iid, "unknown_or_inactive_id")
         elif rec.category == "pantry":
-            invalid_ids.append(iid)
-            if reason is None:
-                reason = "pantry_in_main_list"
+            _mark_invalid(iid, "pantry_in_main_list")
+
+    main_set = set(dedup_main)
+    for mid in dedup_selected_main:
+        if mid not in main_set:
+            _mark_invalid(mid, "main_not_in_ingredient_ids")
 
     for pid in dedup_pantry:
         rec = found_map.get(pid)
         if rec is None or not rec.is_active:
-            if pid not in invalid_ids:
-                invalid_ids.append(pid)
-            if reason is None:
-                reason = "unknown_or_inactive_id"
+            _mark_invalid(pid, "unknown_or_inactive_id")
         elif rec.category != "pantry":
-            if pid not in invalid_ids:
-                invalid_ids.append(pid)
-            if reason is None:
-                reason = "non_pantry_in_excluded_list"
+            _mark_invalid(pid, "non_pantry_in_excluded_list")
+
+    if kitchen_spice_ids is not None:
+        for sid in dedup_spices:
+            rec = found_map.get(sid)
+            if rec is None or not rec.is_active:
+                _mark_invalid(sid, "unknown_or_inactive_id")
+            elif rec.category != "pantry":
+                _mark_invalid(sid, "non_pantry_in_kitchen_spices")
+
+    for aid in dedup_allergic:
+        rec = found_map.get(aid)
+        if rec is None or not rec.is_active:
+            _mark_invalid(aid, "unknown_or_inactive_id")
+
+    for fid in dedup_favorite:
+        rec = found_map.get(fid)
+        if rec is None or not rec.is_active:
+            _mark_invalid(fid, "unknown_or_inactive_id")
 
     if invalid_ids:
         raise AppError(
             status_code=422,
             code="INVALID_INGREDIENTS",
-            message="Một hoặc nhiều UUID nguyên liệu không tồn tại, đang ngưng hoạt động hoặc sai phân nhóm chính/pantry.",
+            message="Một hoặc nhiều UUID nguyên liệu không tồn tại, đang ngưng hoạt động hoặc sai phân nhóm.",
             details={
                 "invalid_ids": invalid_ids,
                 "invalid_ingredient_ids": invalid_ids,
@@ -117,11 +161,24 @@ def evaluate_recipe_reasoning(
     u_set = set(params.ingredient_ids)
     x_set = set(params.excluded_pantry_ids)
     m_main_set = set(params.missing_ingredient_ids)
-    available_pantry = active_pantry_ids - x_set
-    confirmed_available_all = u_set | available_pantry
-    confirmed_missing_all = x_set | m_main_set
 
-    # Partition recipe ingredients into R_main, O_main, R_pantry, O_pantry
+    if params.kitchen_spice_ids is not None:
+        available_pantry = set(params.kitchen_spice_ids) - x_set
+        recipe_pantry_ids = {
+            ri.ingredient_id for ri in recipe.ingredients if ri.category == "pantry"
+        }
+        unavailable_pantry = (active_pantry_ids | recipe_pantry_ids) - available_pantry
+    else:
+        recipe_pantry_ids = {
+            ri.ingredient_id for ri in recipe.ingredients if ri.category == "pantry"
+        }
+        available_pantry = (active_pantry_ids | recipe_pantry_ids) - x_set
+        unavailable_pantry = x_set
+
+    confirmed_available_all = u_set | available_pantry
+    confirmed_missing_all = unavailable_pantry | x_set | m_main_set
+
+    # Partition recipe ingredients into R_main, O_main, R_pantry
     r_main: list[str] = []
     o_main: list[str] = []
     r_pantry: list[str] = []
@@ -130,7 +187,7 @@ def evaluate_recipe_reasoning(
 
     for ri in recipe.ingredients:
         iid = ri.ingredient_id
-        if iid in confirmed_available_all or (ri.category == "pantry" and iid not in x_set):
+        if iid in confirmed_available_all:
             ingredient_states[iid] = "confirmed_available"
         elif iid in confirmed_missing_all:
             ingredient_states[iid] = "confirmed_missing"
@@ -151,11 +208,11 @@ def evaluate_recipe_reasoning(
     matched_main_ids = sorted(set(matched_req_main + matched_opt_main))
 
     missing_req_main = [iid for iid in r_main if iid not in u_set]
-    missing_pantry = [iid for iid in r_pantry if iid in x_set]
+    missing_pantry = [iid for iid in r_pantry if iid not in available_pantry]
     missing_required_ids = sorted(set(missing_req_main + missing_pantry))
     missing_optional_ids = sorted(iid for iid in o_main if iid not in u_set)
 
-    # Hard constraints check (`recommendation-design.md` Section 4 & Section 8)
+    # Hard constraints check (`recommendation-design.md` Section 4 & ADR-013)
     blocked_reasons: list[str] = []
 
     if recipe.status != "published":
@@ -182,7 +239,11 @@ def evaluate_recipe_reasoning(
         blocked_reasons.append("exceeds_max_total_minutes")
 
     excluded_allergens = set(params.excluded_allergen_ids)
-    diet_ok = not bool(excluded_allergens & set(recipe.allergen_ids))
+    allergic_ing_set = set(params.allergic_ingredient_ids)
+    recipe_ing_ids = {ri.ingredient_id for ri in recipe.ingredients}
+    diet_ok = not bool(excluded_allergens & set(recipe.allergen_ids)) and not bool(
+        allergic_ing_set & recipe_ing_ids
+    )
     if not diet_ok:
         blocked_reasons.append("allergen_violation")
 
@@ -202,7 +263,7 @@ def evaluate_recipe_reasoning(
         status_v1_1 = "READY"
         availability_v1_0 = "ready"
     else:
-        # Distinguish MISSING_CONFIRMED vs UNKNOWN in v1.1 while mapping both to "missing" in v1.0
+        # Distinguish MISSING_CONFIRMED vs UNKNOWN while mapping both to "missing" in `availability`
         has_confirmed_missing_req = bool(missing_pantry) or any(
             iid in m_main_set for iid in missing_req_main
         )
@@ -218,6 +279,7 @@ def evaluate_recipe_reasoning(
         time_ok=time_ok,
         cuisine_ok=cuisine_ok,
         has_main_overlap=has_main_overlap,
+        confirmed_available_ids=sorted(confirmed_available_all),
         matched_main_ids=matched_main_ids,
         matched_optional_main_ids=sorted(matched_opt_main),
         missing_required_main_ids=sorted(missing_req_main),
@@ -238,6 +300,10 @@ def filter_candidate_recipes(
         repo=repo,
         ingredient_ids=params.ingredient_ids,
         excluded_pantry_ids=params.excluded_pantry_ids,
+        main_ingredient_ids=params.main_ingredient_ids,
+        kitchen_spice_ids=params.kitchen_spice_ids,
+        allergic_ingredient_ids=params.allergic_ingredient_ids,
+        favorite_ingredient_ids=params.favorite_ingredient_ids,
     )
     normalized_params = params.model_copy(
         update={

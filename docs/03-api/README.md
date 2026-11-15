@@ -1,4 +1,4 @@
-# 03 — API Contract
+# 03 — API Contract (`1.1.0`)
 
 - [api-conventions.md](api-conventions.md): versioning, auth, lỗi, phân trang, tương tác Swagger/Postman.
 - [openapi.yaml](openapi.yaml): **bản hợp đồng API thiết kế**, chuẩn OpenAPI 3.1, tham chiếu khi lập trình.

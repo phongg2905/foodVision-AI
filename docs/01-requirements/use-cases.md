@@ -84,17 +84,18 @@ flowchart LR
   - `E2 (Món không tồn tại hoặc đang draft/archived):` API `GET /api/v1/recipes/{recipe_id}` trả `404 RECIPE_NOT_FOUND`.
 - **Hậu điều kiện:** Không làm thay đổi dữ liệu hệ thống.
 
-### UC-03 — Xác nhận, chỉnh sửa nguyên liệu (HITL) và bật/tắt gia vị sẵn có (`FR-05`, `FR-18`) — *Base Use Case*
+### UC-03 — Xác nhận, chỉnh sửa nguyên liệu (HITL), chọn nguyên liệu chính/thời gian và đối chiếu gia vị (`FR-05`, `FR-18`) — *Base Use Case*
 
 - **Tác nhân:** Guest / User / Admin.
 - **Điểm mở rộng (Extension Point):** `EP_InitFromImage` — tại Bước 1, người dùng có thể chọn khởi tạo danh sách nguyên liệu từ ảnh chụp thông qua **UC-02** thay vì chỉ tìm kiếm/chọn thủ công.
 - **Tiền điều kiện:** Danh mục nguyên liệu hoạt động (`GET /api/v1/ingredients` sẵn sàng).
 - **Luồng chính:**
-  1. Người dùng mở màn hình chuẩn bị nguyên liệu. *(Điểm mở rộng `EP_InitFromImage`: nếu người dùng chọn tải/chụp ảnh, hệ thống thực hiện **UC-02** rồi nạp danh sách `suggested_ingredients` và `detections` vào màn hình này, làm nổi bật các phát hiện có độ tin cậy thấp $\text{confidence} < \tau$ cần người dùng kiểm tra).*
-  2. Giao diện tải danh mục nguyên liệu chuẩn từ `GET /api/v1/ingredients` (tách nhóm nguyên liệu chính `exclude_pantry=true` cho ô tìm kiếm và nhóm gia vị nền `category=pantry` cho thanh bật/tắt).
-  3. Người dùng xem danh sách nguyên liệu chính hiện tại, thực hiện xóa nhãn sai, đổi sang nguyên liệu khác hoặc gõ tìm kiếm tiếng Việt (có dấu, không dấu như `"ca chua"`, từ đồng nghĩa vùng miền như `"đậu phụ"` ↔ `"đậu hũ"`, hoặc gõ nhầm nhẹ qua `pg_trgm`) để thêm nguyên liệu chính thủ công (`category != 'pantry'`). Hệ thống tự động gộp các phần tử trùng `ingredient_id`.
-  4. Giao diện hiển thị thanh **"Gia vị sẵn có trong bếp"** (`category = 'pantry'`: muối, đường, nước mắm, dầu ăn, tiêu xay) ở trạng thái **mặc định bật (`checked`)**. Nếu bếp đang hết gia vị nào (ví dụ hết nước mắm), người dùng bỏ chọn gia vị đó để đưa vào danh sách `excluded_pantry_ids`.
-  5. Người dùng nhấn nút **"Xác nhận & Tìm món ăn"** để chuyển sang **UC-04** với cặp dữ liệu `(ingredient_ids, excluded_pantry_ids)`.
+  1. Người dùng mở màn hình chuẩn bị nguyên liệu. *(Điểm mở rộng `EP_InitFromImage`: nếu tải/chụp ảnh qua **UC-02**, giao diện hiển thị riêng nhóm **Nguyên liệu rõ** được tích sẵn và nhóm **Nguyên liệu không rõ** chờ người dùng xác nhận).*
+  2. Giao diện chuẩn hóa nguyên liệu về danh mục `GET /api/v1/ingredients` (`exclude_pantry=true` cho nguyên liệu nấu và `category=pantry` cho gia vị bếp).
+  3. **Sửa / xóa / thêm tùy chọn (có thể bỏ qua):** Người dùng tùy chọn xóa nhãn sai, thêm nguyên liệu qua tìm kiếm tiếng Việt (`pg_trgm`) hoặc bấm Bỏ qua để giữ nguyên các nguyên liệu rõ đã xác nhận (`ingredient_ids`).
+  4. **Chọn nguyên liệu chính hoặc không (mặc định không, có thể bỏ qua):** Người dùng tùy chọn đánh dấu một số nguyên liệu trong `ingredient_ids` làm nguyên liệu chính mong muốn (`main_ingredient_ids`, nhóm chính mang tổng trọng số `0.7`, nhóm phụ `0.3`).
+  5. **Chọn thời gian mong muốn (mặc định `100h`) & Gia vị bếp:** Người dùng tùy chọn nhập thời gian nấu mong muốn `desired_hours` (nếu bỏ trống mặc định `100.0` giờ) và kiểm tra thanh gia vị sẵn có trong bếp (`kitchen_spice_ids` / `excluded_pantry_ids`).
+  6. Người dùng nhấn **"Xác nhận & Tìm món ăn"** để chuyển sang **UC-04**.
 - **Luồng rẽ nhánh / Ngoại lệ:**
   - `E1 (Danh sách nguyên liệu chính rỗng):` Nếu người dùng xóa hết nguyên liệu chính (`ingredient_ids = []`), giao diện khóa nút gửi và hiển thị hướng dẫn chọn ít nhất 1 nguyên liệu chính (dù thanh gia vị nền vẫn đang bật).
   - `E2 (Tham số truy vấn danh mục mâu thuẫn):` Nếu client gửi đồng thời `category=pantry&exclude_pantry=true` lên `GET /api/v1/ingredients`, backend trả `422 INVALID_QUERY_PARAMS`.
@@ -128,12 +129,12 @@ flowchart LR
 - **Tác nhân:** Guest / User / Admin.
 - **Tiền điều kiện:** Đã có danh sách `ingredient_ids` (`>= 1` nguyên liệu chính) và `excluded_pantry_ids` (từ **UC-03** hoặc truyền trực tiếp qua API).
 - **Luồng chính:**
-  1. Người dùng tùy chọn cấu hình bộ lọc cứng (`cuisine_codes`, `max_total_minutes`), ưu tiên mềm (`preferred_cuisine_codes`) và cờ `include_missing` (mặc định `true`).
-  2. Frontend gửi `POST /api/v1/recommendations` kèm `ingredient_ids`, `excluded_pantry_ids` và `scan_id` (nếu có).
-  3. Backend kiểm tra tính hợp lệ của toàn bộ UUID trong `ingredient_ids` (phải tồn tại, `is_active=true`, `category != 'pantry'`) và `excluded_pantry_ids` (phải tồn tại, `is_active=true`, `category = 'pantry'`). Nếu có `scan_id != null`, xác minh `scan_id` thuộc về người dùng hiện tại và lưu danh sách `ingredient_ids` vào bảng `scan_ingredients`.
-  4. Backend lọc các công thức `published` thỏa `cuisine_codes`, `max_total_minutes` và có ít nhất 1 nguyên liệu chính khớp với `ingredient_ids` (`C > 0`). *(Ở cấu hình `Scoring v1.1` Giai đoạn 2, lọc cứng trước các món vi phạm dị ứng/thiết bị $\text{DietOK}/\text{EquipOK}$ sang `BLOCKED`).*
-  5. Backend tính điểm và phân nhóm theo cấu hình đang áp dụng: ở MVP (`Scoring v1.0`), tính `E`, `C`, `T`, `P` và `S` (gia vị bắt buộc nằm trong `excluded_pantry_ids` tạo thành tập thiếu `M_pantry`, làm giảm `E`, `C` và chuyển món sang `"missing"`). *(Ở `Scoring v1.1` Giai đoạn 2–4, tính độ phủ có trọng số $w_{r,i}$, điểm đa tiêu chí MCDA 5 thành phần, xác suất cá nhân hóa Logistic Regression $p_{u,r}$ và tái xếp hạng đa dạng hóa MMR).*
-  6. Backend xếp nhóm `availability = "ready"` lên trước nhóm `"missing"`, sắp xếp theo `score DESC`, số nguyên liệu bắt buộc thiếu `ASC`, `total_minutes ASC`, `recipe_id ASC` và trả về top `limit`.
+  1. Người dùng tùy chọn cấu hình thời gian nấu mong muốn `desired_hours` (mặc định `100.0` giờ), đánh dấu nguyên liệu chính `main_ingredient_ids` (`⊆ ingredient_ids`, mặc định `[]` nếu bỏ qua), bộ lọc cứng (`allergic_ingredient_ids`, `cuisine_codes`, `max_total_minutes`), sở thích `favorite_ingredient_ids` và cờ `include_missing` (mặc định `true`).
+  2. Frontend gửi `POST /api/v1/recommendations` kèm danh sách nguyên liệu/gia vị đã xác nhận và `scan_id` (nếu có).
+  3. Backend kiểm tra tính hợp lệ của toàn bộ UUID trong `ingredient_ids` (`is_active=true`, `category != 'pantry'`), `main_ingredient_ids` (`⊆ ingredient_ids`), `kitchen_spice_ids` / `excluded_pantry_ids` (`is_active=true`, `category = 'pantry'`) và `allergic_ingredient_ids` / `favorite_ingredient_ids` (`is_active=true`). Nếu có `scan_id != null`, xác minh `scan_id` thuộc về người dùng hiện tại và lưu danh sách `ingredient_ids` vào bảng `scan_ingredients`.
+  4. Backend thực thi suy luận 3 trạng thái (`TP 04`) và lọc cứng các công thức `published` thỏa `cuisine_codes`, `max_total_minutes`, không chứa thành phần dị ứng (`allergic_ingredient_ids` / `excluded_allergen_ids` → `BLOCKED`) và có ít nhất 1 nguyên liệu ngoài `pantry` khớp với `ingredient_ids`.
+  5. Backend tính điểm theo công thức MCDA 4 tiêu chí hợp nhất `S = 100*(0.50*C + 0.25*G + 0.15*T + 0.10*P)` (`ADR-013`): độ đủ có trọng số `4-2-1-0` `C(r, A)` (gia vị bắt buộc nằm trong `excluded_pantry_ids` hoặc vắng khỏi `kitchen_spice_ids` làm giảm `C` và chuyển món sang `"missing"` / `MISSING_CONFIRMED`), điểm vai trò nguyên liệu chính `G(r)` (`0.7 / 0.3`), điểm thời gian mềm `T(r) = min(1, desired_hours / t_r)`, điểm sở thích `P(r)` (`0.5` trung lập khi `favorite_ingredient_ids = []`), kết hợp tùy chọn Logistic Regression (`TP 08`) và đa dạng hóa MMR (`TP 09`).
+  6. Backend xếp nhóm `availability = "ready"` lên trước nhóm `"missing"`, sắp xếp theo `score DESC`, số nguyên liệu bắt buộc thiếu `ASC`, `total_minutes ASC`, `recipe_id ASC` và trả về top `limit` kèm `score_breakdown`, `score_contributions`, `reasoning_status` và `explanation_vi`.
   7. Người dùng xem danh sách kết quả kèm giải thích tiếng Việt (`explanation_vi`), điểm thành phần XAI và nhấn vào món ăn để mở **UC-01**.
 - **Luồng rẽ nhánh / Ngoại lệ:**
   - `E1 (UUID không tồn tại, inactive hoặc sai nhóm pantry/main):` Trả `422 INVALID_INGREDIENTS`.

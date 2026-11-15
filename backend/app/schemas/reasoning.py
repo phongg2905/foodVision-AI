@@ -1,4 +1,4 @@
-"""Schemas for Open-World 3-Valued Reasoning & Hard Constraints (TP 04)."""
+"""Schemas for Open-World 3-Valued Reasoning & Hard Constraints (TP 04, ADR-013)."""
 
 from __future__ import annotations
 
@@ -17,11 +17,14 @@ class ReasoningInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     ingredient_ids: list[str] = Field(min_length=1)
+    main_ingredient_ids: list[str] = Field(default_factory=list)
+    kitchen_spice_ids: list[str] | None = None
     excluded_pantry_ids: list[str] = Field(default_factory=list)
     missing_ingredient_ids: list[str] = Field(default_factory=list)
+    allergic_ingredient_ids: list[str] = Field(default_factory=list)
+    favorite_ingredient_ids: list[str] = Field(default_factory=list)
     max_total_minutes: int | None = Field(default=None, ge=1, le=720)
     cuisine_codes: list[CuisineCode] = Field(default_factory=list)
-    preferred_cuisine_codes: list[CuisineCode] = Field(default_factory=list)
     excluded_allergen_ids: list[str] = Field(default_factory=list)
     available_equipment: list[str] | None = None
     include_missing: bool = True
@@ -38,6 +41,7 @@ class RecipeReasoningEvaluation(BaseModel):
     time_ok: bool
     cuisine_ok: bool
     has_main_overlap: bool
+    confirmed_available_ids: list[str]
     matched_main_ids: list[str]
     matched_optional_main_ids: list[str]
     missing_required_main_ids: list[str]
@@ -46,4 +50,3 @@ class RecipeReasoningEvaluation(BaseModel):
     missing_optional_ingredient_ids: list[str]
     ingredient_states: dict[str, IngredientTriState]
     blocked_reasons: list[str]
-

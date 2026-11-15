@@ -1,6 +1,6 @@
 # API Conventions — FoodVision AI v1
 
-**Phiên bản:** `1.0.0` · **Hợp đồng máy đọc:** [`openapi.yaml`](./openapi.yaml)
+**Phiên bản:** `1.1.0` · **Hợp đồng máy đọc:** [`openapi.yaml`](./openapi.yaml)
 
 ## 1. Cơ sở
 
@@ -10,9 +10,8 @@
 - Supabase Auth xử lý sign-up/sign-in phía client; Backend **không tự viết `/login`**.
 - `Authorization: Bearer <Supabase access token>` cho endpoint cá nhân và quản trị; `/ai/detect` cho phép guest nếu `save_history=false`.
 - UUID là chuỗi định dạng UUID; thời gian là ISO 8601 UTC; `confidence` nằm trong `[0..1]`.
-- Quy ước làm tròn điểm gợi ý:
-  - Ở hợp đồng cốt lõi MVP (`Scoring v1.0` trong `openapi.yaml` hiện hành): điểm gợi ý thang `0–100` làm tròn **1 chữ số thập phân** (`89.0`, `68.1`).
-  - Ở cấu hình mở rộng thông minh (`Scoring v1.1` — Giai đoạn 2–5, có giải thích XAI 5 tiêu chí MCDA): điểm tổng và 5 điểm đóng góp thành phần $100 \cdot \alpha_k f_k$ làm tròn **2 chữ số thập phân** (`33.33 + 25.00 + 15.00 + 2.50 + 5.00 = 80.83`) để tổng đóng góp khớp tuyệt đối với điểm cơ sở.
+- Quy ước làm tròn điểm gợi ý (theo [`ADR-013`](../07-decisions/ADR-013-unified-mcda-and-ingredient-personalization.md)):
+  - Công thức MCDA 4 tiêu chí hợp nhất `S = 100 * (0.50*C + 0.25*G + 0.15*T + 0.10*P)` trên thang `0–100`: từng điểm đóng góp thành phần (`score_contributions`: `50*C`, `25*G`, `15*T`, `10*P`) và điểm tổng `score` làm tròn **2 chữ số thập phân** (`50.0 + 25.0 + 15.0 + 5.0 = 95.0`; `50.0 + 21.25 + 7.5 + 5.0 = 83.75`) để tổng đóng góp tuyến tính XAI luôn khớp khít tuyệt đối với `score`.
 - Ngôn ngữ phản hồi nội dung người dùng: tiếng Việt; tên code/path/field: tiếng Anh `snake_case`.
 
 ## 2. Danh sách endpoint thiết kế
@@ -100,7 +99,7 @@
 | 1 | `IMAGE_TOO_LARGE` | 413 | Ảnh upload vượt quá 5 MiB (`details: {"max_bytes": 5242880}`) |
 | 2 | `UNSUPPORTED_IMAGE_TYPE` | 415 | Định dạng/magic bytes không thuộc JPEG/PNG/WebP, ví dụ HEIC/TIFF/SVG (`details: {"allowed_types": ["image/jpeg", "image/png", "image/webp"]}`) |
 | 3 | `INVALID_IMAGE` | 422 | Header là JPEG/PNG/WebP nhưng dữ liệu ảnh hỏng, không giải mã được RGB hoặc quá giới hạn pixel (`details: {"reason": "corrupted_or_unreadable_image"}`) |
-| 4 | `INVALID_INGREDIENTS` | 422 | Danh sách nguyên liệu gửi lên `/recommendations` không hợp lệ (`details: {"invalid_ids": ["<uuid>"], "reason": "empty_main_ingredients" \| "pantry_in_main_list" \| "non_pantry_in_excluded_list" \| "unknown_or_inactive_id"}`) |
+| 4 | `INVALID_INGREDIENTS` | 422 | Danh sách nguyên liệu gửi lên `/recommendations` không hợp lệ (`details: {"invalid_ids": ["<uuid>"], "reason": "empty_main_ingredients" \| "pantry_in_main_list" \| "main_not_in_ingredient_ids" \| "non_pantry_in_excluded_list" \| "non_pantry_in_kitchen_spices" \| "unknown_or_inactive_id"}`) |
 | 5 | `RECIPE_NOT_PUBLISHABLE` | 400 | Công thức không đủ điều kiện chuyển sang hoặc duy trì trạng thái `published` (`details: {"recipe_id": "<uuid>", "reasons": ["missing_required_main_ingredient" \| "inactive_ingredient" \| "missing_steps" \| "step_exceeds_total_minutes"]}`) |
 | 6 | `UNAUTHORIZED` | 401 | Chưa đăng nhập hoặc JWT token hết hạn/không hợp lệ (`details: {}`) |
 | 7 | `FORBIDDEN` | 403 | Đã đăng nhập nhưng không có quyền Admin (`details: {}`) |
@@ -147,6 +146,6 @@
 1. Nhóm thiết kế cùng review file OpenAPI trước coding.
 2. Backend dùng Pydantic tạo schema và các route khớp contract; khi chạy kiểm `/openapi.json`.
 3. Frontend sinh typed client nếu cần, hoặc viết mock theo examples; không hardcode class name, dùng `ingredient_id`.
-4. Mọi thay đổi breaking API (ví dụ khi nâng cấp schema `/recommendations` từ `Scoring v1.0` lên `Scoring v1.1`) cần cập nhật đồng bộ `openapi.yaml`, README, consumer FE, test API và ghi changelog/ADR (`NFR-10`).
+4. Mọi thay đổi breaking API trên hợp đồng (ví dụ khi cập nhật schema `/recommendations` theo [`ADR-013`](../07-decisions/ADR-013-unified-mcda-and-ingredient-personalization.md)) bắt buộc cập nhật đồng bộ `openapi.yaml`, README, consumer FE, test API và ghi changelog/ADR (`NFR-10`).
 
 **Swagger**: ở môi trường FastAPI chạy thật, `/docs` hiển thị Swagger UI, `/redoc` hiển thị ReDoc. Đây không phải trang tài liệu đã hoạt động tại thời điểm viết đặc tả này.

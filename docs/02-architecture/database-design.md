@@ -1,6 +1,6 @@
 # Thiết kế Database, Cơ sở Tri thức và Tìm kiếm Tiếng Việt
 
-**Phiên bản:** `1.0.0` · **DB:** PostgreSQL >= 15 (Supabase) · **Trạng thái:** Chính thức (`Approved Baseline`)
+**Phiên bản:** `1.1.0` · **DB:** PostgreSQL >= 15 (Supabase) · **Trạng thái:** Chính thức (`Approved Baseline`)
 
 ## 1. Cơ sở biểu diễn tri thức nguyên liệu – món ăn (Thành phần 03)
 
@@ -12,12 +12,13 @@ Về mặt toán học, quan hệ xuất hiện cơ bản giữa nguyên liệu 
 M_{ij} = \begin{cases} 1, & \text{nếu nguyên liệu } i \text{ xuất hiện trong công thức } j \\ 0, & \text{ngược lại} \end{cases}
 \]
 
-Để phục vụ cả hợp đồng cốt lõi MVP (`Scoring v1.0`) lẫn lộ trình nâng cấp thông minh (`Scoring v1.1` — suy luận 3 trạng thái Thành phần 04, độ phủ có trọng số Thành phần 05, cá nhân hóa Thành phần 08, quy đổi khẩu phần Thành phần 10 và ước tính dinh dưỡng USDA Thành phần 11), bảng nối `recipe_ingredients` và các bảng vệ tinh mở rộng $M_{ij}$ bằng:
+Để phục vụ công thức chấm điểm MCDA 4 tiêu chí hợp nhất (`C, G, T, P` theo [`ADR-013`](../07-decisions/ADR-013-unified-mcda-and-ingredient-personalization.md)), suy luận 3 trạng thái Thành phần 04, cá nhân hóa Thành phần 08, quy đổi khẩu phần Thành phần 10 và ước tính dinh dưỡng USDA Thành phần 11, bảng nối `recipe_ingredients` và các bảng vệ tinh mở rộng $M_{ij}$ bằng:
 
-- **Phân tách nguyên liệu chính và gia vị nền (`pantry`):** `ingredients.category = 'pantry'` tách muối, đường, nước mắm, dầu ăn... khỏi tập nguyên liệu chính nhận diện qua ảnh; người dùng có thể báo hết gia vị qua `excluded_pantry_ids` (xem [ADR-008](../07-decisions/ADR-008-pantry-ingredients-handling.md)).
-- **Vai trò & trọng số theo từng món** (`is_required`, `role`, `weight` $w_{r,i} > 0$).
+- **Phân tách nguyên liệu và gia vị bếp (`pantry`):** `ingredients.category = 'pantry'` tách muối, đường, nước mắm, dầu ăn, tiêu xay... khỏi tập nguyên liệu nhận diện qua ảnh; người dùng lưu danh sách gia vị có trong bếp (`kitchen_spice_ids` trong `user_preferences`) hoặc bật/tắt nhanh qua `excluded_pantry_ids` (xem [ADR-008](../07-decisions/ADR-008-pantry-ingredients-handling.md)).
+- **Trọng số độ đủ $C$ & Tag vai trò $G$ theo từng món:** `role` (`core` $=4$, `secondary` $=2$, `spice` $=1$, `optional` ngoài tập bắt buộc $R_r$), `weight` ($w_{r,i}$), `is_required` và `dish_role` (`main` $\to g=1.0$, `sub` $\to g=0.5$).
+- **Thời gian nấu quy đổi giờ $T$:** `prep_minutes + cook_minutes > 0` quy đổi sang giờ $t_r = (\text{prep\_minutes} + \text{cook\_minutes}) / 60.0 > 0$.
 - **Định lượng chuẩn** (`grams` phần ăn được ứng với `base_servings` của món, dùng cho quy đổi khẩu phần và dinh dưỡng Tầng 2 USDA).
-- **Ràng buộc an toàn & chế biến** (`allergens` / `ingredient_allergens`, `required_equipment`, `cooking_method`, `quality_score`).
+- **Hồ sơ cá nhân hóa & Ràng buộc an toàn:** `user_preferences` lưu 3 danh sách nguyên liệu cá nhân hóa (`allergic_ingredient_ids`, `kitchen_spice_ids`, `favorite_ingredient_ids`) cùng nhóm `allergens` / `ingredient_allergens`.
 
 ## 2. Sơ đồ ERD
 
@@ -84,6 +85,7 @@ erDiagram
         uuid ingredient_id PK,FK
         bool is_required
         text role
+        text dish_role
         float weight
         float grams
         text display_quantity
@@ -122,6 +124,9 @@ erDiagram
     }
     USER_PREFERENCES {
         uuid user_id PK,FK
+        jsonb allergic_ingredient_ids
+        jsonb kitchen_spice_ids
+        jsonb favorite_ingredient_ids
         jsonb excluded_allergen_ids
         jsonb available_equipment
         jsonb lr_weights
@@ -169,9 +174,9 @@ Với truy vấn đầu vào $q$, hàm tương đồng $\text{Score}(q, a) = \te
 
 1. `ingredients.id` là khóa UUID ổn định, **không dùng tên nguyên liệu hoặc chỉ số `class_index` của YOLO làm khóa nghiệp vụ**. Hệ thống không có endpoint xóa cứng (`DELETE`) đối với `ingredients` và `recipes`; chỉ hỗ trợ xóa mềm/lưu trữ (`ingredients.is_active = false`, `recipes.status = 'archived'`).
 2. `ai_labels` thuộc một `ai_models` cụ thể: `(model_id, class_index)` là duy nhất. Khi thay model, `class_index` có thể đổi; luôn ánh xạ lại `model-label → ingredient` (chỉ cho phép trỏ tới nguyên liệu hoạt động không thuộc nhóm gia vị nền `pantry`).
-3. `recipe_ingredients` là bảng nối N–N giữa món và nguyên liệu, có `is_required` để phân biệt thành phần bắt buộc hay tùy chọn, đồng thời mở rộng `role` (`primary` / `essential` / `secondary`), `weight` ($w_{r,i} > 0$, mặc định `1.00`) cho độ phủ có trọng số và `grams` (nullable) cho quy đổi khẩu phần & dinh dưỡng USDA. Nguyên liệu thuộc `category = 'pantry'` được dùng để hiển thị và kiểm tra loại trừ qua `excluded_pantry_ids`, không làm phồng điểm độ phủ khi sẵn có (xem [ADR-008](../07-decisions/ADR-008-pantry-ingredients-handling.md)).
+3. `recipe_ingredients` là bảng nối N–N giữa món và nguyên liệu, có `is_required` để phân biệt thành phần bắt buộc hay tùy chọn, `role` (`core` / `secondary` / `spice` / `optional`), `weight` ($w_{r,i}$ lưu trọng số cho $C$: `4`, `2`, `1`, và `0` cho `optional`), `dish_role` (`main` / `sub` lưu tag chính/phụ cho $G$) và `grams` (nullable) cho quy đổi khẩu phần & dinh dưỡng USDA. Nguyên liệu thuộc `category = 'pantry'` được đối chiếu với `kitchen_spice_ids` / `excluded_pantry_ids` để đưa vào tập $A$ (xem [ADR-008](../07-decisions/ADR-008-pantry-ingredients-handling.md), [ADR-013](../07-decisions/ADR-013-unified-mcda-and-ingredient-personalization.md)).
 4. `recipe_steps` chứa các bước nấu có thứ tự `(recipe_id, step_no)` duy nhất.
-5. `total_minutes` tính bằng `prep_minutes + cook_minutes` trong API/DB query (trong đó `cook_minutes` bao gồm cả thời gian ướp/ủ/chờ bắt buộc theo [ADR-009](../07-decisions/ADR-009-cooking-and-waiting-time.md)), **không lưu cột tổng lặp lại**.
+5. `total_minutes` tính bằng `prep_minutes + cook_minutes > 0` trong API/DB query (trong đó `cook_minutes` bao gồm cả thời gian ướp/ủ/chờ bắt buộc theo [ADR-009](../07-decisions/ADR-009-cooking-and-waiting-time.md)), và quy đổi sang đơn vị giờ $t_r = \text{total\_minutes} / 60.0 > 0$ khi tính $T(r)$, **không lưu cột tổng lặp lại**.
 6. **Dinh dưỡng hai tầng & Truy vết dị ứng chuẩn xác:** ở MVP (`P0`), `nutrition_tags` là mô tả định tính gắn với nguyên liệu qua `ingredient_nutrition_tags`, không hiển thị kcal/g khi thiếu khối lượng xác thực. Ở Giai đoạn 3 (`P1`), `ingredient_nutrients` lưu hàm lượng trên $100\text{ g}$ từ USDA FoodData Central chỉ dùng khi có `grams` kiểm duyệt/người dùng nhập (xem [ADR-004](../07-decisions/ADR-004-nutrition.md)). Ở Giai đoạn 2, tác nhân dị ứng được gắn ở mức nguyên liệu (`ingredient_allergens`) để kiểm tra $\text{DietOK}(r, u)$ dựa trên thành phần đã kiểm duyệt chứ không dò từ khóa tên món.
 7. `scan_sessions`, `scan_detections`, `scan_ingredients` **chỉ sinh bản ghi khi User đã đăng nhập và chủ động bật lưu lịch sử (`save_history = true`)**; không lưu ảnh gốc ở MVP.
 8. `favorites`, `recommendation_feedback` và `user_preferences` luôn thuộc user hiện tại; `audit_logs` chỉ server được tạo, client không tự ghi.
@@ -182,8 +187,8 @@ Với truy vấn đầu vào $q$, hàm tương đồng $\text{Score}(q, a) = \te
 | `ingredient_aliases` | `UNIQUE(ingredient_id, normalized_alias, locale)`, `FK ON DELETE CASCADE`, GIN index `gin_trgm_ops` |
 | `ai_models` | `UNIQUE(version)`; `status IN ('draft', 'active', 'archived')`; chỉ **một** model `active` (unique partial index); `confidence_threshold` và `review_threshold` trong `[0, 1]`; mapping của model `active`/`archived` không được sửa tại chỗ (`400 MODEL_IMMUTABLE`) |
 | `ai_labels` | `UNIQUE(model_id, class_index)`; FK model (`ON DELETE CASCADE`) và ingredient (`ON DELETE RESTRICT`); backend enforce `ingredient.category != 'pantry'` và `ingredient.is_active = true` |
-| `recipes` | `UNIQUE(slug)`; `prep_minutes >= 0`, `cook_minutes >= 0`, `base_servings >= 1`, `0 <= quality_score <= 1`; bắt buộc có ít nhất 1 bước + 1 required ingredient thuộc nhóm chính (`category != 'pantry'`), mọi nguyên liệu trong món đều `is_active = true`, và không có bước đơn lẻ nào có `estimated_minutes > prep_minutes + cook_minutes` mới được giữ/chuyển sang `published` |
-| `recipe_ingredients` | `PK(recipe_id, ingredient_id)`; FK recipe (`ON DELETE CASCADE`), FK ingredient (`ON DELETE RESTRICT`); `is_required NOT NULL`; `role IN ('primary', 'essential', 'secondary')`; `weight > 0`; `grams IS NULL OR grams > 0` |
+| `recipes` | `UNIQUE(slug)`; `prep_minutes >= 0`, `cook_minutes >= 0`, `prep_minutes + cook_minutes > 0` ($t_r > 0$), `base_servings >= 1`, `0 <= quality_score <= 1`; bắt buộc có ít nhất 1 bước + 1 required ingredient thuộc nhóm chính (`category != 'pantry'`), mọi nguyên liệu trong món đều `is_active = true`, và không có bước đơn lẻ nào có `estimated_minutes > prep_minutes + cook_minutes` mới được giữ/chuyển sang `published` |
+| `recipe_ingredients` | `PK(recipe_id, ingredient_id)`; FK recipe (`ON DELETE CASCADE`), FK ingredient (`ON DELETE RESTRICT`); `is_required NOT NULL`; `role IN ('core', 'secondary', 'spice', 'optional')`; `dish_role IN ('main', 'sub')`; `(is_required = true AND weight > 0) OR (is_required = false AND weight >= 0)`; `grams IS NULL OR grams > 0` |
 | `recipe_steps` | `UNIQUE(recipe_id, step_no)`, `step_no >= 1`, `estimated_minutes >= 0` (nullable) |
 | `ingredient_nutrition_tags` | `PK(ingredient_id, nutrition_tag_id)`; `source_url` bắt buộc khi công bố |
 | `ingredient_allergens` *(GĐ 2)* | `PK(ingredient_id, allergen_id)`, FK `ON DELETE CASCADE` / `RESTRICT` |
