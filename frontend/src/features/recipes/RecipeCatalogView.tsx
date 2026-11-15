@@ -12,10 +12,12 @@ import { RecipePagination } from './components/RecipePagination';
 
 export interface RecipeCatalogViewProps {
   pageSize?: number;
+  onSelectRecipe?: (recipeId: string) => void;
 }
 
 export const RecipeCatalogView: React.FC<RecipeCatalogViewProps> = ({
   pageSize = 8,
+  onSelectRecipe,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -159,7 +161,11 @@ export const RecipeCatalogView: React.FC<RecipeCatalogViewProps> = ({
             className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-4"
           >
             {recipes.map((recipe) => (
-              <RecipeCard key={recipe.id} recipe={recipe} />
+              <RecipeCard
+                key={recipe.id}
+                recipe={recipe}
+                onSelectRecipe={onSelectRecipe}
+              />
             ))}
           </div>
 

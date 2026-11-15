@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Utensils } from 'lucide-react';
+import { ArrowRight, Utensils } from 'lucide-react';
 import { CuisineCode, RecipeSummary } from '../../../shared/api/types';
 
 export interface RecipeCardProps {
   recipe: RecipeSummary;
+  onSelectRecipe?: (recipeId: string) => void;
 }
 
 const CUISINE_DESC_MAP: Record<CuisineCode, string> = {
@@ -12,7 +13,10 @@ const CUISINE_DESC_MAP: Record<CuisineCode, string> = {
   US: 'Phong cách ẩm thực hiện đại, giàu năng lượng và chế biến nhanh gọn',
 };
 
-export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe }) => {
+export const RecipeCard: React.FC<RecipeCardProps> = ({
+  recipe,
+  onSelectRecipe,
+}) => {
   const [imageError, setImageError] = useState(false);
 
   const descriptionText = `${CUISINE_DESC_MAP[recipe.cuisine_code]}, hoàn thiện nhanh trong ${recipe.total_minutes} phút (sơ chế ${recipe.prep_minutes}p, nấu ${recipe.cook_minutes}p).`;
@@ -22,7 +26,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe }) => {
       data-testid={`recipe-card-${recipe.slug}`}
       className="group relative flex flex-col items-center pt-14"
     >
-      {/* MỤC 2 — Đĩa món ăn hình tròn nổi chồng lên nửa trên của thẻ (Bám sát 100% mẫu "Our Special Recipes" trong web-6-newtaste-recipe-website.jpg) */}
+      {/* MỤC 2 — Đĩa món ăn hình tròn nổi chồng lên nửa trên của thẻ (NEWTASTE) */}
       <div className="relative z-10 -mb-14 h-32 w-32 shrink-0 overflow-hidden rounded-full border-4 border-white bg-[#181512] shadow-[0_12px_28px_rgba(24,21,18,0.18)] transition duration-300 group-hover:scale-105 sm:h-36 sm:w-36">
         {recipe.cover_image_url && !imageError ? (
           <img
@@ -40,11 +44,22 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe }) => {
         )}
       </div>
 
-      {/* Thân thẻ trắng bo góc bất đối xứng + Tiêu đề Serif căn giữa + Mô tả 3 dòng căn giữa y đúc web-6-newtaste-recipe-website.jpg */}
-      <div className="flex w-full flex-1 flex-col items-center justify-between rounded-bl-[12px] rounded-br-[30px] rounded-tl-[30px] rounded-tr-[12px] border border-[#E6DACB] bg-white px-5 pb-7 pt-16 text-center shadow-[0_10px_26px_rgba(24,21,18,0.05)] transition duration-200 group-hover:-translate-y-1 group-hover:shadow-[0_16px_34px_rgba(24,21,18,0.09)] sm:pt-20">
+      {/* Thân thẻ trắng bo góc bất đối xứng */}
+      <div className="relative flex w-full flex-1 flex-col items-center justify-between rounded-bl-[12px] rounded-br-[30px] rounded-tl-[30px] rounded-tr-[12px] border border-[#E6DACB] bg-white px-5 pb-7 pt-16 text-center shadow-[0_10px_26px_rgba(24,21,18,0.05)] transition duration-200 group-hover:-translate-y-1 group-hover:shadow-[0_16px_34px_rgba(24,21,18,0.09)] sm:pt-20">
         <div>
           <h3 className="line-clamp-2 font-serif text-[16px] font-bold leading-snug text-[#181512] transition group-hover:text-[#E87838]">
-            {recipe.name_vi}
+            {onSelectRecipe ? (
+              <button
+                type="button"
+                data-testid={`open-recipe-${recipe.slug}`}
+                onClick={() => onSelectRecipe(recipe.id)}
+                className="text-center after:absolute after:inset-0 after:content-[''] focus:outline-none"
+              >
+                {recipe.name_vi}
+              </button>
+            ) : (
+              recipe.name_vi
+            )}
           </h3>
 
           <p className="mt-2.5 line-clamp-3 text-[12px] leading-relaxed text-[#6E655C]">
@@ -52,9 +67,18 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe }) => {
           </p>
         </div>
 
-        <p className="mt-3 text-[11px] font-semibold tabular-nums text-[#E87838]">
-          {recipe.total_minutes} phút • Sơ chế {recipe.prep_minutes}p
-        </p>
+        <div className="mt-3 flex flex-col items-center gap-1.5">
+          <p className="text-[11px] font-semibold tabular-nums text-[#C2591B]">
+            {recipe.total_minutes} phút • Sơ chế {recipe.prep_minutes}p
+          </p>
+
+          {onSelectRecipe && (
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#181512] opacity-80 transition group-hover:text-[#E87838] group-hover:opacity-100">
+              <span>Xem công thức</span>
+              <ArrowRight className="h-3 w-3" aria-hidden="true" />
+            </span>
+          )}
+        </div>
       </div>
     </article>
   );

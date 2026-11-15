@@ -1,7 +1,7 @@
 import React from 'react';
 import { Menu, ArrowRight, ExternalLink, UtensilsCrossed } from 'lucide-react';
 
-export type ActiveTab = 'catalog' | 'kitchen';
+export type ActiveTab = 'catalog' | 'kitchen' | 'recommendations';
 
 export interface AppLayoutProps {
   activeTab: ActiveTab;
@@ -78,6 +78,25 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
                 <span className="absolute -bottom-1 left-0 right-0 h-[2px] rounded-full bg-[#E87838]" />
               )}
             </button>
+
+            <button
+              type="button"
+              data-testid="nav-tab-recommendations"
+              aria-current={
+                activeTab === 'recommendations' ? 'page' : undefined
+              }
+              onClick={() => onTabChange('recommendations')}
+              className={`relative py-1 text-[12px] font-semibold uppercase tracking-[0.16em] transition ${
+                activeTab === 'recommendations'
+                  ? 'text-[#E87838]'
+                  : 'text-[#181512] hover:text-[#E87838]'
+              }`}
+            >
+              Gợi ý món ăn
+              {activeTab === 'recommendations' && (
+                <span className="absolute -bottom-1 left-0 right-0 h-[2px] rounded-full bg-[#E87838]" />
+              )}
+            </button>
           </nav>
 
           {/* Phải: Nút đen Espresso (#181512) + Nút vuông cam (#E87838) đồng điệu với cặp nút Discover / Create Recipe của New Taste */}
@@ -105,7 +124,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         </div>
 
         {/* Thanh điều hướng rút gọn trên màn hình nhỏ (Mobile) */}
-        <div className="flex items-center justify-center gap-6 border-t border-[#DFD3C3] py-2.5 md:hidden">
+        <div className="flex flex-wrap items-center justify-center gap-4 border-t border-[#DFD3C3] py-2.5 md:hidden">
           <button
             type="button"
             onClick={() => onTabChange('catalog')}
@@ -123,6 +142,17 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
             }`}
           >
             Chọn nguyên liệu ({selectedMainCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => onTabChange('recommendations')}
+            className={`text-[11px] font-semibold uppercase tracking-[0.15em] ${
+              activeTab === 'recommendations'
+                ? 'text-[#E87838]'
+                : 'text-[#6E655C]'
+            }`}
+          >
+            Gợi ý món ăn
           </button>
         </div>
       </header>
@@ -192,7 +222,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
                   <li>
                     <button
                       type="button"
-                      onClick={() => onTabChange('kitchen')}
+                      onClick={() => onTabChange('recommendations')}
                       className="inline-flex items-center gap-1.5 font-medium text-[#E87838] transition hover:underline"
                     >
                       <span>Gợi ý Món ăn</span>
