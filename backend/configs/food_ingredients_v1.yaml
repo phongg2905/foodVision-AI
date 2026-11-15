@@ -1,0 +1,38 @@
+# =============================================================================
+# FoodVision AI — Canonical Ultralytics YOLO Dataset Configuration (v1.0.0)
+# Card #19 (fVvygYRs): 20 Candidate Ingredient Classes (0..19)
+# References:
+#   - docs/04-ai-model/label-catalog.md (Section 1 & Section 2)
+#   - docs/04-ai-model/dataset-and-evaluation.md (Section 2 & Section 3)
+#   - BR-12, ADR-008: Strictly excludes all 5 pantry spices
+#     (muoi/salt, duong/sugar, nuoc-mam/fish_sauce, dau-an/cooking_oil, hat-tieu/black_pepper)
+# =============================================================================
+
+path: ../datasets/processed/food-ingredients-v1
+train: images/train
+val: images/val
+test: images/test
+
+nc: 20
+
+names:
+  0: tomato
+  1: egg
+  2: potato
+  3: carrot
+  4: onion
+  5: garlic
+  6: chili_pepper
+  7: cucumber
+  8: cabbage
+  9: broccoli
+  10: mushroom
+  11: tofu
+  12: raw_chicken
+  13: raw_pork
+  14: raw_shrimp
+  15: whole_fish
+  16: ginger
+  17: scallion
+  18: bell_pepper
+  19: sweet_corn
