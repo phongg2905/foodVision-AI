@@ -4,7 +4,7 @@ Validates `supabase/seed.sql` against:
 - Card #7 (`[GD1 - TP03, TP10]`):
   1. >= 20 main non-pantry ingredients aligned 1-to-1 with `class_index (0..19)` in `docs/04-ai-model/label-catalog.md` + VN/EU/US culinary extras.
   2. Exact 5 pantry spices (`category = 'pantry'`: Muoi, Duong, Nuoc mam, Dau an, Hat tieu) with NO water record (`BR-04`, `BR-12`, `ADR-008`) + regional synonyms in `ingredient_aliases`.
-  3. Published sample recipes across all 3 cuisines (`VN`, `EU`, `US`) satisfying all 4 `BR-01` conditions, including canonical benchmark dishes `"Cà chua nhồi thịt sốt trứng"` and `"Trứng xào cà chua"` (`MATH-01..07`, `S=89.0` / `S=68.1`).
+  3. Published sample recipes across all 3 cuisines (`VN`, `EU`, `US`) satisfying all 4 `BR-01` conditions, including canonical benchmark dishes `"Cà chua nhồi thịt sốt trứng"`, `"Đậu hũ sốt cà chua"` and `"Trứng xào cà chua"` (`ADR-013`, `MATH-01..07`, `S=95.0` / `S=83.75`).
   4. Tier-1 qualitative `nutrition_tags` + `ingredient_nutrition_tags` and Tier-2 USDA per-100g `ingredient_nutrients` with valid `https://` `source_url` (`BR-03`, `ADR-004`).
 """
 

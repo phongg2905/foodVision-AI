@@ -29,6 +29,8 @@
 | Favorites | POST | `/favorites` | User |
 | Favorites | DELETE | `/favorites/{recipe_id}` | User |
 | Feedback | POST | `/feedback` | User |
+| Preferences | GET | `/preferences` | User |
+| Preferences | PUT | `/preferences` | User |
 | Scan history | GET | `/scan-sessions` | User |
 | Scan history | GET | `/scan-sessions/{scan_id}` | User |
 | Scan history | DELETE | `/scan-sessions/{scan_id}` | User |
@@ -52,7 +54,7 @@
 | Admin AI | PATCH | `/admin/ai-labels/{label_id}` | Admin |
 | Admin audit | GET | `/admin/audit-logs` | Admin |
 
-**Tổng:** 33 operations. Một đường dẫn REST có thể có nhiều operations. Định nghĩa chính xác ở [`openapi.yaml`](./openapi.yaml).
+**Tổng:** 35 operations (26 paths). Một đường dẫn REST có thể có nhiều operations. Định nghĩa chính xác ở [`openapi.yaml`](./openapi.yaml).
 
 ## 3. Mã HTTP và JSON lỗi
 

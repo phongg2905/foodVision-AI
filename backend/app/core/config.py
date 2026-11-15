@@ -25,7 +25,7 @@ _load_dotenv()
 @dataclass(frozen=True)
 class Settings:
     app_name: str = "FoodVision AI REST API — Official Contract"
-    app_version: str = "1.0.0"
+    app_version: str = "1.1.0"
     app_env: str = field(default_factory=lambda: os.getenv("APP_ENV", "development"))
     supabase_url: str = field(
         default_factory=lambda: os.getenv("SUPABASE_URL", "https://aqjeztwtqkhvjjxnsijs.supabase.co")

@@ -1,10 +1,10 @@
 -- ============================================================================
 -- Seed File : supabase/seed.sql
--- Project   : FoodVision AI (v1.0.0 Baseline — Stage 1 TV1 Seed Data)
--- Owner     : TV1 (Minh Thanh — AI, ML & Data Content Lead) — Card #7 (TREpau6B)
+-- Project   : FoodVision AI (v1.1.0 Baseline — Stage 1 Seed Data & ADR-013)
+-- Owner     : TV1 (Minh Thanh — AI, ML & Data Content Lead) & TV2 (DB Sync)
 -- References: docs/04-ai-model/label-catalog.md
 --             docs/05-recommendation/nutrition-and-content.md
---             docs/05-recommendation/recommendation-design.md
+--             docs/05-recommendation/recommendation-design.md (ADR-013: 4-2-1-0 & main/sub)
 --             supabase/migrations/20261104000001_initial_schema.sql
 -- Notes     : Idempotent (ON CONFLICT DO UPDATE). Safe to re-run (OPS-02).
 -- ============================================================================
@@ -320,8 +320,9 @@ SET kcal_100g = EXCLUDED.kcal_100g,
     reviewed_at = EXCLUDED.reviewed_at;
 
 -- ============================================================================
--- 6. PUBLISHED SAMPLE RECIPES ACROSS VN / EU / US (TP 10, BR-01, BR-05)
---    Includes "Cà chua nhồi thịt sốt trứng" (Card #7) & "Trứng xào cà chua" (13m).
+-- 6. PUBLISHED SAMPLE RECIPES ACROSS VN / EU / US (TP 10, BR-01, BR-05, ADR-013)
+--    Includes "Cà chua nhồi thịt sốt trứng" (Card #7), "Đậu hũ sốt cà chua" (30m)
+--    & "Trứng xào cà chua" (15m) matching Table E.1 (S=95.0 / 100.0 / 90.0 / 75.0 / 83.75).
 -- ============================================================================
 INSERT INTO public.recipes (
     id, slug, name_vi, description, cuisine_code, country_code, cooking_method,
@@ -332,7 +333,7 @@ VALUES
     ('22222222-2222-4222-8222-222222222201', 'dau-hu-sot-ca-chua', 'Đậu hũ sốt cà chua', 'Món đậu hũ chiên rim sốt cà chua thanh đạm, đưa cơm gia đình Việt.', 'VN', 'VN', 'braise', ARRAY['pan', 'stove'], 2, 10, 20, 0.950, 'FoodVision Editorial', 'https://foodvision.local/recipes/dau-hu-sot-ca-chua', 'CC-BY-4.0', 'published', '00000000-0000-4000-8000-000000000001'),
     ('22222222-2222-4222-8222-222222222202', 'canh-ca-chua-trung', 'Canh cà chua trứng', 'Canh trứng vân mây nấu cà chua thanh mát hoàn tất trong 15 phút.', 'VN', 'VN', 'boil', ARRAY['pot', 'stove'], 2, 5, 10, 0.920, 'FoodVision Editorial', 'https://foodvision.local/recipes/canh-ca-chua-trung', 'CC-BY-4.0', 'published', '00000000-0000-4000-8000-000000000001'),
     ('22222222-2222-4222-8222-222222222203', 'ca-chua-nhoi-thit-sot-trung', 'Cà chua nhồi thịt sốt trứng', 'Món chuẩn kiểm chứng: cà chua chín nhồi thịt heo băm quyện sốt trứng sánh mịn.', 'VN', 'VN', 'braise', ARRAY['pan', 'stove'], 2, 10, 15, 0.980, 'FoodVision Editorial', 'https://foodvision.local/recipes/ca-chua-nhoi-thit-sot-trung', 'CC-BY-4.0', 'published', '00000000-0000-4000-8000-000000000001'),
-    ('22222222-2222-4222-8222-222222222204', 'trung-xao-ca-chua', 'Trứng xào cà chua', 'Món xào nhanh 15 phút phục vụ kiểm chứng chuẩn điểm MCDA v1.1 (S=95.0, S=90.0, S=75.0).', 'VN', 'VN', 'stir_fry', ARRAY['pan', 'stove'], 2, 5, 10, 1.000, 'FoodVision Editorial', 'https://foodvision.local/recipes/trung-xao-ca-chua', 'CC-BY-4.0', 'published', '00000000-0000-4000-8000-000000000001'),
+    ('22222222-2222-4222-8222-222222222204', 'trung-xao-ca-chua', 'Trứng xào cà chua', 'Món trứng gà xào cà chua mềm mọng hoàn thành trong 15 phút (chuẩn kiểm chứng MCDA ADR-013).', 'VN', 'VN', 'stir_fry', ARRAY['pan', 'stove'], 2, 5, 10, 1.000, 'FoodVision Editorial', 'https://foodvision.local/recipes/trung-xao-ca-chua', 'CC-BY-4.0', 'published', '00000000-0000-4000-8000-000000000001'),
     ('22222222-2222-4222-8222-222222222205', 'mi-y-sot-ca-chua-thit-bam', 'Mì Ý sốt cà chua thịt băm', 'Mì Spaghetti kiểu Âu nấu sốt cà chua, hành tây, tỏi và thịt bò băm.', 'EU', 'IT', 'simmer', ARRAY['pot', 'pan', 'stove'], 2, 10, 20, 0.950, 'FoodVision Editorial', 'https://foodvision.local/recipes/mi-y-sot-ca-chua-thit-bam', 'CC-BY-4.0', 'published', '00000000-0000-4000-8000-000000000001'),
     ('22222222-2222-4222-8222-222222222206', 'bong-cai-xanh-nam-ap-chao-bo-toi', 'Bông cải xanh và nấm áp chảo bơ tỏi', 'Món rau củ kiểu Âu nhanh gọn 14 phút giữ trọn độ giòn ngọt tự nhiên.', 'EU', 'FR', 'pan_sear', ARRAY['pan', 'stove'], 2, 6, 8, 0.930, 'FoodVision Editorial', 'https://foodvision.local/recipes/bong-cai-xanh-nam-ap-chao-bo-toi', 'CC-BY-4.0', 'published', '00000000-0000-4000-8000-000000000001'),
     ('22222222-2222-4222-8222-222222222207', 'burger-bo-pho-mai-kieu-my', 'Burger bò phô mai kiểu Mỹ', 'Bánh burger nhân thịt bò áp chảo phủ phô mai Cheddar, cà chua và xà lách.', 'US', 'US', 'grill', ARRAY['pan', 'stove'], 2, 10, 12, 0.940, 'FoodVision Editorial', 'https://foodvision.local/recipes/burger-bo-pho-mai-kieu-my', 'CC-BY-4.0', 'published', '00000000-0000-4000-8000-000000000001'),
@@ -354,25 +355,25 @@ SET slug = EXCLUDED.slug,
     content_license = EXCLUDED.content_license,
     status = EXCLUDED.status;
 
--- CONFLICT-RESOLVED: Synchronize recipe_ingredients role ('core'/'secondary'/'spice'/'optional'),
--- dish_role ('main'/'sub') and 4-2-1-0 weight scale with PR #11 (ADR-013 v1.1.0 schema upgrade).
+-- CONFLICT-RESOLVED: Synchronize TV1 Stage 1 seed rows with PR #11 & PR #12 (ADR-013 v1.1.0):
+-- role IN ('core', 'secondary', 'spice', 'optional'), dish_role IN ('main', 'sub'), weight scale 4.00 / 2.00 / 1.00 / 0.00.
 INSERT INTO public.recipe_ingredients (
     recipe_id, ingredient_id, is_required, role, dish_role, weight, grams, display_quantity, sort_order
 )
 VALUES
-    -- 1. Đậu hũ sốt cà chua (VN — 30m = 0.50h, Scenario 2 benchmark: S=83.75)
+    -- 1. Đậu hũ sốt cà chua (VN — 30m = 0.50h, Table E.1 S=83.75)
     ('22222222-2222-4222-8222-222222222201', '11111111-1111-4111-8111-111111111103', true, 'core', 'main', 4.00, 200.00, '2 bìa', 1),
     ('22222222-2222-4222-8222-222222222201', '11111111-1111-4111-8111-111111111101', true, 'secondary', 'sub', 2.00, 150.00, '2 quả', 2),
     ('22222222-2222-4222-8222-222222222201', '11111111-1111-4111-8111-111111111105', false, 'optional', 'sub', 0.00, 15.00, '2 nhánh', 3),
     ('22222222-2222-4222-8222-222222222201', '11111111-1111-4111-8111-111111111106', true, 'spice', 'sub', 1.00, 5.00, '1 muỗng cà phê', 4),
     ('22222222-2222-4222-8222-222222222201', '11111111-1111-4111-8111-111111111108', true, 'spice', 'sub', 1.00, 15.00, '1 muỗng canh', 5),
-    -- 2. Canh cà chua trứng (VN — <= 15m)
+    -- 2. Canh cà chua trứng (VN — 15m = 0.25h)
     ('22222222-2222-4222-8222-222222222202', '11111111-1111-4111-8111-111111111101', true, 'core', 'main', 4.00, 100.00, '1 quả lớn', 1),
     ('22222222-2222-4222-8222-222222222202', '11111111-1111-4111-8111-111111111102', true, 'core', 'main', 4.00, 60.00, '1 quả lớn', 2),
     ('22222222-2222-4222-8222-222222222202', '11111111-1111-4111-8111-111111111105', false, 'optional', 'sub', 0.00, 10.00, '1 nhánh', 3),
     ('22222222-2222-4222-8222-222222222202', '11111111-1111-4111-8111-111111111106', true, 'spice', 'sub', 1.00, 4.00, '1/2 muỗng cà phê', 4),
     ('22222222-2222-4222-8222-222222222202', '11111111-1111-4111-8111-111111111108', true, 'spice', 'sub', 1.00, 5.00, '1 muỗng cà phê', 5),
-    -- 3. Cà chua nhồi thịt sốt trứng (VN — Canonical Card #7 dish)
+    -- 3. Cà chua nhồi thịt sốt trứng (VN — Canonical Card #7 dish, 25m)
     ('22222222-2222-4222-8222-222222222203', '11111111-1111-4111-8111-111111111101', true, 'core', 'main', 4.00, 200.00, '3 quả vừa', 1),
     ('22222222-2222-4222-8222-222222222203', '11111111-1111-4111-8111-111111111213', true, 'core', 'main', 4.00, 150.00, '150 g băm nhuyễn', 2),
     ('22222222-2222-4222-8222-222222222203', '11111111-1111-4111-8111-111111111102', true, 'secondary', 'sub', 2.00, 60.00, '1 quả', 3),
@@ -380,13 +381,13 @@ VALUES
     ('22222222-2222-4222-8222-222222222203', '11111111-1111-4111-8111-111111111107', true, 'spice', 'sub', 1.00, 10.00, '1 muỗng canh', 5),
     ('22222222-2222-4222-8222-222222222203', '11111111-1111-4111-8111-111111111108', true, 'spice', 'sub', 1.00, 10.00, '2 muỗng cà phê', 6),
     ('22222222-2222-4222-8222-222222222203', '11111111-1111-4111-8111-111111111110', true, 'spice', 'sub', 1.00, 2.00, '1/2 muỗng cà phê', 7),
-    -- 4. Trứng xào cà chua (VN — 15m = 0.25h, Scenario 1 benchmark: S=95.0 / S=90.0 / S=75.0)
+    -- 4. Trứng xào cà chua (VN — 15m = 0.25h, Table E.1 S=95.0 / 100.0 / 90.0 / 75.0)
     ('22222222-2222-4222-8222-222222222204', '11111111-1111-4111-8111-111111111101', true, 'core', 'main', 4.00, 150.00, '2 quả', 1),
-    ('22222222-2222-4222-8222-222222222204', '11111111-1111-4111-8111-111111111102', true, 'core', 'main', 4.00, 100.00, '2 quả', 2),
-    ('22222222-2222-4222-8222-222222222204', '11111111-1111-4111-8111-111111111105', false, 'optional', 'sub', 0.00, 15.00, '2 nhánh', 3),
-    ('22222222-2222-4222-8222-222222222204', '11111111-1111-4111-8111-111111111108', true, 'spice', 'sub', 1.00, 15.00, '1 muỗng canh', 4),
-    ('22222222-2222-4222-8222-222222222204', '11111111-1111-4111-8111-111111111107', true, 'spice', 'sub', 1.00, 10.00, '1 muỗng canh', 5),
-    -- 5. Mì Ý sốt cà chua thịt băm (EU)
+    ('22222222-2222-4222-8222-222222222204', '11111111-1111-4111-8111-111111111102', true, 'core', 'main', 4.00, 120.00, '2 quả', 2),
+    ('22222222-2222-4222-8222-222222222204', '11111111-1111-4111-8111-111111111105', false, 'optional', 'sub', 0.00, 10.00, '1 nhánh', 3),
+    ('22222222-2222-4222-8222-222222222204', '11111111-1111-4111-8111-111111111108', true, 'spice', 'sub', 1.00, 10.00, '2 muỗng cà phê', 4),
+    ('22222222-2222-4222-8222-222222222204', '11111111-1111-4111-8111-111111111107', true, 'spice', 'sub', 1.00, 8.00, '1.5 muỗng cà phê', 5),
+    -- 5. Mì Ý sốt cà chua thịt băm (EU — 30m)
     ('22222222-2222-4222-8222-222222222205', '11111111-1111-4111-8111-111111111302', true, 'core', 'main', 4.00, 160.00, '160 g mì khô', 1),
     ('22222222-2222-4222-8222-222222222205', '11111111-1111-4111-8111-111111111301', true, 'core', 'main', 4.00, 150.00, '150 g băm', 2),
     ('22222222-2222-4222-8222-222222222205', '11111111-1111-4111-8111-111111111101', true, 'secondary', 'sub', 2.00, 200.00, '3 quả chín', 3),
@@ -402,7 +403,7 @@ VALUES
     ('22222222-2222-4222-8222-222222222206', '11111111-1111-4111-8111-111111111205', true, 'spice', 'sub', 1.00, 10.00, '2 tép', 4),
     ('22222222-2222-4222-8222-222222222206', '11111111-1111-4111-8111-111111111106', true, 'spice', 'sub', 1.00, 3.00, '1/2 muỗng cà phê', 5),
     ('22222222-2222-4222-8222-222222222206', '11111111-1111-4111-8111-111111111110', true, 'spice', 'sub', 1.00, 2.00, '1/3 muỗng cà phê', 6),
-    -- 7. Burger bò phô mai kiểu Mỹ (US)
+    -- 7. Burger bò phô mai kiểu Mỹ (US — 22m)
     ('22222222-2222-4222-8222-222222222207', '11111111-1111-4111-8111-111111111301', true, 'core', 'main', 4.00, 200.00, '2 viên thịt bò xay', 1),
     ('22222222-2222-4222-8222-222222222207', '11111111-1111-4111-8111-111111111305', true, 'core', 'main', 4.00, 120.00, '2 vỏ bánh', 2),
     ('22222222-2222-4222-8222-222222222207', '11111111-1111-4111-8111-111111111304', true, 'secondary', 'sub', 2.00, 40.00, '2 lát', 3),
@@ -412,7 +413,7 @@ VALUES
     ('22222222-2222-4222-8222-222222222207', '11111111-1111-4111-8111-111111111108', true, 'spice', 'sub', 1.00, 5.00, '1 muỗng cà phê', 7),
     ('22222222-2222-4222-8222-222222222207', '11111111-1111-4111-8111-111111111106', true, 'spice', 'sub', 1.00, 3.00, '1/2 muỗng cà phê', 8),
     ('22222222-2222-4222-8222-222222222207', '11111111-1111-4111-8111-111111111110', true, 'spice', 'sub', 1.00, 2.00, '1/2 muỗng cà phê', 9),
-    -- 8. Bắp ngọt và khoai tây đút lò bơ tỏi (US — requires oven)
+    -- 8. Bắp ngọt và khoai tây đút lò bơ tỏi (US — requires oven, 35m)
     ('22222222-2222-4222-8222-222222222208', '11111111-1111-4111-8111-111111111219', true, 'core', 'main', 4.00, 150.00, '1 trái tách hạt', 1),
     ('22222222-2222-4222-8222-222222222208', '11111111-1111-4111-8111-111111111202', true, 'core', 'main', 4.00, 200.00, '2 củ cắt múi cau', 2),
     ('22222222-2222-4222-8222-222222222208', '11111111-1111-4111-8111-111111111303', true, 'secondary', 'sub', 2.00, 20.00, '1.5 muỗng canh', 3),
@@ -432,9 +433,9 @@ SET is_required = EXCLUDED.is_required,
 -- Every step estimated_minutes <= prep_minutes + cook_minutes (BR-01, BR-05)
 INSERT INTO public.recipe_steps (recipe_id, step_no, instruction, estimated_minutes)
 VALUES
-    -- 1. Đậu hũ sốt cà chua (total = 25m)
+    -- 1. Đậu hũ sốt cà chua (total = 30m)
     ('22222222-2222-4222-8222-222222222201', 1, 'Cắt đậu hũ thành miếng vuông vừa ăn, chiên vàng đều các mặt với dầu ăn.', 10),
-    ('22222222-2222-4222-8222-222222222201', 2, 'Băm nhỏ cà chua, xào nhừ với muối rồi cho đậu hũ vào rim lửa nhỏ 10 phút và rắc hành lá.', 12),
+    ('22222222-2222-4222-8222-222222222201', 2, 'Băm nhỏ cà chua, xào nhừ với muối rồi cho đậu hũ vào rim lửa nhỏ 20 phút và rắc hành lá.', 20),
     -- 2. Canh cà chua trứng (total = 15m)
     ('22222222-2222-4222-8222-222222222202', 1, 'Thái múi cau cà chua, xào sơ với dầu ăn và muối rồi thêm nước đun sôi.', 7),
     ('22222222-2222-4222-8222-222222222202', 2, 'Đánh tan trứng gà, rót từ từ vào nồi nước sôi khuấy nhẹ tạo vân mây, thêm hành lá rồi tắt bếp.', 5),
@@ -442,9 +443,9 @@ VALUES
     ('22222222-2222-4222-8222-222222222203', 1, 'Cắt nắp cà chua, khoét ruột giữ lại phần thịt cà; trộn thịt heo sống băm nhuyễn với tiêu và nước mắm rồi nhồi đều vào quả cà chua.', 10),
     ('22222222-2222-4222-8222-222222222203', 2, 'Áp chảo mặt thịt của cà chua cho săn chín kỹ ở tâm, sau đó thêm phần ruột cà chua băm vào rim lửa nhỏ cho thịt chín hoàn toàn.', 11),
     ('22222222-2222-4222-8222-222222222203', 3, 'Đánh tan trứng gà rưới nhẹ vào phần nước sốt cà chua đang sôi lăn tăn để tạo sốt sánh mịn, rắc hành lá trước khi dọn.', 4),
-    -- 4. Trứng xào cà chua (total = 13m)
+    -- 4. Trứng xào cà chua (total = 15m)
     ('22222222-2222-4222-8222-222222222204', 1, 'Đánh tan trứng gà với 1/2 muỗng cà phê nước mắm, xào chín tới trên chảo dầu nóng rồi trút riêng ra đĩa.', 5),
-    ('22222222-2222-4222-8222-222222222204', 2, 'Xào mềm cà chua thái múi với phần nước mắm còn lại, trút trứng vào đảo đều 2 phút và thêm hành lá.', 8),
+    ('22222222-2222-4222-8222-222222222204', 2, 'Xào mềm cà chua thái múi với phần nước mắm còn lại, trút trứng vào đảo đều trên lửa vừa rồi thêm hành lá.', 10),
     -- 5. Mì Ý sốt cà chua thịt băm (total = 30m)
     ('22222222-2222-4222-8222-222222222205', 1, 'Luộc mì Ý trong nước sôi có pha chút muối khoảng 9 phút cho chín dẻo rồi để ráo.', 10),
     ('22222222-2222-4222-8222-222222222205', 2, 'Phi thơm hành tây và tỏi băm với dầu ăn, cho thịt bò băm vào đảo tơi đến khi chín săn.', 8),
