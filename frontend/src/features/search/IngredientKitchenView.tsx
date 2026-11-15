@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Check, CheckCircle2 } from 'lucide-react';
+import { Check, CheckCircle2, Clock } from 'lucide-react';
 import { Ingredient, RecommendDraftPayload } from '../../shared/api/types';
-import { listPantryIngredients } from '../../shared/api/ingredientsApi';
+import {
+  listPantryIngredients,
+  searchMainIngredients,
+} from '../../shared/api/ingredientsApi';
 import {
   MOCK_MAIN_INGREDIENTS,
   MOCK_PANTRY_INGREDIENTS,
@@ -10,12 +13,17 @@ import { matchesIngredientQuery } from '../../shared/utils/vietnamese';
 import { IngredientSearchBox } from './components/IngredientSearchBox';
 import { SelectedIngredientsList } from './components/SelectedIngredientsList';
 import { PantryToggleBar } from './components/PantryToggleBar';
+import { DesiredTimeSelector } from '../../shared/components/DesiredTimeSelector';
 
 export interface IngredientKitchenViewProps {
   selectedIngredients: Ingredient[];
   onSelectedIngredientsChange: (ingredients: Ingredient[]) => void;
   excludedPantryIds: string[];
   onExcludedPantryIdsChange: (ids: string[]) => void;
+  mainIngredientIds?: string[];
+  onMainIngredientIdsChange?: (ids: string[]) => void;
+  desiredMinutes?: number | null;
+  onDesiredMinutesChange?: (minutes: number | null) => void;
   onTriggerRecommend?: (payload: RecommendDraftPayload) => void;
 }
 
@@ -126,11 +134,22 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
   onSelectedIngredientsChange,
   excludedPantryIds,
   onExcludedPantryIdsChange,
+  mainIngredientIds: controlledMainIds,
+  onMainIngredientIdsChange,
+  desiredMinutes: controlledDesiredMinutes,
+  onDesiredMinutesChange,
   onTriggerRecommend,
 }) => {
+  const [catalogIngredients, setCatalogIngredients] = useState<Ingredient[]>(
+    MOCK_MAIN_INGREDIENTS
+  );
   const [pantryItems, setPantryItems] = useState<Ingredient[]>(
     MOCK_PANTRY_INGREDIENTS
   );
+  const [internalMainIds, setInternalMainIds] = useState<string[]>([]);
+  const [internalDesiredMinutes, setInternalDesiredMinutes] = useState<
+    number | null
+  >(null);
   const [isSearching, setIsSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
@@ -139,13 +158,35 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
   const [submittedPayload, setSubmittedPayload] =
     useState<RecommendDraftPayload | null>(null);
 
+  const activeMainIds = controlledMainIds ?? internalMainIds;
+  const setActiveMainIds = (nextIds: string[]) => {
+    if (onMainIngredientIdsChange) {
+      onMainIngredientIdsChange(nextIds);
+    } else {
+      setInternalMainIds(nextIds);
+    }
+  };
+
+  const activeDesiredMinutes =
+    controlledDesiredMinutes !== undefined
+      ? controlledDesiredMinutes
+      : internalDesiredMinutes;
+  const setActiveDesiredMinutes = (minutes: number | null) => {
+    if (onDesiredMinutesChange) {
+      onDesiredMinutesChange(minutes);
+    } else {
+      setInternalDesiredMinutes(minutes);
+    }
+  };
+
   const selectedIdSet = new Set(selectedIngredients.map((item) => item.id));
   const ingredientBySlug = new Map(
-    MOCK_MAIN_INGREDIENTS.map((item) => [item.slug, item])
+    catalogIngredients.map((item) => [item.slug, item])
   );
 
   useEffect(() => {
     let isCancelled = false;
+
     listPantryIngredients()
       .then((res) => {
         if (!isCancelled && res.items.length > 0) {
@@ -155,6 +196,29 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
       .catch(() => {
         // Fallback giữ nguyên 5 gia vị chuẩn trong MOCK_PANTRY_INGREDIENTS
       });
+
+    // Đồng bộ UUID thực từ Backend (nếu Backend đang chạy) để khớp catalog live
+    searchMainIngredients('', 50, 0)
+      .then((res) => {
+        if (isCancelled || res.items.length === 0) return;
+        const liveBySlug = new Map(
+          res.items.map((item) => [item.slug, item] as const)
+        );
+        setCatalogIngredients((prev) => {
+          const merged = prev.map((item) => liveBySlug.get(item.slug) ?? item);
+          const knownSlugs = new Set(merged.map((item) => item.slug));
+          for (const liveItem of res.items) {
+            if (!knownSlugs.has(liveItem.slug)) {
+              merged.push(liveItem);
+            }
+          }
+          return merged;
+        });
+      })
+      .catch(() => {
+        // Giữ nguyên bộ từ điển offline khi Backend chưa khởi chạy
+      });
+
     return () => {
       isCancelled = true;
     };
@@ -172,6 +236,9 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
     onSelectedIngredientsChange(
       selectedIngredients.filter((item) => item.id !== ingredientId)
     );
+    if (activeMainIds.includes(ingredientId)) {
+      setActiveMainIds(activeMainIds.filter((id) => id !== ingredientId));
+    }
     setSubmittedPayload(null);
   };
 
@@ -185,6 +252,16 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
 
   const handleClearAllIngredients = () => {
     onSelectedIngredientsChange([]);
+    setActiveMainIds([]);
+    setSubmittedPayload(null);
+  };
+
+  const handleToggleMainIngredient = (ingredientId: string) => {
+    const exists = activeMainIds.includes(ingredientId);
+    const updated = exists
+      ? activeMainIds.filter((id) => id !== ingredientId)
+      : [...activeMainIds, ingredientId];
+    setActiveMainIds(updated);
     setSubmittedPayload(null);
   };
 
@@ -210,10 +287,19 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
   };
 
   const canRecommend = selectedIngredients.length > 0;
+  const validMainIds = activeMainIds.filter((id) => selectedIdSet.has(id));
+  const computedDesiredHours =
+    typeof activeDesiredMinutes === 'number' && activeDesiredMinutes > 0
+      ? Math.round((activeDesiredMinutes / 60) * 10000) / 10000
+      : undefined;
 
   const currentDraftPayload: RecommendDraftPayload = {
     ingredient_ids: selectedIngredients.map((item) => item.id),
     excluded_pantry_ids: excludedPantryIds,
+    ...(validMainIds.length > 0 ? { main_ingredient_ids: validMainIds } : {}),
+    ...(computedDesiredHours !== undefined
+      ? { desired_hours: computedDesiredHours }
+      : {}),
   };
 
   const handleRecommendClick = () => {
@@ -224,7 +310,6 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Tiêu đề trang ngắn gọn, tinh tế */}
       <div className="pt-1 text-center">
         <h1 className="font-serif text-3xl font-bold tracking-tight text-[#181512] sm:text-4xl">
           Tủ Bếp Nguyên Liệu
@@ -235,20 +320,12 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
         </p>
       </div>
 
-      {/* =====================================================================
-          UNIFIED 2-PANEL KITCHEN (CO GIÃN THÔNG MINH CHO DỮ LIỆU LỚN)
-          - Khối Trái (8/12): Bàn Chọn Nguyên Liệu hợp nhất
-            + Mặc định mỗi nhóm hiển thị 6 nguyên liệu thông dụng nhất + các nguyên liệu đã chọn; phần còn lại gọn trong chip "+X xem thêm".
-            + Khi gõ từ khóa vào ô Search, các nhóm bên dưới tự động lọc trực tiếp các chip khớp từ khóa.
-          - Khối Phải (4/12, Sticky): Phiếu Bếp hợp nhất chia 3 ngăn.
-         ===================================================================== */}
       <div className="grid grid-cols-1 items-start gap-7 lg:grid-cols-12">
         {/* KHỐI TRÁI (8/12): BÀN CHỌN NGUYÊN LIỆU HỢP NHẤT */}
         <div
           aria-label="Phân loại nguyên liệu theo nhóm"
-          className="rounded-[28px] border border-[#DFD3C3] bg-white p-5 shadow-[0_14px_40px_rgba(24,21,18,0.05)] sm:p-7 lg:col-span-8"
+          className="rounded-bl-[16px] rounded-br-[28px] rounded-tl-[28px] rounded-tr-[16px] border border-[#DFD3C3] bg-white p-5 shadow-[0_14px_40px_rgba(24,21,18,0.05)] sm:p-7 lg:col-span-8"
         >
-          {/* Phần đầu Bàn Nguyên Liệu: Ô Search Box gọn gàng */}
           <div className="border-b border-[#EFE8DF] pb-5">
             <IngredientSearchBox
               selectedIngredients={selectedIngredients}
@@ -258,7 +335,6 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
             />
           </div>
 
-          {/* Phần thân Bàn Nguyên Liệu: Chia 6 nhóm thực phẩm chuẩn bếp Việt dạng lưới 2 cột cân đối */}
           <div className="mt-6 grid grid-cols-1 gap-x-8 gap-y-7 sm:grid-cols-2">
             {CULINARY_GROUPS.map((group) => {
               const allItemsInGroup = group.slugs
@@ -276,9 +352,6 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
               }
 
               const isExpanded = !!expandedGroups[group.id];
-
-              // Khi chưa mở rộng và không đang gõ tìm kiếm:
-              // Hiển thị 6 nguyên liệu đầu + bất kỳ nguyên liệu nào ở phần ẩn nhưng đã được người dùng chọn
               const defaultSlice = filteredItems.slice(
                 0,
                 DEFAULT_VISIBLE_LIMIT
@@ -309,12 +382,10 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
                   aria-label={group.title}
                   className="border-b border-[#F2ECE4] pb-6 last:border-b-0 last:pb-0 sm:[&:nth-last-child(-n+2)]:border-b-0 sm:[&:nth-last-child(-n+2)]:pb-0"
                 >
-                  {/* Tiêu đề nhóm thuần chữ (Typographic Header), không icon */}
                   <h2 className="mb-3 font-serif text-[17px] font-bold text-[#181512]">
                     {group.title}
                   </h2>
 
-                  {/* Các chip nguyên liệu (Mục 6 — muc6-tags-2) + Chip "+X xem thêm / Thu gọn" */}
                   <div className="flex flex-wrap gap-2">
                     {visibleItems.map((item) => {
                       const isSelected = selectedIdSet.has(item.id);
@@ -331,8 +402,8 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
                           onClick={() => handleToggleIngredient(item)}
                           className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-medium transition ${
                             isSelected
-                              ? 'bg-[#6E7781] text-white shadow-sm hover:bg-[#586069]'
-                              : 'bg-[#EAECEE] text-[#374151] hover:bg-[#DCE0E5]'
+                              ? 'bg-[#2E2620] text-white shadow-sm hover:bg-[#181512]'
+                              : 'bg-[#F4EFE7] text-[#3B3027] hover:bg-[#EAE1D3]'
                           }`}
                         >
                           {isSelected && (
@@ -362,19 +433,20 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
           </div>
         </div>
 
-        {/* KHỐI PHẢI (4/12, Sticky): PHIẾU BẾP HỢP NHẤT (1 THẺ DUY NHẤT CHIA 3 NGĂN) */}
+        {/* KHỐI PHẢI (4/12, Sticky): PHIẾU BẾP HỢP NHẤT */}
         <aside
           aria-label="Phiếu bếp tổng hợp nguyên liệu và gia vị"
-          className="rounded-[28px] border border-[#DFD3C3] bg-white p-5 shadow-[0_14px_40px_rgba(24,21,18,0.05)] sm:p-7 lg:sticky lg:top-6 lg:col-span-4"
+          className="rounded-bl-[16px] rounded-br-[28px] rounded-tl-[28px] rounded-tr-[16px] border border-[#DFD3C3] bg-white p-5 shadow-[0_14px_40px_rgba(24,21,18,0.05)] sm:p-7 lg:sticky lg:top-6 lg:col-span-4"
         >
-          {/* Ngăn 1: Nguyên liệu đã chọn */}
+          {/* Ngăn 1: Nguyên liệu đã chọn + chọn ưu tiên món chính (tùy chọn) */}
           <SelectedIngredientsList
             selectedIngredients={selectedIngredients}
             onRemoveIngredient={handleRemoveIngredient}
             onClearAll={handleClearAllIngredients}
+            mainIngredientIds={activeMainIds}
+            onToggleMainIngredient={handleToggleMainIngredient}
           />
 
-          {/* Đường kẻ nét đứt ngăn cách như phiếu bếp */}
           <hr className="my-5 border-t border-dashed border-[#DFD3C3]" />
 
           {/* Ngăn 2: 5 Gia vị sẵn có trong bếp */}
@@ -385,17 +457,49 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
             onResetPantryDefault={handleResetPantryDefault}
           />
 
-          {/* Đường kẻ nét đứt ngăn cách */}
           <hr className="my-5 border-t border-dashed border-[#DFD3C3]" />
 
-          {/* Ngăn 3: Hành động Gợi ý món ăn */}
+          {/* Ngăn 3: Tùy chọn Thời gian mong muốn */}
+          <section aria-label="Thời gian nấu mong muốn">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
+                <Clock
+                  className="h-4 w-4 text-[#E87838]"
+                  aria-hidden="true"
+                />
+                <h2 className="font-serif text-[16px] font-bold text-[#181512]">
+                  Thời gian mong muốn
+                </h2>
+              </div>
+              <span className="text-[11px] font-medium text-[#6E655C]">
+                Tùy chọn
+              </span>
+            </div>
+
+            <div className="mt-2.5">
+              <DesiredTimeSelector
+                desiredMinutes={activeDesiredMinutes}
+                onDesiredMinutesChange={(minutes) => {
+                  setActiveDesiredMinutes(minutes);
+                  setSubmittedPayload(null);
+                }}
+                testIdPrefix="desired-time-preset"
+                activeTone="saffron"
+                compact
+              />
+            </div>
+          </section>
+
+          <hr className="my-5 border-t border-dashed border-[#DFD3C3]" />
+
+          {/* Ngăn 4: Hành động Gợi ý món ăn */}
           <section aria-label="Hành động gợi ý món ăn">
             <button
               type="button"
               data-testid="recommend-submit-btn"
               disabled={!canRecommend}
               onClick={handleRecommendClick}
-              className="inline-flex w-full items-center justify-center rounded-full bg-[#E87838] px-6 py-3.5 text-[14px] font-semibold text-white shadow-sm transition hover:bg-[#D16426] disabled:cursor-not-allowed disabled:bg-[#E4E4E7] disabled:text-[#A1A1AA]"
+              className="inline-flex w-full items-center justify-center rounded-full bg-[#E87838] px-6 py-3.5 text-[14px] font-semibold text-white shadow-sm transition hover:bg-[#D16426] disabled:cursor-not-allowed disabled:bg-[#EAE1D3] disabled:text-[#8C8277]"
             >
               <span>
                 Gợi ý món ăn
