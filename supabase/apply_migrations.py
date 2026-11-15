@@ -1,7 +1,8 @@
-"""Apply SQL migrations in supabase/migrations/ using DIRECT_URL from .env."""
+"""Apply SQL migrations in supabase/migrations/ (and optional seed.sql) using DIRECT_URL from .env."""
 
 from __future__ import annotations
 
+import argparse
 import os
 import pathlib
 import sys
@@ -18,7 +19,15 @@ def load_dotenv_file(env_path: pathlib.Path) -> None:
         os.environ.setdefault(key.strip(), val.strip().strip('"').strip("'"))
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Apply Supabase PostgreSQL migrations and optional seed.")
+    parser.add_argument(
+        "--with-seed",
+        action="store_true",
+        help="Also apply supabase/seed.sql after migrations (OPS-02).",
+    )
+    args = parser.parse_args(argv)
+
     repo_root = pathlib.Path(__file__).resolve().parent.parent
     load_dotenv_file(repo_root / ".env")
     load_dotenv_file(repo_root.parent / ".env")
@@ -37,7 +46,8 @@ def main() -> int:
         print("[ERROR] psycopg is required: pip install 'psycopg[binary]'", file=sys.stderr)
         return 1
 
-    migrations_dir = pathlib.Path(__file__).resolve().parent / "migrations"
+    supabase_dir = pathlib.Path(__file__).resolve().parent
+    migrations_dir = supabase_dir / "migrations"
     sql_files = sorted(migrations_dir.glob("*.sql"))
     if not sql_files:
         print("[WARN] No migration files found in supabase/migrations/")
@@ -52,10 +62,19 @@ def main() -> int:
             conn.commit()
             print(f"[OK] Applied {sql_file.name}")
 
+        if args.with_seed:
+            seed_file = supabase_dir / "seed.sql"
+            if seed_file.exists():
+                print(f"Applying {seed_file.name}...")
+                seed_text = seed_file.read_text(encoding="utf-8")
+                with conn.cursor() as cur:
+                    cur.execute(seed_text)
+                conn.commit()
+                print(f"[OK] Applied {seed_file.name}")
+
     print("All Supabase PostgreSQL >= 15 migrations applied successfully!")
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

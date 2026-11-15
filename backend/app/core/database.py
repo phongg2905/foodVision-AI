@@ -9,6 +9,7 @@ Supports:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Any, Protocol
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
@@ -199,8 +200,19 @@ class ScanSessionRecord:
     ingredient_ids: list[str] = field(default_factory=list)
 
 
+@dataclass
+class UserPreferencesRecord:
+    user_id: str
+    allergic_ingredient_ids: list[str] = field(default_factory=list)
+    kitchen_spice_ids: list[str] = field(default_factory=list)
+    favorite_ingredient_ids: list[str] = field(default_factory=list)
+    excluded_allergen_ids: list[str] = field(default_factory=list)
+    available_equipment: list[str] | None = None
+    updated_at: datetime | None = None
+
+
 class CatalogRepository(Protocol):
-    """Repository interface for Stage 1 & Stage 2 Catalog, Recipes, Reasoning, and Scan Sessions."""
+    """Repository interface for Stage 1 & Stage 2 Catalog, Recipes, Reasoning, Preferences, and Scan Sessions."""
 
     def check_health(self) -> bool: ...
 
@@ -230,6 +242,10 @@ class CatalogRepository(Protocol):
 
     def get_all_published_recipes(self) -> list[RecipeRecord]: ...
 
+    def get_user_preferences(self, user_id: str) -> UserPreferencesRecord | None: ...
+
+    def upsert_user_preferences(self, prefs: UserPreferencesRecord) -> UserPreferencesRecord: ...
+
     def verify_and_sync_scan_ingredients(
         self,
         scan_id: str,
@@ -246,6 +262,7 @@ class InMemoryCatalogRepository:
         ingredients: list[IngredientRecord] | None = None,
         recipes: list[RecipeRecord] | None = None,
         scan_sessions: list[ScanSessionRecord] | None = None,
+        user_preferences: list[UserPreferencesRecord] | None = None,
     ) -> None:
         seed_ings = build_default_seed_ingredients() if ingredients is None else ingredients
         seed_recs = build_default_seed_recipes() if recipes is None else recipes
@@ -254,6 +271,27 @@ class InMemoryCatalogRepository:
         self._scan_sessions: dict[str, ScanSessionRecord] = {
             ss.id: ss for ss in (scan_sessions or [])
         }
+        self._user_preferences: dict[str, UserPreferencesRecord] = {
+            up.user_id: up for up in (user_preferences or [])
+        }
+
+    def get_user_preferences(self, user_id: str) -> UserPreferencesRecord | None:
+        return self._user_preferences.get(user_id)
+
+    def upsert_user_preferences(self, prefs: UserPreferencesRecord) -> UserPreferencesRecord:
+        stored = UserPreferencesRecord(
+            user_id=prefs.user_id,
+            allergic_ingredient_ids=list(prefs.allergic_ingredient_ids),
+            kitchen_spice_ids=list(prefs.kitchen_spice_ids),
+            favorite_ingredient_ids=list(prefs.favorite_ingredient_ids),
+            excluded_allergen_ids=list(prefs.excluded_allergen_ids),
+            available_equipment=list(prefs.available_equipment)
+            if prefs.available_equipment is not None
+            else None,
+            updated_at=prefs.updated_at or datetime.now(timezone.utc),
+        )
+        self._user_preferences[prefs.user_id] = stored
+        return stored
 
     def register_scan_session(self, scan_session: ScanSessionRecord) -> None:
         self._scan_sessions[scan_session.id] = scan_session
@@ -655,6 +693,17 @@ class PostgresCatalogRepository:
             )
             nutr_rows = cur.fetchall()
 
+            cur.execute(
+                """
+                SELECT allergen_code
+                FROM public.recipe_allergens
+                WHERE recipe_id::text = %s
+                ORDER BY allergen_code ASC
+                """,
+                (recipe_id,),
+            )
+            allergen_rows = cur.fetchall()
+
         return RecipeRecord(
             id=r["id"],
             slug=r["slug"],
@@ -673,6 +722,7 @@ class PostgresCatalogRepository:
             source_url=r.get("source_url"),
             content_license=r.get("content_license"),
             status=r["status"],
+            allergen_ids=[ar["allergen_code"] for ar in allergen_rows],
             ingredients=[
                 RecipeIngredientRecord(
                     ingredient_id=ir["ingredient_id"],
@@ -711,13 +761,195 @@ class PostgresCatalogRepository:
         )
 
     def get_all_published_recipes(self) -> list[RecipeRecord]:
-        items, _ = self.list_published_recipes(limit=1000, offset=0)
-        detailed: list[RecipeRecord] = []
-        for summary in items:
-            detail = self.get_published_recipe_by_id(summary.id)
-            if detail:
-                detailed.append(detail)
-        return detailed
+        """Batch-fetch all published recipes, their ingredients, and allergens in 3 SQL queries (zero N+1)."""
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    r.id::text AS id,
+                    r.slug,
+                    r.name_vi,
+                    r.description,
+                    r.cuisine_code,
+                    r.country_code,
+                    r.cooking_method,
+                    r.required_equipment,
+                    r.base_servings,
+                    r.prep_minutes,
+                    r.cook_minutes,
+                    r.quality_score,
+                    r.cover_image_path,
+                    r.source_name,
+                    r.source_url,
+                    r.content_license,
+                    r.status
+                FROM public.recipes r
+                WHERE r.status = 'published'
+                ORDER BY (r.prep_minutes + r.cook_minutes) ASC, r.id ASC
+                """
+            )
+            recipe_rows = cur.fetchall()
+            if not recipe_rows:
+                return []
+
+            recipe_ids = [r["id"] for r in recipe_rows]
+
+            cur.execute(
+                """
+                SELECT
+                    ri.recipe_id::text AS recipe_id,
+                    ri.ingredient_id::text AS ingredient_id,
+                    i.name_vi,
+                    i.category,
+                    ri.is_required,
+                    ri.role,
+                    ri.dish_role,
+                    ri.weight::float AS weight,
+                    ri.grams::float AS grams,
+                    ri.display_quantity,
+                    ri.sort_order
+                FROM public.recipe_ingredients ri
+                JOIN public.ingredients i ON i.id = ri.ingredient_id
+                WHERE ri.recipe_id::text = ANY(%s)
+                ORDER BY ri.recipe_id, ri.sort_order ASC, i.name_vi ASC
+                """,
+                (recipe_ids,),
+            )
+            all_ing_rows = cur.fetchall()
+
+            cur.execute(
+                """
+                SELECT recipe_id::text AS recipe_id, allergen_code
+                FROM public.recipe_allergens
+                WHERE recipe_id::text = ANY(%s)
+                ORDER BY recipe_id, allergen_code ASC
+                """,
+                (recipe_ids,),
+            )
+            all_allergen_rows = cur.fetchall()
+
+        ings_by_recipe: dict[str, list[RecipeIngredientRecord]] = {rid: [] for rid in recipe_ids}
+        for ir in all_ing_rows:
+            ings_by_recipe[ir["recipe_id"]].append(
+                RecipeIngredientRecord(
+                    ingredient_id=ir["ingredient_id"],
+                    name_vi=ir["name_vi"],
+                    category=ir["category"],
+                    is_required=bool(ir["is_required"]),
+                    role=ir["role"],
+                    dish_role=ir.get("dish_role")
+                    or ("main" if ir["role"] in ("core", "primary") else "sub"),
+                    weight=float(ir["weight"]),
+                    grams=float(ir["grams"]) if ir.get("grams") is not None else None,
+                    display_quantity=ir.get("display_quantity"),
+                    sort_order=int(ir["sort_order"]),
+                )
+            )
+
+        allergens_by_recipe: dict[str, list[str]] = {rid: [] for rid in recipe_ids}
+        for ar in all_allergen_rows:
+            allergens_by_recipe[ar["recipe_id"]].append(ar["allergen_code"])
+
+        return [
+            RecipeRecord(
+                id=r["id"],
+                slug=r["slug"],
+                name_vi=r["name_vi"],
+                description=r.get("description"),
+                cuisine_code=r["cuisine_code"],
+                country_code=r.get("country_code"),
+                cooking_method=r.get("cooking_method"),
+                required_equipment=list(r.get("required_equipment") or []),
+                base_servings=int(r.get("base_servings") or 2),
+                prep_minutes=int(r["prep_minutes"]),
+                cook_minutes=int(r["cook_minutes"]),
+                quality_score=float(r.get("quality_score") or 1.0),
+                cover_image_url=r.get("cover_image_path"),
+                source_name=r.get("source_name"),
+                source_url=r.get("source_url"),
+                content_license=r.get("content_license"),
+                status=r["status"],
+                ingredients=ings_by_recipe.get(r["id"], []),
+                allergen_ids=allergens_by_recipe.get(r["id"], []),
+            )
+            for r in recipe_rows
+        ]
+
+    def get_user_preferences(self, user_id: str) -> UserPreferencesRecord | None:
+        if not user_id:
+            return None
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    user_id::text AS user_id,
+                    allergic_ingredient_ids,
+                    kitchen_spice_ids,
+                    favorite_ingredient_ids,
+                    excluded_allergen_ids,
+                    available_equipment,
+                    updated_at
+                FROM public.user_preferences
+                WHERE user_id::text = %s
+                """,
+                (user_id,),
+            )
+            row = cur.fetchone()
+        if not row:
+            return None
+        return UserPreferencesRecord(
+            user_id=row["user_id"],
+            allergic_ingredient_ids=list(row.get("allergic_ingredient_ids") or []),
+            kitchen_spice_ids=list(row.get("kitchen_spice_ids") or []),
+            favorite_ingredient_ids=list(row.get("favorite_ingredient_ids") or []),
+            excluded_allergen_ids=list(row.get("excluded_allergen_ids") or []),
+            available_equipment=(
+                list(row["available_equipment"])
+                if row.get("available_equipment") is not None
+                else None
+            ),
+            updated_at=row.get("updated_at"),
+        )
+
+    def upsert_user_preferences(self, prefs: UserPreferencesRecord) -> UserPreferencesRecord:
+        from psycopg.types.json import Jsonb
+
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO public.user_preferences (
+                    user_id,
+                    allergic_ingredient_ids,
+                    kitchen_spice_ids,
+                    favorite_ingredient_ids,
+                    excluded_allergen_ids,
+                    available_equipment
+                )
+                VALUES (%s::uuid, %s, %s, %s, %s, %s)
+                ON CONFLICT (user_id) DO UPDATE
+                SET allergic_ingredient_ids = EXCLUDED.allergic_ingredient_ids,
+                    kitchen_spice_ids = EXCLUDED.kitchen_spice_ids,
+                    favorite_ingredient_ids = EXCLUDED.favorite_ingredient_ids,
+                    excluded_allergen_ids = EXCLUDED.excluded_allergen_ids,
+                    available_equipment = EXCLUDED.available_equipment,
+                    updated_at = now()
+                RETURNING updated_at
+                """,
+                (
+                    prefs.user_id,
+                    Jsonb(list(prefs.allergic_ingredient_ids)),
+                    Jsonb(list(prefs.kitchen_spice_ids)),
+                    Jsonb(list(prefs.favorite_ingredient_ids)),
+                    Jsonb(list(prefs.excluded_allergen_ids)),
+                    Jsonb(list(prefs.available_equipment))
+                    if prefs.available_equipment is not None
+                    else None,
+                ),
+            )
+            ret = cur.fetchone()
+            conn.commit()
+        prefs.updated_at = ret["updated_at"] if ret else datetime.now(timezone.utc)
+        return prefs
 
     def verify_and_sync_scan_ingredients(
         self,

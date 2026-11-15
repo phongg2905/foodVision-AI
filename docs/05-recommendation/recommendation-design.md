@@ -50,6 +50,7 @@ Mỗi người dùng đã đăng nhập (`User` / `Admin`) có thể thiết l�
   "max_total_minutes": null,
   "cuisine_codes": [],
   "include_missing": true,
+  "diversify": false,
   "limit": 20,
   "scan_id": null
 }
@@ -59,6 +60,7 @@ Mỗi người dùng đã đăng nhập (`User` / `Admin`) có thể thiết l�
 - `U_main = set(main_ingredient_ids)`: tập nguyên liệu chính người dùng chọn (`U_main ⊆ U`, mặc định `[]`). Nếu gửi UUID không nằm trong `ingredient_ids`, trả `422 INVALID_INGREDIENTS`.
 - `S_bep`: nếu truyền `kitchen_spice_ids != null` (hồ sơ bếp cá nhân), $S_{\text{bếp}} = \text{set}(\text{kitchen\_spice\_ids}) \setminus X$; nếu `kitchen_spice_ids == null` (mặc định), $S_{\text{bếp}} = \text{Pantry} \setminus X$ với $X = \text{set}(\text{excluded\_pantry\_ids})$.
 - `A = U ∪ S_bep`: tập toàn bộ nguyên liệu và gia vị người dùng xác nhận đang có.
+- `diversify` (mặc định `false`): khi `false`, sắp xếp giảm dần thuần túy theo điểm tổng $S(r)$ của `ADR-013` để kiểm chứng toán học 100%; khi truyền `true` (hoặc chạy thực nghiệm Giai đoạn 5), áp dụng tái xếp hạng đa dạng hóa Top-K bằng MMR (`rerank_with_mmr`). Khi có Bearer token hợp lệ và các trường cá nhân hóa không bị ghi đè trong request, hệ thống tự động nạp hồ sơ đã lưu từ `user_preferences`.
 
 ---
 

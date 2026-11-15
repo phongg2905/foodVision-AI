@@ -16,6 +16,7 @@ tags:
 - name: Recommendations
 - name: Favorites
 - name: Feedback
+- name: Preferences
 - name: AdminRecipes
 - name: AdminIngredients
 - name: AdminNutrition
@@ -461,6 +462,61 @@ paths:
       security:
       - bearerAuth: []
       operationId: submitFeedback
+  /preferences:
+    get:
+      tags:
+      - Preferences
+      summary: Lấy hồ sơ cá nhân hóa nguyên liệu của người dùng hiện tại
+      description: Trả về 3 danh sách cá nhân hóa (allergic_ingredient_ids, kitchen_spice_ids, favorite_ingredient_ids). Nếu người dùng chưa lưu hồ sơ lần nào, mặc định bật sẵn 5 gia vị nền (category = 'pantry').
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPreferencesView'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearerAuth: []
+      operationId: getMyPreferences
+    put:
+      tags:
+      - Preferences
+      summary: Cập nhật hồ sơ cá nhân hóa nguyên liệu (dị ứng, gia vị bếp, yêu thích)
+      description: Lưu toàn bộ 3 danh sách cá nhân hóa cho user hiện tại. kitchen_spice_ids chỉ chấp nhận nguyên liệu thuộc nhóm gia vị nền (category = 'pantry'); nếu vi phạm sẽ trả 422 INVALID_INGREDIENTS.
+      responses:
+        '200':
+          description: Đã lưu hồ sơ cá nhân hóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPreferencesView'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Danh sách nguyên liệu không hợp lệ hoặc kitchen_spice_ids chứa nguyên liệu ngoài nhóm pantry (INVALID_INGREDIENTS)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserPreferencesUpdate'
+      security:
+      - bearerAuth: []
+      operationId: updateMyPreferences
   /admin/recipes:
     post:
       tags:
@@ -1884,6 +1940,9 @@ components:
             - EU
             - US
         include_missing: *id003
+        diversify:
+          type: boolean
+          default: false
         limit:
           type: integer
           minimum: 1
@@ -1895,7 +1954,7 @@ components:
       additionalProperties: false
       required:
       - ingredient_ids
-      description: 'Danh sách ingredient_ids sau xác nhận (category != ''pantry''). Tùy chọn: main_ingredient_ids=[] (tập con nguyên liệu chính mong muốn U_main ⊆ U, mặc định không chọn); desired_hours=100.0 (thời gian mong muốn đơn vị giờ, mặc định 100h); allergic_ingredient_ids=[] (lọc cứng dị ứng); kitchen_spice_ids=null / excluded_pantry_ids=[] (gia vị có trong bếp); favorite_ingredient_ids=[] (nguyên liệu yêu thích tính P); max_total_minutes=null; cuisine_codes=[]; include_missing=true; limit=20; scan_id=null.'
+      description: 'Danh sách ingredient_ids sau xác nhận (category != ''pantry''). Tùy chọn: main_ingredient_ids=[] (tập con nguyên liệu chính mong muốn U_main ⊆ U, mặc định không chọn); desired_hours=100.0 (thời gian mong muốn đơn vị giờ, mặc định 100h); allergic_ingredient_ids=[] (lọc cứng dị ứng); kitchen_spice_ids=null / excluded_pantry_ids=[] (gia vị có trong bếp); favorite_ingredient_ids=[] (nguyên liệu yêu thích tính P); max_total_minutes=null; cuisine_codes=[]; include_missing=true; diversify=false (mặc định sắp xếp giảm dần theo điểm S chuẩn ADR-013; truyền true để bật đa dạng hóa Top-K MMR); limit=20; scan_id=null. Khi gửi kèm Bearer token hợp lệ và không ghi đè trong request, hệ thống tự động nạp hồ sơ cá nhân hóa từ user_preferences.'
     ScoreBreakdown:
       type: object
       properties:
@@ -2098,6 +2157,29 @@ components:
       properties:
         ingredient_id: *id002
         is_required: *id003
+        role:
+          type: string
+          enum:
+          - core
+          - secondary
+          - spice
+          - optional
+          default: core
+        dish_role:
+          type: string
+          enum:
+          - main
+          - sub
+          default: main
+        weight:
+          type: number
+          minimum: 0
+          default: 4.0
+        grams:
+          anyOf:
+          - type: number
+            exclusiveMinimum: 0
+          - type: 'null'
         display_quantity:
           anyOf:
           - *id001
@@ -2109,6 +2191,7 @@ components:
       required:
       - ingredient_id
       - is_required
+      description: 'Nguyên liệu gắn với công thức (ADR-013): role thuộc core(4) / secondary(2) / spice(1) / optional(0); dish_role thuộc main / sub phục vụ tiêu chí G(r); grams định lượng kiểm duyệt phục vụ dinh dưỡng Tầng 2.'
     RecipeStepInput:
       type: object
       properties:
@@ -2189,6 +2272,7 @@ components:
       - cook_minutes
       - ingredients
       - steps
+      description: 'Tạo công thức mới; bắt buộc prep_minutes + cook_minutes > 0 và tổng trọng số nguyên liệu bắt buộc > 0 (ADR-013).'
     RecipePatch:
       type: object
       properties: *id009
@@ -2585,3 +2669,50 @@ components:
       - total
       - limit
       - offset
+    UserPreferencesView:
+      type: object
+      properties:
+        user_id: *id002
+        allergic_ingredient_ids:
+          type: array
+          items: *id002
+          uniqueItems: true
+        kitchen_spice_ids:
+          type: array
+          items: *id002
+          uniqueItems: true
+        favorite_ingredient_ids:
+          type: array
+          items: *id002
+          uniqueItems: true
+        updated_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+      additionalProperties: false
+      required:
+      - user_id
+      - allergic_ingredient_ids
+      - kitchen_spice_ids
+      - favorite_ingredient_ids
+    UserPreferencesUpdate:
+      type: object
+      properties:
+        allergic_ingredient_ids:
+          type: array
+          items: *id002
+          uniqueItems: true
+          default: []
+        kitchen_spice_ids:
+          type: array
+          items: *id002
+          uniqueItems: true
+          default: []
+        favorite_ingredient_ids:
+          type: array
+          items: *id002
+          uniqueItems: true
+          default: []
+      additionalProperties: false
+      description: 'Cập nhật hồ sơ cá nhân hóa theo nguyên liệu (ADR-013): kitchen_spice_ids chỉ chứa UUID thuộc nhóm gia vị nền (category = ''pantry'').'

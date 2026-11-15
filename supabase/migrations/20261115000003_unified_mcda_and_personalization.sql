@@ -25,14 +25,34 @@ ALTER TABLE public.recipe_ingredients
 ALTER TABLE public.recipe_ingredients
     DROP CONSTRAINT IF EXISTS chk_recipe_ingredients_role;
 
+ALTER TABLE public.recipe_ingredients
+    DROP CONSTRAINT IF EXISTS chk_recipe_ingredients_dish_role;
+
+ALTER TABLE public.recipe_ingredients
+    DROP CONSTRAINT IF EXISTS chk_recipe_ingredients_weight;
+
+-- Normalize legacy role, dish_role, and weight values to ADR-013 (4-2-1-0 & main/sub)
 UPDATE public.recipe_ingredients
-SET role = CASE
-    WHEN is_required = false THEN 'optional'
-    WHEN role = 'primary' THEN 'core'
-    WHEN role = 'essential' THEN 'secondary'
-    ELSE 'spice'
-END
-WHERE role NOT IN ('core', 'secondary', 'spice', 'optional');
+SET
+    role = CASE
+        WHEN is_required = false THEN 'optional'
+        WHEN role IN ('core', 'primary') THEN 'core'
+        WHEN role IN ('essential') OR (role = 'secondary' AND weight >= 2.00) THEN 'secondary'
+        ELSE 'spice'
+    END,
+    dish_role = CASE
+        WHEN is_required = true AND role IN ('core', 'primary') THEN 'main'
+        ELSE 'sub'
+    END,
+    weight = CASE
+        WHEN is_required = false THEN 0.00
+        WHEN role IN ('core', 'primary') THEN 4.00
+        WHEN role IN ('essential') OR (role = 'secondary' AND weight >= 2.00) THEN 2.00
+        ELSE 1.00
+    END
+WHERE role NOT IN ('core', 'secondary', 'spice', 'optional')
+   OR (is_required = false AND (role <> 'optional' OR weight <> 0.00))
+   OR (role <> 'core' AND dish_role = 'main' AND weight < 4.00);
 
 ALTER TABLE public.recipe_ingredients
     ALTER COLUMN role SET DEFAULT 'core',
@@ -40,14 +60,8 @@ ALTER TABLE public.recipe_ingredients
         CHECK (role IN ('core', 'secondary', 'spice', 'optional'));
 
 ALTER TABLE public.recipe_ingredients
-    DROP CONSTRAINT IF EXISTS chk_recipe_ingredients_dish_role;
-
-ALTER TABLE public.recipe_ingredients
     ADD CONSTRAINT chk_recipe_ingredients_dish_role
         CHECK (dish_role IN ('main', 'sub'));
-
-ALTER TABLE public.recipe_ingredients
-    DROP CONSTRAINT IF EXISTS chk_recipe_ingredients_weight;
 
 ALTER TABLE public.recipe_ingredients
     ALTER COLUMN weight SET DEFAULT 4.00,

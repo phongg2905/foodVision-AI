@@ -7,6 +7,8 @@ import json
 
 from fastapi import Header
 
+from app.core.errors import AppError
+
 
 def extract_user_id_from_authorization(authorization: str | None) -> str | None:
     """Extract user UUID (`sub`) from `Authorization: Bearer <jwt>` or `Bearer user:<id>`."""
@@ -42,3 +44,17 @@ def get_optional_user_id(
     """FastAPI dependency returning the authenticated user_id if a Bearer token is present."""
     return extract_user_id_from_authorization(authorization)
 
+
+def get_required_user_id(
+    authorization: str | None = Header(default=None, alias="Authorization"),
+) -> str:
+    """FastAPI dependency requiring a valid Bearer token; raises 401 UNAUTHORIZED otherwise."""
+    user_id = extract_user_id_from_authorization(authorization)
+    if not user_id:
+        raise AppError(
+            status_code=401,
+            code="UNAUTHORIZED",
+            message="Cần xác thực Bearer token hợp lệ để truy cập tài nguyên người dùng.",
+            details={},
+        )
+    return user_id

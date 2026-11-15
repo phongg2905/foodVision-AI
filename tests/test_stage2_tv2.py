@@ -35,11 +35,13 @@ from app.core.seed_fixtures import (
     ING_CA_CHUA,
     ING_DAU_AN,
     ING_DAU_HU,
+    ING_DUONG,
     ING_HANH_LA,
     ING_INACTIVE,
     ING_MUOI,
     ING_NUOC_MAM,
     ING_THIT_BA_CHI,
+    ING_TIEU_XAY,
     ING_TRUNG_GA,
     REC_CANH_CA_CHUA_TRUNG,
     REC_DAU_HU_SOT_CA,
@@ -599,3 +601,323 @@ def test_perf02_recommendations_latency_under_1s_for_500_published_recipes() -> 
     assert res.json()["total"] >= 500
     assert len(res.json()["items"]) == 20
     assert elapsed_sec < 1.0, f"Expected latency < 1.0s on 520 recipes, got {elapsed_sec:.3f}s"
+
+
+# ==============================================================================
+# 7. User Preferences API, Saved Profile Fallback, `diversify` Flag & OpenAPI Sync
+# ==============================================================================
+
+
+def test_preferences_crud_and_pantry_only_validation(client: TestClient) -> None:
+    user_a = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+    user_b = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+
+    # 1. Unauthenticated access -> 401 UNAUTHORIZED
+    assert client.get("/api/v1/preferences").status_code == 401
+    assert (
+        client.put(
+            "/api/v1/preferences",
+            json={
+                "allergic_ingredient_ids": [],
+                "kitchen_spice_ids": [],
+                "favorite_ingredient_ids": [],
+            },
+        ).status_code
+        == 401
+    )
+
+    # 2. Fresh user GET -> defaults to all 5 active pantry seasonings, empty allergies & favorites
+    res_get_default = client.get(
+        "/api/v1/preferences",
+        headers={"Authorization": f"Bearer user:{user_a}"},
+    )
+    assert res_get_default.status_code == 200
+    body_default = res_get_default.json()
+    assert body_default["user_id"] == user_a
+    assert body_default["allergic_ingredient_ids"] == []
+    assert body_default["favorite_ingredient_ids"] == []
+    assert set(body_default["kitchen_spice_ids"]) == {
+        ING_MUOI,
+        ING_NUOC_MAM,
+        ING_DAU_AN,
+        ING_DUONG,
+        ING_TIEU_XAY,
+    }
+    assert body_default["updated_at"] is None
+
+    # 3. Passing category='spice' (Hành lá) or category='vegetable' (Cà chua) into kitchen_spice_ids -> 422
+    res_non_pantry = client.put(
+        "/api/v1/preferences",
+        headers={"Authorization": f"Bearer user:{user_a}"},
+        json={
+            "allergic_ingredient_ids": [],
+            "kitchen_spice_ids": [ING_MUOI, ING_HANH_LA],
+            "favorite_ingredient_ids": [],
+        },
+    )
+    assert res_non_pantry.status_code == 422
+    assert res_non_pantry.json()["code"] == "INVALID_INGREDIENTS"
+    assert res_non_pantry.json()["details"]["reason"] == "non_pantry_in_kitchen_spices"
+    assert res_non_pantry.json()["details"]["invalid_ids"] == [ING_HANH_LA]
+
+    # 4. Valid PUT persists User A profile without leaking to User B
+    res_put_ok = client.put(
+        "/api/v1/preferences",
+        headers={"Authorization": f"Bearer user:{user_a}"},
+        json={
+            "allergic_ingredient_ids": [ING_DAU_HU],
+            "kitchen_spice_ids": [ING_MUOI, ING_DAU_AN, ING_DUONG, ING_TIEU_XAY],
+            "favorite_ingredient_ids": [ING_CA_CHUA, ING_TRUNG_GA],
+        },
+    )
+    assert res_put_ok.status_code == 200
+    saved_a = res_put_ok.json()
+    assert saved_a["allergic_ingredient_ids"] == [ING_DAU_HU]
+    assert saved_a["kitchen_spice_ids"] == [ING_MUOI, ING_DAU_AN, ING_DUONG, ING_TIEU_XAY]
+    assert saved_a["favorite_ingredient_ids"] == [ING_CA_CHUA, ING_TRUNG_GA]
+    assert saved_a["updated_at"] is not None
+
+    res_user_b = client.get(
+        "/api/v1/preferences",
+        headers={"Authorization": f"Bearer user:{user_b}"},
+    )
+    assert res_user_b.status_code == 200
+    assert res_user_b.json()["allergic_ingredient_ids"] == []
+    assert len(res_user_b.json()["kitchen_spice_ids"]) == 5
+
+
+def test_recommendations_autoload_saved_preferences_and_explicit_override(
+    client: TestClient,
+) -> None:
+    user_a = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+    headers = {"Authorization": f"Bearer user:{user_a}"}
+
+    # Save User A profile: allergic to Đậu hũ, missing Nước mắm from kitchen, loves Cà chua + Trứng gà
+    put_res = client.put(
+        "/api/v1/preferences",
+        headers=headers,
+        json={
+            "allergic_ingredient_ids": [ING_DAU_HU],
+            "kitchen_spice_ids": [ING_MUOI, ING_DAU_AN, ING_DUONG, ING_TIEU_XAY],
+            "favorite_ingredient_ids": [ING_CA_CHUA, ING_TRUNG_GA],
+        },
+    )
+    assert put_res.status_code == 200
+
+    # 1. Authenticated POST omitting personalization fields -> auto-loads saved profile:
+    #    - Đậu hũ sốt cà chua is BLOCKED by saved allergic_ingredient_ids=[ING_DAU_HU]
+    #    - Trứng xào cà chua gets P=1.0 (+10.0), C=0.9 (45.0, missing Nước mắm), G=2/3 (16.67 over 3 input ingredients) -> S=86.67!
+    res_auto = client.post(
+        "/api/v1/recommendations",
+        headers=headers,
+        json={"ingredient_ids": [ING_CA_CHUA, ING_TRUNG_GA, ING_DAU_HU]},
+    )
+    assert res_auto.status_code == 200
+    auto_items = res_auto.json()["items"]
+    returned_ids = [it["recipe"]["id"] for it in auto_items]
+    assert REC_DAU_HU_SOT_CA not in returned_ids
+    trung_xao = next(it for it in auto_items if it["recipe"]["id"] == REC_TRUNG_XAO_CA_CHUA)
+    assert trung_xao["reasoning_status"] == "MISSING_CONFIRMED"
+    assert trung_xao["missing_required_ingredient_ids"] == [ING_NUOC_MAM]
+    assert trung_xao["score_breakdown"]["P"] == 1.0
+    assert trung_xao["score"] == 86.67  # 45.0 (C=0.9) + 16.67 (G=2/3) + 15.0 (T=1.0) + 10.0 (P=1.0)
+
+    # 2. Explicit override in request (`allergic_ingredient_ids=[]`, `favorite_ingredient_ids=[]`) overrides saved profile
+    res_override = client.post(
+        "/api/v1/recommendations",
+        headers=headers,
+        json={
+            "ingredient_ids": [ING_CA_CHUA, ING_TRUNG_GA],
+            "allergic_ingredient_ids": [],
+            "favorite_ingredient_ids": [],
+            "kitchen_spice_ids": [
+                ING_MUOI,
+                ING_NUOC_MAM,
+                ING_DAU_AN,
+                ING_DUONG,
+                ING_TIEU_XAY,
+            ],
+        },
+    )
+    assert res_override.status_code == 200
+    override_items = res_override.json()["items"]
+    trung_xao_ov = next(it for it in override_items if it["recipe"]["id"] == REC_TRUNG_XAO_CA_CHUA)
+    assert trung_xao_ov["reasoning_status"] == "READY"
+    assert trung_xao_ov["score_breakdown"]["P"] == 0.5
+    assert trung_xao_ov["score"] == 95.0  # 50.0 (C=1.0) + 25.0 (G=1.0) + 15.0 (T=1.0) + 5.0 (P=0.5)
+
+    # Also verify Đậu hũ sốt cà chua is no longer blocked when allergic_ingredient_ids=[] is explicitly sent
+    res_unblock_dau_hu = client.post(
+        "/api/v1/recommendations",
+        headers=headers,
+        json={
+            "ingredient_ids": [ING_CA_CHUA, ING_DAU_HU],
+            "allergic_ingredient_ids": [],
+        },
+    )
+    assert res_unblock_dau_hu.status_code == 200
+    assert REC_DAU_HU_SOT_CA in [it["recipe"]["id"] for it in res_unblock_dau_hu.json()["items"]]
+
+
+def test_recommendations_diversify_false_vs_true() -> None:
+    """Verify default `diversify=False` preserves pure S order while `diversify=True` applies MMR."""
+    rec_1 = RecipeRecord(
+        id="88888888-8888-4888-8888-888888888801",
+        slug="trung-chien-1",
+        name_vi="Trứng chiên kiểu 1",
+        cuisine_code="VN",
+        prep_minutes=5,
+        cook_minutes=10,
+        status="published",
+        cooking_method="fry",
+        ingredients=[
+            RecipeIngredientRecord(
+                ingredient_id=ING_TRUNG_GA,
+                name_vi="Trứng gà",
+                category="protein",
+                is_required=True,
+                role="core",
+                dish_role="main",
+                weight=4.0,
+                sort_order=1,
+            ),
+            RecipeIngredientRecord(
+                ingredient_id=ING_CA_CHUA,
+                name_vi="Cà chua",
+                category="vegetable",
+                is_required=True,
+                role="core",
+                dish_role="main",
+                weight=4.0,
+                sort_order=2,
+            ),
+            RecipeIngredientRecord(
+                ingredient_id=ING_MUOI,
+                name_vi="Muối",
+                category="pantry",
+                is_required=True,
+                role="spice",
+                dish_role="sub",
+                weight=1.0,
+                sort_order=3,
+            ),
+        ],
+    )
+    # Near-duplicate of rec_1 (same ingredients & same cooking_method="fry"), slightly slower so S is slightly lower when desired_hours=0.25
+    rec_2_clone = RecipeRecord(
+        id="88888888-8888-4888-8888-888888888802",
+        slug="trung-chien-2",
+        name_vi="Trứng chiên kiểu 2",
+        cuisine_code="VN",
+        prep_minutes=6,
+        cook_minutes=10,  # 16 mins -> T = 15/16 = 0.9375 -> S = 94.06
+        status="published",
+        cooking_method="fry",
+        ingredients=list(rec_1.ingredients),
+    )
+    # Diverse dish (different ingredients & cooking_method="boil"), slightly slower (18 mins -> T = 15/18 = 0.8333 -> S = 92.5)
+    rec_3_diverse = RecipeRecord(
+        id="88888888-8888-4888-8888-888888888803",
+        slug="canh-dau-hu-luoc",
+        name_vi="Đậu hũ luộc thanh đạm",
+        cuisine_code="VN",
+        prep_minutes=8,
+        cook_minutes=10,  # 18 mins -> S = 92.5
+        status="published",
+        cooking_method="boil",
+        ingredients=[
+            RecipeIngredientRecord(
+                ingredient_id=ING_DAU_HU,
+                name_vi="Đậu hũ",
+                category="protein",
+                is_required=True,
+                role="core",
+                dish_role="main",
+                weight=4.0,
+                sort_order=1,
+            ),
+            RecipeIngredientRecord(
+                ingredient_id=ING_DUONG,
+                name_vi="Đường",
+                category="pantry",
+                is_required=True,
+                role="spice",
+                dish_role="sub",
+                weight=1.0,
+                sort_order=2,
+            ),
+        ],
+    )
+
+    custom_repo = InMemoryCatalogRepository(
+        ingredients=_default_seed_ingredients(),
+        recipes=[rec_1, rec_2_clone, rec_3_diverse],
+    )
+    app = create_app()
+    app.dependency_overrides[get_catalog_repo] = lambda: custom_repo
+    custom_client = TestClient(app)
+
+    # 1. Default (`diversify` omitted -> False): pure descending S -> [rec_1 (95.0), rec_2_clone (94.06), rec_3_diverse (92.5)]
+    res_pure = custom_client.post(
+        "/api/v1/recommendations",
+        json={
+            "ingredient_ids": [ING_TRUNG_GA, ING_CA_CHUA, ING_DAU_HU],
+            "desired_hours": 0.25,
+        },
+    )
+    assert res_pure.status_code == 200
+    pure_ids = [it["recipe"]["id"] for it in res_pure.json()["items"]]
+    assert pure_ids == [rec_1.id, rec_2_clone.id, rec_3_diverse.id]
+
+    # 2. `diversify=True`: MMR penalizes near-duplicate `rec_2_clone` and promotes `rec_3_diverse` to rank #2!
+    res_mmr = custom_client.post(
+        "/api/v1/recommendations",
+        json={
+            "ingredient_ids": [ING_TRUNG_GA, ING_CA_CHUA, ING_DAU_HU],
+            "desired_hours": 0.25,
+            "diversify": True,
+        },
+    )
+    assert res_mmr.status_code == 200
+    mmr_ids = [it["recipe"]["id"] for it in res_mmr.json()["items"]]
+    assert mmr_ids == [rec_1.id, rec_3_diverse.id, rec_2_clone.id]
+
+
+def test_openapi_yaml_and_postman_contract_v1_1_0_sync() -> None:
+    """Verify docs/03-api/openapi.yaml & postman collection stay synchronized with v1.1.0."""
+    import json
+    from pathlib import Path
+    import yaml
+
+    repo_root = Path(__file__).resolve().parents[1]
+    openapi_doc = yaml.safe_load(
+        (repo_root / "docs" / "03-api" / "openapi.yaml").read_text(encoding="utf-8")
+    )
+    postman_doc = json.loads(
+        (repo_root / "docs" / "03-api" / "foodvision-ai.postman_collection.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert openapi_doc["info"]["version"] == "1.1.0"
+    paths = openapi_doc["paths"]
+    assert len(paths) == 26
+    http_methods = {"get", "post", "put", "patch", "delete"}
+    op_count = sum(
+        1 for methods in paths.values() for m in methods.keys() if m.lower() in http_methods
+    )
+    assert op_count == 35
+    assert "/preferences" in paths
+    assert {"get", "put"} <= set(paths["/preferences"].keys())
+
+    rec_req_props = openapi_doc["components"]["schemas"]["RecommendRequest"]["properties"]
+    assert rec_req_props["diversify"]["default"] is False
+
+    ing_in_props = openapi_doc["components"]["schemas"]["RecipeIngredientInput"]["properties"]
+    assert set(ing_in_props["role"]["enum"]) == {"core", "secondary", "spice", "optional"}
+    assert set(ing_in_props["dish_role"]["enum"]) == {"main", "sub"}
+    assert "weight" in ing_in_props
+    assert "grams" in ing_in_props
+
+    assert len(postman_doc["item"]) == 35
+

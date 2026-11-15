@@ -23,6 +23,7 @@ class RecommendRequest(BaseModel):
     max_total_minutes: int | None = Field(default=None, ge=1, le=720)
     cuisine_codes: list[CuisineCode] = Field(default_factory=list)
     include_missing: bool = True
+    diversify: bool = False
     limit: int = Field(default=20, ge=1, le=50)
     scan_id: str | None = None
 
