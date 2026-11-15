@@ -134,7 +134,9 @@ VALUES
 ON CONFLICT (ingredient_id, allergen_id) DO NOTHING;
 
 -- ============================================================================
--- 3. DRAFT AI MODEL & 20 CLASS LABELS (0..19 -> Non-Pantry Ingredients, BR-12)
+-- 3. ACTIVE AI MODEL & 20 CLASS LABELS (0..19 -> Non-Pantry Ingredients, BR-12)
+--    Weights artifact: backend/weights/yolo/ingredients_best.pt
+--    SHA-256 (64 hex): 4d2677b38c341c64d7fc848707ed6416255ba8497bc31b5d4df562b89194c52a
 -- ============================================================================
 INSERT INTO public.ai_models (
     id, version, family, dataset_version, artifact_ref,
@@ -142,17 +144,19 @@ INSERT INTO public.ai_models (
 )
 VALUES (
     '55555555-5555-4555-8555-555555555501',
-    'yolo11n-foodvision-v1.0-draft',
+    'yolo11n-foodvision-v1.0',
     'yolo11n',
     'food-ingredients-v1.0',
-    'weights/yolo11n_foodvision_v1.pt',
-    20, 0.250, 0.800, 'draft'
+    'weights/yolo/ingredients_best.pt',
+    20, 0.250, 0.800, 'active'
 )
 ON CONFLICT (id) DO UPDATE
 SET version = EXCLUDED.version,
+    artifact_ref = EXCLUDED.artifact_ref,
     class_count = EXCLUDED.class_count,
     confidence_threshold = EXCLUDED.confidence_threshold,
-    review_threshold = EXCLUDED.review_threshold;
+    review_threshold = EXCLUDED.review_threshold,
+    status = EXCLUDED.status;
 
 INSERT INTO public.ai_labels (model_id, class_index, class_name, ingredient_id)
 VALUES
