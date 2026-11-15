@@ -4,7 +4,7 @@ Validates `supabase/seed.sql` against:
 - Card #7 (`[GD1 - TP03, TP10]`):
   1. >= 20 main non-pantry ingredients aligned 1-to-1 with `class_index (0..19)` in `docs/04-ai-model/label-catalog.md` + VN/EU/US culinary extras.
   2. Exact 5 pantry spices (`category = 'pantry'`: Muoi, Duong, Nuoc mam, Dau an, Hat tieu) with NO water record (`BR-04`, `BR-12`, `ADR-008`) + regional synonyms in `ingredient_aliases`.
-  3. Published sample recipes across all 3 cuisines (`VN`, `EU`, `US`) satisfying all 4 `BR-01` conditions, including canonical benchmark dishes `"Cà chua nhồi thịt sốt trứng"` and `"Trứng xào cà chua"` (`MATH-01..07`, `S=89.0` / `S=68.1`).
+  3. Published sample recipes across all 3 cuisines (`VN`, `EU`, `US`) satisfying all 4 `BR-01` conditions, including canonical benchmark dishes `"Cà chua nhồi thịt sốt trứng"`, `"Đậu hũ sốt cà chua"` and `"Trứng xào cà chua"` (`ADR-013`, `MATH-01..07`, `S=95.0` / `S=83.75`).
   4. Tier-1 qualitative `nutrition_tags` + `ingredient_nutrition_tags` and Tier-2 USDA per-100g `ingredient_nutrients` with valid `https://` `source_url` (`BR-03`, `ADR-004`).
 """
 
@@ -189,9 +189,10 @@ def test_seed_recipes_satisfy_br01_across_vn_eu_us_and_reasoning_engine() -> Non
 
     rec_ing_block = _extract_insert_block(sql_text, "recipe_ingredients")
     rec_ing_rows = re.findall(
-        r"\(\s*'([0-9a-f-]{36})'\s*,\s*'([0-9a-f-]{36})'\s*,\s*(true|false)\s*,\s*'(primary|essential|secondary)'\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*'([^']+)'\s*,\s*(\d+)\s*\)",
+        r"\(\s*'([0-9a-f-]{36})'\s*,\s*'([0-9a-f-]{36})'\s*,\s*(true|false)\s*,\s*'(core|secondary|spice|optional)'\s*,\s*'(main|sub)'\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*'([^']+)'\s*,\s*(\d+)\s*\)",
         rec_ing_block,
     )
+    assert len(rec_ing_rows) >= 40
     steps_block = _extract_insert_block(sql_text, "recipe_steps")
     step_rows = re.findall(
         r"\(\s*'([0-9a-f-]{36})'\s*,\s*(\d+)\s*,\s*'([^']+)'\s*,\s*(\d+)\s*\)",
@@ -220,12 +221,13 @@ def test_seed_recipes_satisfy_br01_across_vn_eu_us_and_reasoning_engine() -> Non
                 category=ingredients[iid]["category"],
                 is_required=(req == "true"),
                 role=role,
+                dish_role=dish_role,
                 weight=float(w),
                 grams=float(g),
                 display_quantity=qty,
                 sort_order=int(order),
             )
-            for r_id, iid, req, role, w, g, qty, order in rec_ing_rows
+            for r_id, iid, req, role, dish_role, w, g, qty, order in rec_ing_rows
             if r_id == rid
         ]
         r_steps = [

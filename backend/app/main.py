@@ -1,11 +1,11 @@
-"""FastAPI Application Entrypoint — FoodVision AI Backend (`v1.0.0`)."""
+"""FastAPI Application Entrypoint — FoodVision AI Backend (`v1.1.0`)."""
 
 from __future__ import annotations
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1 import health, ingredients, recipes, recommendations
+from app.api.v1 import health, ingredients, preferences, recipes, recommendations
 from app.core.config import settings
 from app.core.errors import register_exception_handlers
 from app.core.middleware import RequestContextMiddleware
@@ -18,7 +18,7 @@ def create_app() -> FastAPI:
         version=settings.app_version,
         description=(
             "FoodVision AI Backend API — Nhận diện nguyên liệu thực phẩm từ hình ảnh, "
-            "Suy luận Thế giới mở 3 trạng thái và Gợi ý Công thức Món ăn."
+            "Suy luận Thế giới mở 3 trạng thái, Cá nhân hóa 3 danh sách nguyên liệu và Gợi ý Công thức MCDA."
         ),
         docs_url="/docs",
         redoc_url="/redoc",
@@ -38,12 +38,13 @@ def create_app() -> FastAPI:
     # Standardized Error Handlers (`docs/03-api/api-conventions.md`)
     register_exception_handlers(app)
 
-    # API v1 Routers (Stage 1 & Stage 2: TP 03, TP 04, TP 05, TP 06, TP 07, TP 09, TP 13)
+    # API v1 Routers (Stage 1 & Stage 2: TP 03, TP 04, TP 05, TP 06, TP 07, TP 09, TP 13, ADR-013)
     api_v1_prefix = "/api/v1"
     app.include_router(health.router, prefix=api_v1_prefix)
     app.include_router(ingredients.router, prefix=api_v1_prefix)
     app.include_router(recipes.router, prefix=api_v1_prefix)
     app.include_router(recommendations.router, prefix=api_v1_prefix)
+    app.include_router(preferences.router, prefix=api_v1_prefix)
 
     return app
 
