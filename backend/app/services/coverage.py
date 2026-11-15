@@ -1,13 +1,14 @@
-"""Component 05 (TP 05) & Component 06 (TP 06): Weighted Coverage & Tversky Baseline B.
+"""Component 05 (TP 05) & Component 06 (TP 06): Weighted Coverage `4-2-1-0` & Tversky Baseline B (`ADR-013`).
 
 Implements exact mathematical formulas from `docs/05-recommendation/recommendation-design.md` Section 5:
-1. TP 05 — Weighted Ingredient Coverage:
+1. TP 05 — Weighted Ingredient Coverage (`4 - 2 - 1 - 0`):
    C(r, A) = (sum_{i in R_r} w_{r,i} * x_i) / (sum_{i in R_r} w_{r,i}) in [0, 1]
-   where x_i = 1 if i in A (confirmed_available), else 0.
-   Role weight mapping (when explicit role weights are used):
-   - primary: 4.0
-   - essential: 3.0
-   - secondary / seasoning / garnish / pantry: 1.0
+   where x_i = 1 if i in A (confirmed_available), else 0, and R_r contains required ingredients (`is_required = true`).
+   4-tier role weight mapping (`ADR-013`):
+   - core (legacy alias: primary): 4.0
+   - secondary (legacy alias: essential): 2.0
+   - spice (legacy aliases: seasoning, pantry): 1.0
+   - optional (legacy alias: garnish, `is_required = false`): 0.0 (excluded from R_r)
 2. TP 06 — Tversky Similarity (Asymmetric Mathematical Baseline B):
    T_{alpha, beta}(A, R_r) = |A n R_r| / (|A n R_r| + alpha * |A \\ R_r| + beta * |R_r \\ A|) in [0, 1]
    Default alpha = 0.3, beta = 2.0 (penalizes missing recipe ingredients more heavily than extra kitchen items).
@@ -21,21 +22,32 @@ from collections.abc import Iterable, Mapping
 from app.core.database import RecipeRecord
 
 ROLE_WEIGHT_MAP: dict[str, float] = {
+    "core": 4.0,
     "primary": 4.0,
-    "essential": 3.0,
-    "secondary": 1.0,
+    "secondary": 2.0,
+    "essential": 2.0,
+    "spice": 1.0,
     "seasoning": 1.0,
-    "garnish": 1.0,
+    "pantry": 1.0,
+    "optional": 0.0,
+    "garnish": 0.0,
 }
 
 
-def get_ingredient_role_weight(role: str, explicit_weight: float | None = None, category: str = "") -> float:
-    """Resolve w_{r,i} > 0 for an ingredient in recipe r."""
+def get_ingredient_role_weight(
+    role: str,
+    explicit_weight: float | None = None,
+    category: str = "",
+) -> float:
+    """Resolve w_{r,i} >= 0 for an ingredient in recipe r under the 4-2-1-0 scale."""
+    normalized_role = role.lower().strip()
+    if normalized_role in ("optional", "garnish"):
+        return 0.0
     if explicit_weight is not None and explicit_weight > 0:
         return float(explicit_weight)
     if category == "pantry":
         return 1.0
-    return ROLE_WEIGHT_MAP.get(role.lower().strip(), 1.0)
+    return ROLE_WEIGHT_MAP.get(normalized_role, 1.0)
 
 
 def compute_weighted_coverage(
@@ -63,19 +75,20 @@ def compute_recipe_weighted_coverage(
     confirmed_available_ids: set[str],
     use_role_scale: bool = False,
 ) -> float:
-    """Compute TP 05 Weighted Coverage directly from a RecipeRecord's required ingredients."""
+    """Compute TP 05 Weighted Coverage directly from a RecipeRecord's required ingredients (`R_r`)."""
     weights: dict[str, float] = {}
     for ri in recipe.ingredients:
         if not ri.is_required:
             continue
         if use_role_scale:
             w = ROLE_WEIGHT_MAP.get(
-                "secondary" if ri.category == "pantry" else ri.role.lower().strip(),
+                "spice" if ri.category == "pantry" else ri.role.lower().strip(),
                 1.0,
             )
         else:
             w = get_ingredient_role_weight(ri.role, ri.weight, ri.category)
-        weights[ri.ingredient_id] = w
+        if w > 0:
+            weights[ri.ingredient_id] = w
     return compute_weighted_coverage(weights, confirmed_available_ids)
 
 
@@ -101,4 +114,3 @@ def compute_tversky_similarity(
     if denominator <= 0.0:
         return 0.0
     return intersection_count / denominator
-

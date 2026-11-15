@@ -1,6 +1,6 @@
 # Test Plan — Kế hoạch Kiểm thử & Kiểm định Thực nghiệm
 
-**Mã:** `FV-TEST-001` · **Phiên bản:** `1.0.0` · **Trạng thái thực thi:** `Planned` · **Đối chiếu:** [SRS](../01-requirements/SRS.md), [Traceability Matrix](../01-requirements/traceability-matrix.md), [Dataset & Evaluation](../04-ai-model/dataset-and-evaluation.md).
+**Mã:** `FV-TEST-001` · **Phiên bản:** `1.1.0` · **Trạng thái thực thi:** `Planned` · **Đối chiếu:** [SRS](../01-requirements/SRS.md), [Traceability Matrix](../01-requirements/traceability-matrix.md), [Dataset & Evaluation](../04-ai-model/dataset-and-evaluation.md).
 
 ## 1. Mục tiêu, 5 trục kiểm thử độc lập và Kiểm thử chéo
 
@@ -18,7 +18,7 @@ Hệ thống được kiểm định trên **5 trục độc lập**:
 
 | Loại kiểm thử | Công cụ đề xuất | Bằng chứng thu thập |
 |---|---|---|
-| Backend & Math unit tests | `pytest` | Kết quả kiểm tra `Scoring v1.0` (`89.0`, `68.1`) và `MATH-01`..`MATH-07` (`IoU`, `CLIP`, `Coverage`, `Tversky`, `MCDA/XAI 80.83`, `LR`, `MMR`, `USDA 104.5 kcal`) |
+| Backend & Math unit tests | `pytest` | Kết quả kiểm tra MCDA 4 tiêu chí hợp nhất (`95.0`, `100.0`, `90.0`, `75.0`, `83.75`) và `MATH-01`..`MATH-07` (`IoU`, `CLIP`, `Coverage 4-2-1`, `Tversky`, `MCDA/XAI 83.75`, `LR`, `MMR`, `USDA 104.4 kcal`) |
 | Contract / API | `pytest` + `HTTPX` / OpenAPI schema validator | Snapshot request/response, báo cáo khớp `/openapi.json` và 20 mã lỗi |
 | Database, RLS & `pg_trgm` | Supabase SQL tests + script `anon`/User A/B/Admin | Log allow/deny RLS, kết quả tìm kiếm alias (`đậu hũ`/`đậu phụ`), migration hash |
 | AI Vision Evaluation | `Ultralytics val` (`metrics.box.map`, `map50`) | Bảng `mAP@50`, `mAP@50:95`, per-class `AP50`/`Recall`/`N_test`, confusion matrix |
@@ -47,8 +47,8 @@ Hệ thống được kiểm định trên **5 trục độc lập**:
 
 | Giai đoạn | Hạng mục triển khai | Trọng tâm kiểm thử nghiệm thu |
 |---|---|---|
-| **Giai đoạn 1 (`P0` MVP)** | PostgreSQL >= 15, tìm kiếm `pg_trgm`, YOLO + EXIF, HITL + thanh `pantry`, `Scoring v1.0`, dinh dưỡng Tầng 1, Admin CMS | Toàn bộ `TC-01`..`TC-47` cốt lõi, 20 mã lỗi API, `SEC-01`..`07`, unit test `Scoring v1.0` (`89.0`, `68.1`) |
-| **Giai đoạn 2 (`Scoring v1.1`)** | Suy luận 3 trạng thái (`READY`/`UNKNOWN`/`MISSING_CONFIRMED`), lọc cứng `BLOCKED`, Weighted Coverage, MCDA 5 tiêu chí, HITL $\tau$, XAI | `DEF-02`..`DEF-05`, `DEF-10`, unit test `MATH-02`..`MATH-05` (`80.83`, `0%` lọt dị ứng) |
+| **Giai đoạn 1 (`P0` Nền tảng)** | PostgreSQL >= 15, tìm kiếm `pg_trgm`, Suy luận 3 trạng thái (`READY`/`UNKNOWN`/`MISSING_CONFIRMED`), lọc cứng `BLOCKED` (`allergic_ingredient_ids`), thanh `pantry` | Kiểm thử schema DB, RLS, `pg_trgm`, `TC-01`..`04`, `TC-11`, `TC-36`, `MATH-02` (`0%` lọt dị ứng) |
+| **Giai đoạn 2 (`P0` Đề xuất cốt lõi)** | Weighted Coverage `4-2-1-0`, Tversky baseline, MCDA 4 tiêu chí hợp nhất (`C, G, T, P` — `ADR-013`), MMR & giải thích đóng góp XAI | `TC-10`..`14`, `TC-31`..`37`, `DEF-03`..`05`, `DEF-10`, unit test `MATH-03`..`MATH-06` (`95.0`, `90.0`, `83.75`) |
 | **Giai đoạn 3 (Khẩu phần & USDA)** | Quy đổi khẩu phần tuyến tính $n_{\text{new}}/n_{\text{base}}$ & dinh dưỡng Tầng 2 USDA per-100g | `DEF-09`, unit test `MATH-07` (`104.5 kcal` → `209.0 kcal`), kiểm tra ẩn Tầng 2 khi thiếu `grams` |
 | **Giai đoạn 4 (Học sở thích, MMR & CLIP)** | Logistic Regression ($\theta_u$, cold-start $\lambda_{\text{pers}}$), tái xếp hạng MMR, nhánh phụ CLIP tùy chọn | `DEF-08`, unit test `MATH-01`, `MATH-05`, `MATH-06` (`0.412 < 0.556`) |
 | **Giai đoạn 5 (Thực nghiệm & Bảo vệ)** | Đánh giá độc lập YOLO + đối chứng 4 biến thể Ranker A/B/C/D + diễn tập demo | `AI-01`..`AI-04`, `DEF-01`..`DEF-10`, `PERF-01`..`02`, `LEGAL-01`, kiểm thử chéo ký duyệt |

@@ -156,25 +156,25 @@ Scenario Outline: Từ chối yêu cầu gợi ý khi gửi sai nhóm nguyên li
     | ingredient_ids hoặc excluded_pantry_ids chứa UUID không tồn tại hoặc inactive|
 ```
 
-### AC-10 — Chấm điểm và xếp hạng khi đủ gia vị nền (`US-05`, `FR-06`, `TC-10`, `TC-11`, `TC-12`)
+### AC-10 — Chấm điểm MCDA 4 tiêu chí và xếp hạng khi đủ gia vị bếp (`US-05`, `FR-06`, `TC-10`, `TC-11`, `TC-12`)
 
 ```gherkin
-Scenario: Tính điểm S=89.0 và xếp nhóm ready trước missing khi người dùng không thiếu gia vị nền
-  Given công thức "Trứng xào cà chua" (prep=5, cook=8, VN) có R_main={Trứng gà, Cà chua}, O_main={Hành lá}, R_pantry={Dầu ăn, Nước mắm}
-  And công thức "Gà xào cà chua" (prep=10, cook=15, VN) có R_main={Thịt gà, Cà chua}, O_main={}, R_pantry={Dầu ăn, Nước mắm}
-  When người dùng gửi POST "/api/v1/recommendations" với ingredient_ids=[Trứng gà, Cà chua], excluded_pantry_ids=[], include_missing=true
-  Then "Trứng xào cà chua" có availability="ready", score=89.0 (C=0.8, E=1.0, T=1.0, P=1.0), missing_required_ingredient_ids=[]
-  And "Gà xào cà chua" có availability="missing", missing_required_ingredient_ids=[Thịt gà] và được xếp sau "Trứng xào cà chua"
+Scenario: Tính điểm S=95.0 (Guest trung lập P=0.5) và xếp nhóm ready trước missing khi người dùng đủ gia vị bếp
+  Given công thức "Trứng xào cà chua" (prep=5, cook=10, total=15 phút = 0.25h) có Cà chua (core w=4, main), Trứng gà (core w=4, main), Hành lá (optional), Dầu ăn (w=1), Nước mắm (w=1)
+  And công thức "Thịt kho trứng" (prep=15, cook=45) có Thịt ba chỉ (core w=4, main), Trứng gà (secondary w=2, sub), Nước mắm (w=1)
+  When người dùng gửi POST "/api/v1/recommendations" với ingredient_ids=[Trứng gà, Cà chua], main_ingredient_ids=[], desired_hours=100.0, excluded_pantry_ids=[], favorite_ingredient_ids=[]
+  Then "Trứng xào cà chua" có availability="ready", score=95.0 (C=1.0, G=1.0, T=1.0, P=0.5), missing_required_ingredient_ids=[]
+  And "Thịt kho trứng" có availability="missing", missing_required_ingredient_ids=[Thịt ba chỉ] và được xếp sau "Trứng xào cà chua"
 ```
 
-### AC-11 — Giảm điểm và chuyển sang nhóm missing khi người dùng tắt gia vị nền bắt buộc (`US-05`, `FR-06`, `TC-32`)
+### AC-11 — Giảm điểm độ đủ C và chuyển sang nhóm missing khi thiếu gia vị bắt buộc (`US-05`, `FR-06`, `TC-32`)
 
 ```gherkin
-Scenario: Chuyển món sang nhóm missing và giảm điểm xuống S=68.1 khi tắt gia vị bắt buộc Nước mắm
-  Given công thức "Trứng xào cà chua" (prep=5, cook=8, VN) có R_main={Trứng gà, Cà chua}, O_main={Hành lá}, R_pantry={Dầu ăn, Nước mắm}
+Scenario: Chuyển món sang nhóm missing và giảm điểm xuống S=90.0 khi tắt gia vị bắt buộc Nước mắm
+  Given công thức "Trứng xào cà chua" (total=15 phút = 0.25h) có trọng số bắt buộc Cà chua=4, Trứng gà=4, Dầu ăn=1, Nước mắm=1 (tổng=10)
   When người dùng gửi POST "/api/v1/recommendations" với ingredient_ids=[Trứng gà, Cà chua] và excluded_pantry_ids=[Nước mắm]
-  Then hệ thống tính M_pantry={Nước mắm}, E=2/3 (≈0.667), C=2/3.5 (≈0.571), T=1.0, P=1.0 và trả score=68.1
-  And món "Trứng xào cà chua" chuyển sang availability="missing" với missing_required_ingredient_ids=[Nước mắm]
+  Then hệ thống tính C=9/10 (0.9), G=1.0, T=1.0, P=0.5 và trả score=90.0
+  And món "Trứng xào cà chua" chuyển sang availability="missing" (MISSING_CONFIRMED) với missing_required_ingredient_ids=[Nước mắm]
 ```
 
 ### AC-12 — Lọc chỉ lấy món nấu được ngay (`include_missing=false`) và xử lý kết quả rỗng (`US-05`, `FR-06`, `TC-33`, `TC-34`)
@@ -186,14 +186,14 @@ Scenario: Loại bỏ các món thiếu nguyên liệu bắt buộc khi đặt i
   Then hệ thống trả HTTP 200 với mảng items chỉ chứa 1 món có availability="ready" (và trả items=[] nếu không có món nào ready)
 ```
 
-### AC-13 — Lọc cứng theo ẩm thực/thời gian và ưu tiên mềm theo sở thích ẩm thực (`US-06`, `FR-07`, `TC-13`, `TC-14`, `TC-35`)
+### AC-13 — Lọc cứng dị ứng/ẩm thực, điểm thời gian mềm theo giờ và sở thích nguyên liệu yêu thích (`US-06`, `FR-07`, `TC-13`, `TC-14`, `TC-35`)
 
 ```gherkin
-Scenario: Áp dụng đồng thời lọc cứng max_total_minutes, cuisine_codes và ưu tiên mềm preferred_cuisine_codes
-  Given món A (VN, prep=5, cook=10), món B (EU, prep=5, cook=10) và món C (VN, prep=15, cook=20) có cùng độ phủ C và E
-  When người dùng gửi POST "/api/v1/recommendations" với cuisine_codes=["VN", "EU"], preferred_cuisine_codes=["VN"] và max_total_minutes=15
-  Then món C (35 phút) bị loại trước khi chấm điểm
-  And món A (VN, 15 phút) nhận P=1.0 còn món B (EU, 15 phút) vẫn xuất hiện nhưng nhận P=0.0 (điểm thấp hơn A đúng 10.0 điểm)
+Scenario: Lọc cứng món chứa nguyên liệu dị ứng và tính điểm mềm thời gian desired_hours cùng sở thích favorite_ingredient_ids
+  Given món "Đậu hũ sốt cà chua" (30 phút = 0.50h, không chứa Trứng gà) và món "Trứng xào cà chua" (chứa Trứng gà)
+  When người dùng gửi POST "/api/v1/recommendations" với ingredient_ids=[Đậu hũ, Cà chua], main_ingredient_ids=[Đậu hũ], desired_hours=0.25, allergic_ingredient_ids=[Trứng gà], favorite_ingredient_ids=[Đậu hũ, Thịt ba chỉ]
+  Then món "Trứng xào cà chua" bị loại cứng (BLOCKED) trước khi chấm điểm do chứa nguyên liệu dị ứng Trứng gà
+  And món "Đậu hũ sốt cà chua" nhận C=1.0, G=0.85, T=0.5, P=0.5 và tổng điểm S=83.75
 ```
 
 ### AC-14 — Hiển thị nhãn dinh dưỡng định tính kèm nguồn và tuyên bố miễn trừ (`US-07`, `FR-08`, `TC-15`)
@@ -400,6 +400,6 @@ Scenario: Admin xem danh sách nhật ký thay đổi dữ liệu mà không l�
 
 ---
 
-## 4. Liên kết mở rộng Giai đoạn 2–5 (`Scoring v1.1` & Kịch bản Bảo vệ Đồ án)
+## 4. Liên kết mở rộng Giai đoạn 2–5 (MCDA Hợp nhất `ADR-013` & Kịch bản Bảo vệ Đồ án)
 
-30 kịch bản Gherkin nguyên tử ở Mục 3 khóa chặt hợp đồng cốt lõi MVP (`P0` / `P1` nền tảng theo [`openapi.yaml`](../03-api/openapi.yaml)). Đối với các năng lực thông minh mở rộng ở Giai đoạn 2–5 (cảnh báo xác nhận HITL theo ngưỡng $\tau$, suy luận 3 trạng thái `READY` / `UNKNOWN` / `MISSING_CONFIRMED`, lọc cứng dị ứng/thiết bị `BLOCKED`, độ phủ có trọng số $w_{r,i}$, xếp hạng MCDA 5 tiêu chí kèm giải thích XAI `80.83`, cá nhân hóa Logistic Regression, đa dạng hóa MMR, quy đổi khẩu phần và dinh dưỡng Tầng 2 USDA), tiêu chí nghiệm thu chi tiết được đặc tả tại bộ **10 kịch bản bảo vệ đồ án (`DEF-01`..`DEF-10`)** và **Unit Test toán học (`MATH-01`..`MATH-07`)** trong [`06-testing/test-cases.md`](../06-testing/test-cases.md).
+30 kịch bản Gherkin nguyên tử ở Mục 3 khóa chặt hợp đồng `1.1.0` theo [`openapi.yaml`](../03-api/openapi.yaml). Đối với toàn bộ 14 thành phần thông minh từ Giai đoạn 1–5 (tách nguyên liệu rõ / không rõ theo ngưỡng $\tau = 0.80$, suy luận 3 trạng thái `READY` / `UNKNOWN` / `MISSING_CONFIRMED`, lọc cứng dị ứng/thiết bị `BLOCKED`, độ phủ có trọng số `4-2-1-0`, xếp hạng MCDA 4 tiêu chí `C, G, T, P` kèm giải thích đóng góp tuyến tính XAI (`95.0`, `90.0`, `83.75`), cá nhân hóa Logistic Regression, đa dạng hóa MMR, quy đổi khẩu phần và dinh dưỡng Tầng 2 USDA), tiêu chí nghiệm thu chi tiết được đặc tả tại bộ **10 kịch bản bảo vệ đồ án (`DEF-01`..`DEF-10`)** và **Unit Test toán học (`MATH-01`..`MATH-07`)** trong [`06-testing/test-cases.md`](../06-testing/test-cases.md).

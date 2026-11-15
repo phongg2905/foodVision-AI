@@ -1,6 +1,6 @@
 # Ma trận Truy vết Yêu cầu (Requirement Traceability Matrix — RTM)
 
-**Phiên bản:** `1.0.0` · **Trạng thái kiểm thử:** `Planned` (chưa đánh dấu `Pass` cho tới khi có bằng chứng thực nghiệm và kiểm thử chéo).  
+**Phiên bản:** `1.1.0` · **Trạng thái kiểm thử:** `Planned` (chưa đánh dấu `Pass` cho tới khi có bằng chứng thực nghiệm và kiểm thử chéo).  
 **Đối chiếu:** [SRS](SRS.md) · [Use Cases](use-cases.md) · [User Stories & AC](user-stories.md) · [OpenAPI 3.1](../03-api/openapi.yaml) · [Test Cases](../06-testing/test-cases.md)
 
 > **Quy tắc phân quyền sở hữu (`Primary Owner`):** Mỗi yêu cầu chỉ gắn **một vai trò chịu trách nhiệm chính** (`PM / Content Lead`, `BE / DB Lead`, `AI Lead`, hoặc `FE / QA Lead`) để rõ đầu mối giải trình. Việc nghiệm thu tuân thủ nguyên tắc **kiểm thử chéo (Cross-Testing)** quy định tại Mục 1.3 của [`SRS.md`](SRS.md).
@@ -66,7 +66,7 @@ Tất cả đường dẫn REST API bên dưới được hiểu theo tiền t�
 | **04** | Suy luận 3 trạng thái (`confirmed_available` / `unknown` / `confirmed_missing`) & lọc cứng `BLOCKED` | GĐ 2 (`P1`) | `FR-06`, `FR-07`, `BR-04` | [`recommendation-design.md`](../05-recommendation/recommendation-design.md) | `TC-10`..`TC-12`, `TC-32`, `DEF-03`..`DEF-05`, `MATH-02` |
 | **05** | Độ phủ có trọng số $C(r, A)$ & Baseline Tversky | GĐ 1–2 | `FR-06`, `NFR-11` | [`recommendation-design.md`](../05-recommendation/recommendation-design.md) | `DEF-07`, `AI-04`, `MATH-03`, `MATH-04` |
 | **06** | Chiến lược tầng hóa Gợi ý Lai (Hybrid Strategy) | GĐ 1–4 | `FR-06`, `FR-07`, `FR-10`, `FR-11` | [`recommendation-design.md`](../05-recommendation/recommendation-design.md), [`ADR-003`](../07-decisions/ADR-003-detection-recommendation.md) | `AI-04`, `DEF-07`, `DEF-08` |
-| **07** | Xếp hạng đa tiêu chí có trọng số (MCDA — 5 tiêu chí) | GĐ 1–2 | `FR-06`, `FR-07` | [`recommendation-design.md`](../05-recommendation/recommendation-design.md) | `TC-10`, `TC-32`, `DEF-10`, `MATH-05` |
+| **07** | Xếp hạng đa tiêu chí có trọng số hợp nhất (MCDA 4 tiêu chí `C, G, T, P` — `ADR-013`) | GĐ 1–2 | `FR-06`, `FR-07` | [`recommendation-design.md`](../05-recommendation/recommendation-design.md), [`ADR-013`](../07-decisions/ADR-013-unified-mcda-and-ingredient-personalization.md) | `TC-10`, `TC-32`, `TC-35`, `DEF-10`, `MATH-05` |
 | **08** | Học sở thích cá nhân hóa (Logistic Regression nhẹ + Cold-start $\lambda_{\text{pers}}$) | GĐ 4 (`P1`) | `FR-10`, `FR-11` | [`recommendation-design.md`](../05-recommendation/recommendation-design.md), [`ADR-012`](../07-decisions/ADR-012-feedback-uniqueness-and-context.md) | `TC-17`, `TC-19`, `TC-45`, `DEF-08`, `MATH-05` |
 | **09** | Đa dạng hóa kết quả bằng Maximal Marginal Relevance (MMR) | GĐ 4 (`P1`) | `FR-06`, `FR-07` | [`recommendation-design.md`](../05-recommendation/recommendation-design.md) | `DEF-10`, `AI-04`, `MATH-06` |
 | **10** | Sinh hướng dẫn nấu từ công thức đã kiểm duyệt & quy đổi khẩu phần tuyến tính | GĐ 1 & 3 | `FR-02`, `FR-13`, `BR-01` | [`nutrition-and-content.md`](../05-recommendation/nutrition-and-content.md) | `TC-03`, `TC-38`, `DEF-09`, `MATH-07` |

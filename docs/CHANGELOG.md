@@ -1,5 +1,17 @@
 # Documentation changelog
 
+## [1.1.0] — 15/11/2026 (Hợp nhất công thức MCDA 4 tiêu chí `C, G, T, P` & Hồ sơ cá nhân hóa theo nguyên liệu)
+
+- **Thuật toán Suy luận, Xếp hạng & Hồ sơ Cá nhân hóa (`05-recommendation/`, `ADR-013`):**
+  - Hợp nhất công thức tính điểm món ăn duy nhất xuyên suốt toàn hệ thống: $S = 100 \times (0.50\,C + 0.25\,G + 0.15\,T + 0.10\,P)$ (loại bỏ tiêu chí $Q$ hằng số và gộp luồng `Scoring v1.0`/`v1.1` rời rạc).
+  - Chuẩn hóa thang trọng số nguyên liệu 4 nhóm cho độ đủ $C(r, A)$: **Cốt lõi (`core`) = `4`**, **Phụ quan trọng (`secondary`) = `2`**, **Gia vị/hỗ trợ (`spice`) = `1`**, **Tùy chọn (`optional`) = không đưa vào tập bắt buộc $R_r$**.
+  - Chuẩn hóa tiêu chí vai trò nguyên liệu chính $G(r) = \frac{\sum_{i \in U} w_i g(i,r)}{\sum_{i \in U} w_i}$ với phân bổ tổng nhóm nguyên liệu chính `0.7` / nhóm phụ `0.3` phía người dùng và tag `dish_role` (`main` $=1.0$, `sub` $=0.5$) phía món ăn.
+  - Chuẩn hóa thời gian $T(r) = \min(1, t^* / t_r)$ theo đơn vị **giờ** ($t_r = \text{total\_minutes} / 60 > 0$), mặc định $t^* = 100.0\text{h}$ khi người dùng không nhập.
+  - Chuẩn hóa sở thích $P(r) = |\text{Ing}(r) \cap F_u| / |F_u|$ theo nguyên liệu yêu thích của người dùng (quy ước trung lập $P(r) = 0.5$ khi $|F_u| = 0$).
+- **Luồng HITL, Cơ sở dữ liệu & Hợp đồng API (`01-requirements/`, `02-architecture/`, `03-api/`, `06-testing/`):**
+  - Bổ sung tách nhóm `clear_ingredients` / `uncertain_ingredients` (`needs_confirmation`) trong phản hồi nhận diện ảnh; bổ sung `main_ingredient_ids`, `desired_hours`, `allergic_ingredient_ids`, `kitchen_spice_ids`, `favorite_ingredient_ids` và `score_contributions` trong `openapi.yaml`.
+  - Cập nhật `recipe_ingredients` (`role`, `dish_role`, `weight`), `recipes` (`prep_minutes + cook_minutes > 0`) và `user_preferences` (3 danh sách cá nhân hóa theo nguyên liệu).
+
 ## [1.0.0] — 04/11/2026 (Chốt chính thức Baseline Đặc tả, Kiến trúc 7 tầng & Hợp đồng API)
 
 - **Phát hành chính thức bộ tài liệu chuẩn `1.0.0` (`Approved Baseline`):**

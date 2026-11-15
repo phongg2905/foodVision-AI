@@ -1,6 +1,6 @@
 {
   "info": {
-    "name": "FoodVision AI — API Contract v1.0.0",
+    "name": "FoodVision AI — API Contract v1.1.0",
     "description": "Import vào Postman, đặt baseUrl và Supabase token khi test. Ví dụ UUID/dữ liệu chỉ minh họa; chưa phải API đã hoạt động.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
@@ -151,7 +151,7 @@
         },
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"ingredient_ids\": [\n    \"11111111-1111-4111-8111-111111111111\",\n    \"22222222-2222-4222-8222-222222222222\"\n  ],\n  \"excluded_pantry_ids\": [],\n  \"max_total_minutes\": 15,\n  \"cuisine_codes\": [\n    \"VN\"\n  ],\n  \"preferred_cuisine_codes\": [],\n  \"include_missing\": true,\n  \"limit\": 20,\n  \"scan_id\": null\n}",
+          "raw": "{\n  \"ingredient_ids\": [\n    \"11111111-1111-4111-8111-111111111101\",\n    \"11111111-1111-4111-8111-111111111102\"\n  ],\n  \"main_ingredient_ids\": [],\n  \"desired_hours\": 100.0,\n  \"allergic_ingredient_ids\": [],\n  \"kitchen_spice_ids\": null,\n  \"excluded_pantry_ids\": [],\n  \"favorite_ingredient_ids\": [],\n  \"cuisine_codes\": [\n    \"VN\"\n  ],\n  \"include_missing\": true,\n  \"limit\": 20,\n  \"scan_id\": null\n}",
           "options": {
             "raw": {
               "language": "json"

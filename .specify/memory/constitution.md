@@ -3,15 +3,15 @@
 ## Core Principles
 
 ### I. Docs-as-Single-Source-of-Truth & Traceability
-Thư mục `docs/` (phiên bản `1.0.0` tiến tới `1.0.0-baseline`) là nguồn chân lý chuẩn (Single Source of Truth) về yêu cầu, kiến trúc, hợp đồng dữ liệu và thuật toán của dự án.
-- Mọi tính năng, kế hoạch (`plan.md`) và danh sách công việc (`tasks.md`) sinh ra qua Spec Kit **PHẢI** tham chiếu trực tiếp đến các mã định danh trong `docs/`: `FR-01`..`FR-18`, `NFR-01`..`NFR-14`, `BR-01`..`BR-12`, `UC-01`..`UC-10`, `US-01`..`US-14`, `AC-01`..`AC-28`, `TC-01`..`TC-47`, `MATH-01`..`MATH-07`, `DEF-01`..`DEF-10` và `ADR-001`..`ADR-012`.
+Thư mục `docs/` (phiên bản `1.1.0`) là nguồn chân lý chuẩn (Single Source of Truth) về yêu cầu, kiến trúc, hợp đồng dữ liệu và thuật toán của dự án.
+- Mọi tính năng, kế hoạch (`plan.md`) và danh sách công việc (`tasks.md`) sinh ra qua Spec Kit **PHẢI** tham chiếu trực tiếp đến các mã định danh trong `docs/`: `FR-01`..`FR-18`, `NFR-01`..`NFR-14`, `BR-01`..`BR-12`, `UC-01`..`UC-10`, `US-01`..`US-14`, `AC-01`..`AC-28`, `TC-01`..`TC-47`, `MATH-01`..`MATH-07`, `DEF-01`..`DEF-10` và `ADR-001`..`ADR-013`.
 - Không sao chép dư thừa hoặc tự ý thay đổi công thức toán học, cấu trúc bảng hay quy tắc nghiệp vụ trong `specs/` trái với `docs/`. Nếu cần thay đổi thiết kế, **PHẢI** cập nhật đồng bộ tài liệu tương ứng trong `docs/` và ghi nhận ADR mới nếu ảnh hưởng kiến trúc.
 
 ### II. Decoupled 7-Layer Intelligence Architecture
-Hệ thống **PHẢI** duy trì sự phân tách rõ ràng giữa 7 tầng thông minh (14 thành phần kỹ thuật — `TP 01`..`TP 14`) theo `ADR-001` và `ADR-003`:
-- **Tầng Nhận thức (`TP 01` YOLO, `TP 02` CLIP/VLM helper, `TP 14` HITL):** Chỉ phụ trách tiền xử lý ảnh, phát hiện đối tượng, gợi ý ứng viên vùng khó và nhận xác nhận từ người dùng (`Human-in-the-loop` khi $\text{confidence} < \tau = 0.80$). Tuyệt đối không trộn lẫn logic xếp hạng món ăn vào module thị giác.
-- **Tầng Tri thức & Suy luận (`TP 03` PostgreSQL KB, `TP 04` 3-valued Rule Reasoning, `TP 10` Verified Retrieval, `TP 13` Vietnamese Search `unaccent` + `pg_trgm`):** Chuẩn hóa tiếng Việt có/không dấu, từ đồng nghĩa vùng miền, suy luận 3 trạng thái (`confirmed_available`, `confirmed_missing`, `unknown`) kết hợp 5 gia vị nền (`category = 'pantry'`, `ADR-008`) và lọc cứng ràng buộc (`BLOCKED` / `READY` / `UNKNOWN` / `MISSING_CONFIRMED`).
-- **Tầng Ra quyết định, Cá nhân hóa & Giải thích (`TP 05` Weighted Coverage, `TP 06` Tversky baseline, `TP 07` MCDA 5 tiêu chí, `TP 08` Logistic Regression, `TP 09` MMR, `TP 11` Dinh dưỡng 2 tầng, `TP 14` XAI Score Breakdown):** Độc lập, vượt qua 100% bài kiểm thử toán học `MATH-01`..`MATH-07` và thực nghiệm đối chứng `A – B – C – D` (`TP 12`).
+Hệ thống **PHẢI** duy trì sự phân tách rõ ràng giữa 7 tầng thông minh (14 thành phần kỹ thuật — `TP 01`..`TP 14`) theo `ADR-001`, `ADR-003` và `ADR-013`:
+- **Tầng Nhận thức (`TP 01` YOLO, `TP 02` CLIP/VLM helper, `TP 14` HITL):** Chỉ phụ trách tiền xử lý ảnh, phát hiện đối tượng, tách **Nguyên liệu rõ** ($\text{conf} \ge \tau = 0.80$) / **Nguyên liệu không rõ** ($\text{conf} < \tau$, cần người dùng xác nhận), nhận chỉnh sửa nguyên liệu, lựa chọn nguyên liệu chính (`0.7 / 0.3`) và thời gian nấu mong muốn (mặc định `100h`). Tuyệt đối không trộn lẫn logic xếp hạng món ăn vào module thị giác.
+- **Tầng Tri thức & Suy luận (`TP 03` PostgreSQL KB, `TP 04` 3-valued Rule Reasoning, `TP 10` Verified Retrieval, `TP 13` Vietnamese Search `unaccent` + `pg_trgm`):** Chuẩn hóa tiếng Việt có/không dấu, từ đồng nghĩa vùng miền, suy luận 3 trạng thái (`confirmed_available`, `confirmed_missing`, `unknown`), lọc cứng nguyên liệu dị ứng (`allergic_ingredient_ids` / `excluded_allergen_ids` → `BLOCKED`) và đối chiếu gia vị có trong bếp (`kitchen_spice_ids` / `excluded_pantry_ids`, `ADR-008`, `ADR-013`).
+- **Tầng Ra quyết định, Cá nhân hóa & Giải thích (`TP 05` Weighted Coverage `4-2-1`, `TP 06` Tversky baseline, `TP 07` MCDA 4 tiêu chí hợp nhất $S = 100(0.50C + 0.25G + 0.15T + 0.10P)$, `TP 08` Sở thích nguyên liệu & Logistic Regression, `TP 09` MMR, `TP 11` Dinh dưỡng 2 tầng, `TP 14` XAI Score Breakdown):** Độc lập, vượt qua 100% bài kiểm thử toán học `MATH-01`..`MATH-07` và thực nghiệm đối chứng `A – B – C – D` (`TP 12`).
 
 ### III. Safety, Privacy & Non-Hallucination Guardrails (NON-NEGOTIABLE)
 Các ranh giới an toàn sau đây là bất khả xâm phạm trong mọi dòng code:
@@ -57,4 +57,4 @@ Khi một thành viên sử dụng các lệnh `/speckit-specify`, `/speckit-pla
 - Mọi bản kế hoạch (`plan.md`) và danh sách task (`tasks.md`) sinh ra qua Spec Kit **PHẢI** vượt qua bước kiểm tra *Constitution Check* dựa trên 5 nguyên tắc cốt lõi ở trên trước khi viết code.
 - Mọi sửa đổi đối với Hiến pháp phải cập nhật phiên bản theo chuẩn Semantic Versioning (`MAJOR.MINOR.PATCH`) và đồng bộ với `docs/CHANGELOG.md`.
 
-**Version**: 1.0.0 | **Ratified**: 2026-11-04 | **Last Amended**: 2026-11-04
+**Version**: 1.1.0 | **Ratified**: 2026-11-04 | **Last Amended**: 2026-11-15

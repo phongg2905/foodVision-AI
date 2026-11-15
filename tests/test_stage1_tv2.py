@@ -2,15 +2,15 @@
 
 Covers:
 - Card #6 (`[GĐ1 - TP03, TP13]`):
-  - Supabase PostgreSQL >= 15 DDL & RLS migrations (`20261104000001_initial_schema.sql`, `20261104000002_rls_and_grants.sql`)
+  - Supabase PostgreSQL >= 15 DDL & RLS migrations (`20261104000001_initial_schema.sql`, `20261104000002_rls_and_grants.sql`, `20261115000003_unified_mcda_and_personalization.sql`)
   - PgBouncer DSN sanitization (`sanitize_psycopg_dsn`)
   - Vietnamese normalization (`norm_vi`) & 4-tier trigram search (`TP 13`)
   - FastAPI endpoints: `GET /api/v1/health` (`OPS-01`), `GET /api/v1/ingredients` (`TC-10`, `NFR-03`),
     `GET /api/v1/recipes` (`TC-01`, `TC-03`), `GET /api/v1/recipes/{id}` (`TC-02`, `TC-04`)
 - Card #8 (`[GĐ1 - TP04]`):
-  - Open-World 3-Valued Ingredient State Validation (`TC-11`: `422 INVALID_INGREDIENTS` on pantry/main mismatch)
+  - Open-World 3-Valued Ingredient State Validation (`TC-11`, `ADR-013`: `422 INVALID_INGREDIENTS` on pantry/main/subset mismatch)
   - 4-Group Recipe Reasoning (`BLOCKED`, `READY`, `UNKNOWN`, `MISSING_CONFIRMED` -> `"ready"` / `"missing"`, `TC-13`)
-  - Hard Constraints (`published`, `C > 0`, `cuisine_codes`, `max_total_minutes`, `DietOK`, `EquipOK`)
+  - Hard Constraints (`published`, `C > 0`, `cuisine_codes`, `max_total_minutes`, `DietOK` via `excluded_allergen_ids` & `allergic_ingredient_ids`, `EquipOK`)
 """
 
 from __future__ import annotations
@@ -22,6 +22,7 @@ from app.core.database import InMemoryCatalogRepository, sanitize_psycopg_dsn
 from app.core.errors import AppError
 from app.core.seed_fixtures import (
     ING_CA_CHUA,
+    ING_DAU_AN,
     ING_DAU_HU,
     ING_MUOI,
     ING_TRUNG_GA,
@@ -29,6 +30,7 @@ from app.core.seed_fixtures import (
     REC_DAU_HU_SOT_CA,
     REC_DRAFT,
     REC_THIT_KHO_TRUNG,
+    REC_TRUNG_XAO_CA_CHUA,
 )
 from app.schemas.reasoning import ReasoningInput
 from app.services.reasoning import (
@@ -55,6 +57,12 @@ def test_supabase_migration_files_contain_all_required_schema_objects() -> None:
     ).read_text(encoding="utf-8")
     rls_sql = (
         REPO_ROOT / "supabase" / "migrations" / "20261104000002_rls_and_grants.sql"
+    ).read_text(encoding="utf-8")
+    upgrade_sql = (
+        REPO_ROOT
+        / "supabase"
+        / "migrations"
+        / "20261115000003_unified_mcda_and_personalization.sql"
     ).read_text(encoding="utf-8")
 
     # PostgreSQL >= 15 check & extensions
@@ -96,6 +104,14 @@ def test_supabase_migration_files_contain_all_required_schema_objects() -> None:
     assert "idx_ai_models_single_active" in schema_sql
     assert "UNIQUE NULLS NOT DISTINCT" in schema_sql
     assert "CREATE OR REPLACE FUNCTION public.activate_ai_model" in schema_sql
+
+    # ADR-013 Unified MCDA & Personalization constraints
+    for sql_text in (schema_sql, upgrade_sql):
+        assert "chk_recipes_positive_time" in sql_text
+        assert "dish_role" in sql_text
+        assert "allergic_ingredient_ids" in sql_text
+        assert "kitchen_spice_ids" in sql_text
+        assert "favorite_ingredient_ids" in sql_text
 
     # Storage bucket `scan-images`
     assert "scan-images" in rls_sql
@@ -199,11 +215,12 @@ def test_recipes_list_and_detail_endpoints_tc01_to_tc04(client: TestClient) -> N
     assert data["total"] == 1
     assert data["items"][0]["id"] == REC_DAU_HU_SOT_CA
 
-    # TC-03: Filter by max_total_minutes=15 -> only Canh cà chua trứng (15m)
+    # TC-03: Filter by max_total_minutes=15 -> Canh cà chua trứng (15m) & Trứng xào cà chua (15m), NOT Thịt kho trứng (60m)
     res_fast = client.get("/api/v1/recipes?max_total_minutes=15")
     assert res_fast.status_code == 200
     fast_ids = {item["id"] for item in res_fast.json()["items"]}
     assert REC_CANH_CA_CHUA_TRUNG in fast_ids
+    assert REC_TRUNG_XAO_CA_CHUA in fast_ids
     assert REC_THIT_KHO_TRUNG not in fast_ids
 
     # TC-02: Get published recipe detail
@@ -225,10 +242,10 @@ def test_recipes_list_and_detail_endpoints_tc01_to_tc04(client: TestClient) -> N
 # ==============================================================================
 
 
-def test_validate_and_resolve_ingredients_rejects_pantry_mismatch_tc11(
+def test_validate_and_resolve_ingredients_rejects_pantry_and_subset_mismatch_tc11(
     repo: InMemoryCatalogRepository,
 ) -> None:
-    """TC-11: Passing a pantry UUID in `ingredient_ids` or a main UUID in `excluded_pantry_ids` raises 422 INVALID_INGREDIENTS."""
+    """TC-11 & ADR-013: Validate category and subset invariants with 422 INVALID_INGREDIENTS."""
     # Case 1: Pantry ingredient (`ING_MUOI`) passed in `ingredient_ids`
     with pytest.raises(AppError) as exc_info:
         validate_and_resolve_ingredients(
@@ -240,6 +257,7 @@ def test_validate_and_resolve_ingredients_rejects_pantry_mismatch_tc11(
     assert err.status_code == 422
     assert err.code == "INVALID_INGREDIENTS"
     assert ING_MUOI in err.details["invalid_ingredient_ids"]
+    assert err.details["reason"] == "pantry_in_main_list"
 
     # Case 2: Main ingredient (`ING_CA_CHUA`) passed in `excluded_pantry_ids`
     with pytest.raises(AppError) as exc_info_2:
@@ -252,12 +270,37 @@ def test_validate_and_resolve_ingredients_rejects_pantry_mismatch_tc11(
     assert err2.status_code == 422
     assert err2.code == "INVALID_INGREDIENTS"
     assert ING_CA_CHUA in err2.details["invalid_ingredient_ids"]
+    assert err2.details["reason"] == "non_pantry_in_excluded_list"
+
+    # Case 3: `main_ingredient_ids` contains an ID not in `ingredient_ids`
+    with pytest.raises(AppError) as exc_info_3:
+        validate_and_resolve_ingredients(
+            repo=repo,
+            ingredient_ids=[ING_CA_CHUA],
+            main_ingredient_ids=[ING_DAU_HU],
+        )
+    err3 = exc_info_3.value
+    assert err3.status_code == 422
+    assert err3.details["reason"] == "main_not_in_ingredient_ids"
+    assert err3.details["invalid_ids"] == [ING_DAU_HU]
+
+    # Case 4: Non-pantry ingredient passed in `kitchen_spice_ids`
+    with pytest.raises(AppError) as exc_info_4:
+        validate_and_resolve_ingredients(
+            repo=repo,
+            ingredient_ids=[ING_CA_CHUA],
+            kitchen_spice_ids=[ING_DAU_AN, ING_DAU_HU],
+        )
+    err4 = exc_info_4.value
+    assert err4.status_code == 422
+    assert err4.details["reason"] == "non_pantry_in_kitchen_spices"
+    assert err4.details["invalid_ids"] == [ING_DAU_HU]
 
 
 def test_open_world_3_state_reasoning_groups_and_hard_constraints_tc13(
     repo: InMemoryCatalogRepository,
 ) -> None:
-    """TC-13: Verify Open-World 3-Valued classification (`READY`, `UNKNOWN`, `MISSING_CONFIRMED`, `BLOCKED`)."""
+    """TC-13 & MATH-02: Verify Open-World 3-Valued classification (`READY`, `UNKNOWN`, `MISSING_CONFIRMED`, `BLOCKED`)."""
     active_pantry_ids = set(repo.get_active_pantry_ingredients().keys())
     dau_hu_recipe = repo.get_published_recipe_by_id(REC_DAU_HU_SOT_CA)
     assert dau_hu_recipe is not None
@@ -304,8 +347,7 @@ def test_open_world_3_state_reasoning_groups_and_hard_constraints_tc13(
     assert ING_MUOI in eval_missing_pantry.missing_pantry_ids
     assert eval_missing_pantry.ingredient_states[ING_MUOI] == "confirmed_missing"
 
-    # Scenario D: Filter candidate recipes with allergy & dietary constraints
-    # User has Cà chua & Trứng gà, allergic to `egg` -> Canh cà chua trứng & Thịt kho trứng are BLOCKED, only Đậu hũ sốt cà chua remains!
+    # Scenario D: Filter candidate recipes with allergen tag (`excluded_allergen_ids=["egg"]`)
     candidates = filter_candidate_recipes(
         repo=repo,
         params=ReasoningInput(
@@ -314,5 +356,14 @@ def test_open_world_3_state_reasoning_groups_and_hard_constraints_tc13(
             excluded_allergen_ids=["egg"],
         ),
     )
-    candidate_ids = [rec.id for rec, _ev in candidates]
-    assert candidate_ids == [REC_DAU_HU_SOT_CA]
+    assert [rec.id for rec, _ev in candidates] == [REC_DAU_HU_SOT_CA]
+
+    # Scenario E: Filter candidate recipes with direct `allergic_ingredient_ids=[ING_TRUNG_GA]` (`ADR-013`)
+    candidates_ing_allergy = filter_candidate_recipes(
+        repo=repo,
+        params=ReasoningInput(
+            ingredient_ids=[ING_CA_CHUA, ING_TRUNG_GA],
+            allergic_ingredient_ids=[ING_TRUNG_GA],
+        ),
+    )
+    assert [rec.id for rec, _ev in candidates_ing_allergy] == [REC_DAU_HU_SOT_CA]

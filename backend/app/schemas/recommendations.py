@@ -1,4 +1,4 @@
-"""Schemas for Recommendation Engine & POST /api/v1/recommendations (`openapi.yaml` & `FV-REC-001`)."""
+"""Schemas for Recommendation Engine & POST /api/v1/recommendations (`openapi.yaml` & `ADR-013`)."""
 
 from __future__ import annotations
 
@@ -9,65 +9,46 @@ from app.schemas.recipes import CuisineCode, RecipeSummary
 
 
 class RecommendRequest(BaseModel):
-    """Request payload for POST /api/v1/recommendations (`openapi.yaml` lines 1822-1869)."""
+    """Request payload for POST /api/v1/recommendations (`openapi.yaml` v1.1.0)."""
 
     model_config = ConfigDict(extra="forbid")
 
     ingredient_ids: list[str] = Field(min_length=1)
+    main_ingredient_ids: list[str] = Field(default_factory=list)
+    desired_hours: float = Field(default=100.0, gt=0.0)
+    allergic_ingredient_ids: list[str] = Field(default_factory=list)
+    kitchen_spice_ids: list[str] | None = None
     excluded_pantry_ids: list[str] = Field(default_factory=list)
+    favorite_ingredient_ids: list[str] = Field(default_factory=list)
     max_total_minutes: int | None = Field(default=None, ge=1, le=720)
     cuisine_codes: list[CuisineCode] = Field(default_factory=list)
-    preferred_cuisine_codes: list[CuisineCode] = Field(default_factory=list)
     include_missing: bool = True
     limit: int = Field(default=20, ge=1, le=50)
     scan_id: str | None = None
 
-    @field_validator("ingredient_ids", "excluded_pantry_ids")
+    @field_validator(
+        "ingredient_ids",
+        "main_ingredient_ids",
+        "allergic_ingredient_ids",
+        "excluded_pantry_ids",
+        "favorite_ingredient_ids",
+    )
     @classmethod
     def check_unique_items(cls, v: list[str]) -> list[str]:
         if len(v) != len(set(v)):
             raise ValueError("Danh sách UUID không được chứa phần tử trùng lặp (uniqueItems: true).")
         return v
 
+    @field_validator("kitchen_spice_ids")
+    @classmethod
+    def check_unique_optional_items(cls, v: list[str] | None) -> list[str] | None:
+        if v is not None and len(v) != len(set(v)):
+            raise ValueError("Danh sách UUID không được chứa phần tử trùng lặp (uniqueItems: true).")
+        return v
+
 
 class ScoreBreakdown(BaseModel):
-    """4-component linear breakdown for MVP Scoring v1.0 (`openapi.yaml` lines 1870-1894)."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    C: float = Field(ge=0.0, le=1.0)
-    E: float = Field(ge=0.0, le=1.0)
-    T: float = Field(ge=0.0, le=1.0)
-    P: float = Field(ge=0.0, le=1.0)
-
-
-class RecommendationItem(BaseModel):
-    """Ranked recommendation item (`openapi.yaml` lines 1895-1930)."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    recipe: RecipeSummary
-    availability: AvailabilityV1
-    score: float = Field(ge=0.0, le=100.0)
-    matched_ingredient_ids: list[str]
-    missing_required_ingredient_ids: list[str]
-    missing_optional_ingredient_ids: list[str]
-    score_breakdown: ScoreBreakdown
-    explanation_vi: str
-
-
-class RecommendResponse(BaseModel):
-    """Response envelope for POST /api/v1/recommendations (`openapi.yaml` lines 1931-1950)."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    items: list[RecommendationItem]
-    total: int = Field(ge=0)
-    limit: int = Field(ge=1, le=50)
-
-
-class MCDAFeatures(BaseModel):
-    """5 normalized features in [0, 1] for Scoring v1.1 MCDA (`TP 07`)."""
+    """4 normalized criteria in [0, 1] for unified MCDA (`C, G, T, P` — `ADR-013`)."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -75,29 +56,41 @@ class MCDAFeatures(BaseModel):
     G: float = Field(ge=0.0, le=1.0)
     T: float = Field(ge=0.0, le=1.0)
     P: float = Field(ge=0.0, le=1.0)
-    Q: float = Field(ge=0.0, le=1.0)
 
 
-class MCDAContributions(BaseModel):
-    """Exact additive point contributions summing to score_base (`TP 14` XAI)."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    C: float
-    G: float
-    T: float
-    P: float
-    Q: float
-
-
-class MCDAEvaluation(BaseModel):
-    """Extended Scoring v1.1 evaluation output (`TP 05`, `TP 07`, `TP 14`)."""
+class ScoreContributions(BaseModel):
+    """Exact additive XAI point contributions summing to score (`50*C + 25*G + 15*T + 10*P`)."""
 
     model_config = ConfigDict(extra="forbid")
 
-    recipe_id: str
-    state: RecipeReasoningStatus
-    score_base: float
-    features: MCDAFeatures
-    contributions: MCDAContributions
+    C: float = Field(ge=0.0, le=50.0)
+    G: float = Field(ge=0.0, le=25.0)
+    T: float = Field(ge=0.0, le=15.0)
+    P: float = Field(ge=0.0, le=10.0)
 
+
+class RecommendationItem(BaseModel):
+    """Ranked recommendation item (`openapi.yaml` v1.1.0)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    recipe: RecipeSummary
+    availability: AvailabilityV1
+    reasoning_status: RecipeReasoningStatus = "READY"
+    score: float = Field(ge=0.0, le=100.0)
+    matched_ingredient_ids: list[str]
+    missing_required_ingredient_ids: list[str]
+    missing_optional_ingredient_ids: list[str]
+    score_breakdown: ScoreBreakdown
+    score_contributions: ScoreContributions
+    explanation_vi: str
+
+
+class RecommendResponse(BaseModel):
+    """Response envelope for POST /api/v1/recommendations."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    items: list[RecommendationItem]
+    total: int = Field(ge=0)
+    limit: int = Field(ge=1, le=50)

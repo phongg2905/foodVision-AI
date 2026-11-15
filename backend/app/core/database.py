@@ -70,8 +70,9 @@ class RecipeIngredientRecord:
     name_vi: str
     category: IngredientCategory
     is_required: bool
-    role: str = "essential"
-    weight: float = 1.0
+    role: str = "core"
+    dish_role: str = "main"
+    weight: float = 4.0
     grams: float | None = None
     display_quantity: str | None = None
     sort_order: int = 0
@@ -152,6 +153,10 @@ class RecipeRecord:
     @property
     def total_minutes(self) -> int:
         return self.prep_minutes + self.cook_minutes
+
+    @property
+    def total_hours(self) -> float:
+        return float(max(1, self.total_minutes)) / 60.0
 
     def to_summary(self) -> RecipeSummary:
         return RecipeSummary(
@@ -604,6 +609,7 @@ class PostgresCatalogRepository:
                     i.category,
                     ri.is_required,
                     ri.role,
+                    ri.dish_role,
                     ri.weight::float AS weight,
                     ri.grams::float AS grams,
                     ri.display_quantity,
@@ -674,6 +680,7 @@ class PostgresCatalogRepository:
                     category=ir["category"],
                     is_required=bool(ir["is_required"]),
                     role=ir["role"],
+                    dish_role=ir.get("dish_role") or ("main" if ir["role"] in ("core", "primary") else "sub"),
                     weight=float(ir["weight"]),
                     grams=float(ir["grams"]) if ir.get("grams") is not None else None,
                     display_quantity=ir.get("display_quantity"),

@@ -203,6 +203,7 @@ CREATE TABLE IF NOT EXISTS public.recipes (
         CONSTRAINT chk_recipes_prep_minutes CHECK (prep_minutes >= 0),
     cook_minutes integer NOT NULL
         CONSTRAINT chk_recipes_cook_minutes CHECK (cook_minutes >= 0),
+    CONSTRAINT chk_recipes_positive_time CHECK (prep_minutes + cook_minutes > 0),
     quality_score numeric(4,3) NOT NULL DEFAULT 1.000
         CONSTRAINT chk_recipes_quality_score CHECK (quality_score >= 0.000 AND quality_score <= 1.000),
     cover_image_path text,
@@ -233,10 +234,14 @@ CREATE TABLE IF NOT EXISTS public.recipe_ingredients (
     recipe_id uuid NOT NULL REFERENCES public.recipes(id) ON DELETE CASCADE,
     ingredient_id uuid NOT NULL REFERENCES public.ingredients(id) ON DELETE RESTRICT,
     is_required boolean NOT NULL DEFAULT true,
-    role varchar(16) NOT NULL DEFAULT 'essential'
-        CONSTRAINT chk_recipe_ingredients_role CHECK (role IN ('primary', 'essential', 'secondary')),
-    weight numeric(6,2) NOT NULL DEFAULT 1.00
-        CONSTRAINT chk_recipe_ingredients_weight CHECK (weight > 0),
+    role varchar(16) NOT NULL DEFAULT 'core'
+        CONSTRAINT chk_recipe_ingredients_role CHECK (role IN ('core', 'secondary', 'spice', 'optional')),
+    dish_role varchar(8) NOT NULL DEFAULT 'main'
+        CONSTRAINT chk_recipe_ingredients_dish_role CHECK (dish_role IN ('main', 'sub')),
+    weight numeric(6,2) NOT NULL DEFAULT 4.00
+        CONSTRAINT chk_recipe_ingredients_weight CHECK (
+            (is_required = true AND weight > 0) OR (is_required = false AND weight >= 0)
+        ),
     grams numeric(8,2)
         CONSTRAINT chk_recipe_ingredients_grams CHECK (grams IS NULL OR grams > 0),
     display_quantity text,
@@ -409,9 +414,12 @@ CREATE TABLE IF NOT EXISTS public.ingredient_nutrients (
     reviewed_at timestamptz
 );
 
--- 20. user_preferences (Stages 2 & 4: Diet/Equipment constraints & Logistic Regression weights)
+-- 20. user_preferences (ADR-013: 3-list ingredient personalization & LR weights)
 CREATE TABLE IF NOT EXISTS public.user_preferences (
     user_id uuid PRIMARY KEY REFERENCES public.profiles(id) ON DELETE CASCADE,
+    allergic_ingredient_ids jsonb NOT NULL DEFAULT '[]'::jsonb,
+    kitchen_spice_ids jsonb NOT NULL DEFAULT '[]'::jsonb,
+    favorite_ingredient_ids jsonb NOT NULL DEFAULT '[]'::jsonb,
     excluded_allergen_ids jsonb NOT NULL DEFAULT '[]'::jsonb,
     available_equipment jsonb,
     lr_weights jsonb,

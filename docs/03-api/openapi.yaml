@@ -1,8 +1,8 @@
-# Official v1.0.0 API design contract.
+# Official v1.1.0 API design contract.
 openapi: 3.1.0
 info:
   title: FoodVision AI REST API — Official Contract
-  version: 1.0.0
+  version: 1.1.0
   description: Hợp đồng thiết kế cho đồ án Phát triển các hệ thống thông minh, chưa khẳng định các endpoint đã triển
     khai. Body và dữ liệu ví dụ thuộc docs/03-api.
 servers:
@@ -309,7 +309,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/RecommendRequest'
-      description: ingredient_ids là danh sách nguyên liệu chính cuối cùng sau khi User sửa (category != 'pantry'); excluded_pantry_ids là danh sách gia vị nền (category = 'pantry') mà người dùng báo đang thiếu. Nếu scan_id khác null thì bearer token phải thuộc chủ sở hữu scan (nếu không trả 404 SCAN_NOT_OWNED). cuisine_codes là lọc cứng, preferred_cuisine_codes là ưu tiên mềm.
+      description: ingredient_ids là danh sách nguyên liệu ngoài pantry sau bước xác nhận HITL; main_ingredient_ids là tập con nguyên liệu chính người dùng chọn (tùy chọn); desired_hours là thời gian nấu mong muốn mềm (giờ, mặc định 100.0); allergic_ingredient_ids là lọc cứng dị ứng; kitchen_spice_ids / excluded_pantry_ids xác định gia vị có trong bếp; favorite_ingredient_ids đo mức khớp sở thích P(r). Nếu scan_id khác null thì bearer token phải thuộc chủ sở hữu scan (nếu không trả 404 SCAN_NOT_OWNED).
       operationId: recommendRecipes
       security:
       - {}
@@ -1773,6 +1773,9 @@ components:
           type: number
           minimum: 0
           maximum: 1
+        needs_confirmation:
+          type: boolean
+          default: false
         bbox:
           $ref: '#/components/schemas/BBox'
       additionalProperties: false
@@ -1813,6 +1816,14 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SuggestedIngredient'
+        clear_ingredients:
+          type: array
+          items:
+            $ref: '#/components/schemas/SuggestedIngredient'
+        uncertain_ingredients:
+          type: array
+          items:
+            $ref: '#/components/schemas/SuggestedIngredient'
       additionalProperties: false
       required:
       - scan_id
@@ -1827,7 +1838,33 @@ components:
           items: *id002
           minItems: 1
           uniqueItems: true
+        main_ingredient_ids:
+          type: array
+          items: *id002
+          uniqueItems: true
+          default: []
+        desired_hours:
+          type: number
+          exclusiveMinimum: 0
+          default: 100.0
+        allergic_ingredient_ids:
+          type: array
+          items: *id002
+          uniqueItems: true
+          default: []
+        kitchen_spice_ids:
+          anyOf:
+          - type: array
+            items: *id002
+            uniqueItems: true
+          - type: 'null'
+          default: null
         excluded_pantry_ids:
+          type: array
+          items: *id002
+          uniqueItems: true
+          default: []
+        favorite_ingredient_ids:
           type: array
           items: *id002
           uniqueItems: true
@@ -1839,14 +1876,6 @@ components:
             maximum: 720
           - type: 'null'
         cuisine_codes:
-          type: array
-          items:
-            type: string
-            enum:
-            - VN
-            - EU
-            - US
-        preferred_cuisine_codes:
           type: array
           items:
             type: string
@@ -1866,7 +1895,7 @@ components:
       additionalProperties: false
       required:
       - ingredient_ids
-      description: 'Danh sách ingredient_ids sau xác nhận (chỉ chứa nguyên liệu chính category != ''pantry''), không dùng class_index YOLO. Fields tùy chọn: excluded_pantry_ids=[] (chỉ chứa UUID có category = ''pantry'' mà người dùng báo thiếu); max_total_minutes=null; cuisine_codes=[]; preferred_cuisine_codes=[]; include_missing=true; limit=20; scan_id=null.'
+      description: 'Danh sách ingredient_ids sau xác nhận (category != ''pantry''). Tùy chọn: main_ingredient_ids=[] (tập con nguyên liệu chính mong muốn U_main ⊆ U, mặc định không chọn); desired_hours=100.0 (thời gian mong muốn đơn vị giờ, mặc định 100h); allergic_ingredient_ids=[] (lọc cứng dị ứng); kitchen_spice_ids=null / excluded_pantry_ids=[] (gia vị có trong bếp); favorite_ingredient_ids=[] (nguyên liệu yêu thích tính P); max_total_minutes=null; cuisine_codes=[]; include_missing=true; limit=20; scan_id=null.'
     ScoreBreakdown:
       type: object
       properties:
@@ -1874,7 +1903,7 @@ components:
           type: number
           minimum: 0
           maximum: 1
-        E:
+        G:
           type: number
           minimum: 0
           maximum: 1
@@ -1889,7 +1918,32 @@ components:
       additionalProperties: false
       required:
       - C
-      - E
+      - G
+      - T
+      - P
+    ScoreContributions:
+      type: object
+      properties:
+        C:
+          type: number
+          minimum: 0
+          maximum: 50
+        G:
+          type: number
+          minimum: 0
+          maximum: 25
+        T:
+          type: number
+          minimum: 0
+          maximum: 15
+        P:
+          type: number
+          minimum: 0
+          maximum: 10
+      additionalProperties: false
+      required:
+      - C
+      - G
       - T
       - P
     RecommendationItem:
@@ -1902,6 +1956,12 @@ components:
           enum:
           - ready
           - missing
+        reasoning_status:
+          type: string
+          enum:
+          - READY
+          - UNKNOWN
+          - MISSING_CONFIRMED
         score:
           type: number
           minimum: 0
@@ -1917,6 +1977,8 @@ components:
           items: *id002
         score_breakdown:
           $ref: '#/components/schemas/ScoreBreakdown'
+        score_contributions:
+          $ref: '#/components/schemas/ScoreContributions'
         explanation_vi: *id001
       additionalProperties: false
       required:
@@ -1927,6 +1989,7 @@ components:
       - missing_required_ingredient_ids
       - missing_optional_ingredient_ids
       - score_breakdown
+      - score_contributions
       - explanation_vi
     RecommendResponse:
       type: object
