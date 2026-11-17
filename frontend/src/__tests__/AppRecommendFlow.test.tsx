@@ -3,19 +3,21 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { App } from '../App';
 
-describe('Luồng End-to-End GĐ2: Chọn nguyên liệu -> Tùy chọn -> Gợi ý Ready/Missing -> Chi tiết Công thức', () => {
+describe('Luồng End-to-End GĐ2 (Mockup A): Khám phá -> Gợi ý từ tủ bếp + Lưới 4 Cột -> Chi tiết', () => {
   beforeEach(() => {
     import.meta.env.VITE_API_MOCK_MODE = 'true';
     window.sessionStorage.clear();
     window.history.replaceState(null, '', '/');
   });
 
-  it('Cho phép mở chi tiết từ Danh mục công thức và quay lại bình thường', async () => {
+  it('Cho phép mở chi tiết từ trang Khám phá công thức và quay lại bình thường', async () => {
     const user = userEvent.setup();
     render(<App />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('open-recipe-dau-hu-sot-ca-chua')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('open-recipe-dau-hu-sot-ca-chua')
+      ).toBeInTheDocument();
     });
 
     await user.click(screen.getByTestId('open-recipe-dau-hu-sot-ca-chua'));
@@ -33,40 +35,50 @@ describe('Luồng End-to-End GĐ2: Chọn nguyên liệu -> Tùy chọn -> Gợi
     });
   });
 
-  it('Cho phép chọn Đậu hũ + Cà chua, đánh dấu món chính & thời gian 30p, xem Gợi ý Ready/Missing rồi mở chi tiết và quay lại', async () => {
+  it('Cập nhật trực tiếp lưới gợi ý 4 cột khi chọn Đậu hũ + Cà chua trên thanh tủ bếp ngang, đặt món chính & thời gian 30p rồi xem Chi tiết', async () => {
     const user = userEvent.setup();
     render(<App />);
 
-    // 1. Vào tab Chọn nguyên liệu & Bếp
     await user.click(screen.getByTestId('nav-tab-kitchen'));
 
     await waitFor(() => {
+      expect(
+        screen.getByTestId('kitchen-studio-workspace')
+      ).toBeInTheDocument();
       expect(screen.getByTestId('suggestion-item-dau-hu')).toBeInTheDocument();
     });
 
-    // 2. Chọn Đậu hũ & Cà chua
+    // Chọn Đậu hũ & Cà chua ngay từ khay gợi ý nhanh
     await user.click(screen.getByTestId('suggestion-item-dau-hu'));
     await user.click(screen.getByTestId('suggestion-item-ca-chua'));
 
-    // 3. Tùy chọn Đậu hũ làm món chính & thời gian 30 phút
+    await waitFor(() => {
+      expect(screen.getByTestId('recommend-studio-grid')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('recommendation-card-dau-hu-sot-ca-chua')
+      ).toBeInTheDocument();
+    });
+
+    // Đánh dấu Đậu hũ làm món chính & mở dropdown thời gian chọn 30 phút
     await user.click(screen.getByTestId('toggle-main-dau-hu'));
+    await user.click(screen.getByTestId('studio-time-trigger'));
     await user.click(screen.getByTestId('desired-time-preset-30'));
 
-    // 4. Bấm Gợi ý món ăn -> tự chuyển sang màn Danh sách Gợi ý
-    await user.click(screen.getByTestId('recommend-submit-btn'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('recommend-ready-section')).toBeInTheDocument();
-    });
+    // Chuyển thử tab Nấu được ngay (1) rồi quay về Tất cả
+    await user.click(screen.getByTestId('studio-tab-ready'));
     expect(
       screen.getByTestId('recommendation-card-dau-hu-sot-ca-chua')
     ).toBeInTheDocument();
     expect(
-      screen.getByTestId('recommend-missing-section')
-    ).toBeInTheDocument();
+      screen.queryByTestId('recommendation-card-canh-ca-chua-trung')
+    ).not.toBeInTheDocument();
 
-    // 5. Mở Chi tiết công thức Đậu hũ sốt cà chua từ thẻ Gợi ý
-    await user.click(screen.getByTestId('view-recipe-detail-dau-hu-sot-ca-chua'));
+    await user.click(screen.getByTestId('studio-tab-all'));
+
+    // Mở Chi tiết công thức Đậu hũ sốt cà chua
+    await user.click(
+      screen.getByTestId('view-recipe-detail-dau-hu-sot-ca-chua')
+    );
 
     await waitFor(() => {
       expect(
@@ -77,41 +89,35 @@ describe('Luồng End-to-End GĐ2: Chọn nguyên liệu -> Tùy chọn -> Gợi
       screen.getByTestId('detail-recommendation-summary')
     ).toBeInTheDocument();
 
-    // 6. Quay lại Danh sách gợi ý -> kết quả vẫn được giữ nguyên
+    // Quay lại Gợi ý từ tủ bếp -> nguyên liệu & lưới kết quả giữ nguyên
     await user.click(screen.getByTestId('recipe-detail-back-btn'));
 
     await waitFor(() => {
-      expect(screen.getByTestId('recommend-ready-section')).toBeInTheDocument();
+      expect(screen.getByTestId('recommend-studio-grid')).toBeInTheDocument();
+      expect(screen.getByTestId('selected-chip-dau-hu')).toBeInTheDocument();
     });
-    expect(
-      screen.getByTestId('recommendation-card-dau-hu-sot-ca-chua')
-    ).toBeInTheDocument();
   });
 
-  it('Đồng bộ URL trình duyệt và xử lý nút Back vật lý (popstate) không bị thoát khỏi ứng dụng', async () => {
+  it('Hỗ trợ chọn bộ nguyên liệu mẫu 1-chạm và xử lý nút Back trình duyệt (popstate)', async () => {
     const user = userEvent.setup();
     render(<App />);
 
     await user.click(screen.getByTestId('nav-tab-kitchen'));
     expect(window.location.search).toBe('?tab=kitchen');
 
-    await waitFor(() => {
-      expect(screen.getByTestId('suggestion-item-dau-hu')).toBeInTheDocument();
-    });
-    await user.click(screen.getByTestId('suggestion-item-dau-hu'));
-    await user.click(screen.getByTestId('suggestion-item-ca-chua'));
-    await user.click(screen.getByTestId('recommend-submit-btn'));
+    await user.click(screen.getByTestId('starter-combo-tofu'));
 
     await waitFor(() => {
-      expect(window.location.search).toBe('?tab=recommendations');
       expect(
         screen.getByTestId('view-recipe-detail-dau-hu-sot-ca-chua')
       ).toBeInTheDocument();
     });
 
-    await user.click(screen.getByTestId('view-recipe-detail-dau-hu-sot-ca-chua'));
+    await user.click(
+      screen.getByTestId('view-recipe-detail-dau-hu-sot-ca-chua')
+    );
     await waitFor(() => {
-      expect(window.location.search).toContain('tab=recommendations');
+      expect(window.location.search).toContain('tab=kitchen');
       expect(window.location.search).toContain(
         'recipe=a1111111-1111-4111-8111-000000000002'
       );
@@ -120,18 +126,17 @@ describe('Luồng End-to-End GĐ2: Chọn nguyên liệu -> Tùy chọn -> Gợi
       ).toBeInTheDocument();
     });
 
-    // Giả lập bấm nút Back trình duyệt quay lại danh sách gợi ý
     await act(async () => {
       window.history.replaceState(
-        { tab: 'recommendations', recipeId: null },
+        { tab: 'kitchen', recipeId: null },
         '',
-        '/?tab=recommendations'
+        '/?tab=kitchen'
       );
       window.dispatchEvent(new PopStateEvent('popstate'));
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('recommend-ready-section')).toBeInTheDocument();
+      expect(screen.getByTestId('recommend-studio-grid')).toBeInTheDocument();
       expect(
         screen.getByTestId('recommendation-card-dau-hu-sot-ca-chua')
       ).toBeInTheDocument();

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { ArrowRight, Utensils } from 'lucide-react';
 import { CuisineCode, RecipeSummary } from '../../../shared/api/types';
 
 export interface RecipeCardProps {
@@ -26,6 +25,12 @@ const RECIPE_BLURB_BY_SLUG: Record<string, string> = {
     'Tôm tươi săn ngọt xào giòn bông cải xanh, thanh đạm và giữ trọn sắc xanh.',
 };
 
+const CUISINE_LABELS: Record<CuisineCode, string> = {
+  VN: 'Món Việt',
+  EU: 'Món Âu',
+  US: 'Món Mỹ',
+};
+
 const CUISINE_DESC_MAP: Record<CuisineCode, string> = {
   VN: 'Hương vị cơm nhà Việt Nam hài hòa, nguyên liệu tươi ngon dễ chuẩn bị',
   EU: 'Phong cách ẩm thực Châu Âu thanh lịch, cân bằng dưỡng chất mỗi ngày',
@@ -45,10 +50,10 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
   return (
     <article
       data-testid={`recipe-card-${recipe.slug}`}
-      className="group relative flex flex-col items-center pt-14"
+      className="group relative flex flex-col items-center pt-16"
     >
-      {/* Đĩa món ăn tròn nổi chồng lên nửa trên thẻ chuẩn NEWTASTE */}
-      <div className="relative z-10 -mb-14 h-32 w-32 shrink-0 overflow-hidden rounded-full bg-[#181512] ring-4 ring-[#FFF8F0] shadow-[0_12px_28px_rgba(24,21,18,0.16)] transition duration-300 group-hover:scale-105 sm:h-36 sm:w-36">
+      {/* Đĩa món ăn tròn lớn chồng lên đỉnh thẻ đồng bộ 100% với trang Bếp AI */}
+      <div className="relative z-10 -mb-16 h-36 w-36 shrink-0 overflow-hidden rounded-full bg-[#181512] ring-4 ring-[#FFF8F0] shadow-[0_12px_26px_rgba(24,21,18,0.16)] transition duration-300 group-hover:scale-[1.03]">
         {recipe.cover_image_url && !imageError ? (
           <img
             src={recipe.cover_image_url}
@@ -58,23 +63,22 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
             className="h-full w-full object-cover"
           />
         ) : (
-          <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-[#2A2421] text-[#EA6D27]">
-            <Utensils className="h-6 w-6" aria-hidden="true" />
-            <span className="font-serif text-[11px] font-bold">FoodVision</span>
+          <div className="flex h-full w-full items-center justify-center bg-[#2A2421] font-serif text-xs font-bold text-[#EFE2D2]">
+            FoodVision
           </div>
         )}
       </div>
 
-      {/* Thân thẻ trắng kem #FFF8F0 cắt chéo chiếc lá chuẩn NEWTASTE */}
-      <div className="relative flex w-full flex-1 flex-col items-center justify-between rounded-tl-[28px] rounded-br-[28px] rounded-tr-[6px] rounded-bl-[6px] bg-[#FFF8F0] px-5 pb-6 pt-16 text-center shadow-[0_10px_28px_rgba(24,21,18,0.06)] transition duration-200 group-hover:-translate-y-1 group-hover:shadow-[0_16px_36px_rgba(24,21,18,0.1)] sm:pt-20">
+      {/* Thân thẻ trắng kem #FFF8F0 căn lề trái thanh lịch chuẩn Mockup A */}
+      <div className="relative flex w-full flex-1 flex-col justify-between rounded-tl-[26px] rounded-br-[26px] rounded-tr-[6px] rounded-bl-[6px] bg-[#FFF8F0] px-5 pb-5 pt-20 text-left shadow-[0_10px_28px_rgba(24,21,18,0.06)] transition duration-200 group-hover:-translate-y-1 group-hover:shadow-[0_16px_36px_rgba(24,21,18,0.1)]">
         <div>
-          <h3 className="line-clamp-2 min-h-[3rem] font-serif text-[19px] font-bold leading-snug text-[#181512] transition group-hover:text-[#9E3D08]">
+          <h3 className="line-clamp-2 min-h-[3.2rem] font-serif text-[19px] font-bold leading-snug text-[#181512] transition group-hover:text-[#B4490E]">
             {onSelectRecipe ? (
               <button
                 type="button"
                 data-testid={`open-recipe-${recipe.slug}`}
                 onClick={() => onSelectRecipe(recipe.id)}
-                className="text-center after:absolute after:inset-0 after:content-[''] focus:outline-none"
+                className="text-left after:absolute after:inset-0 after:content-[''] focus:outline-none"
               >
                 {recipe.name_vi}
               </button>
@@ -83,23 +87,24 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
             )}
           </h3>
 
-          <p className="mt-2.5 line-clamp-3 text-[12px] leading-relaxed text-[#595047]">
+          <p className="mt-1 text-[12.5px] font-medium tabular-nums text-[#595047]">
+            {CUISINE_LABELS[recipe.cuisine_code]} · {recipe.total_minutes} phút
+            (Sơ chế {recipe.prep_minutes}p)
+          </p>
+
+          <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed text-[#4A4037]">
             {descriptionText}
           </p>
         </div>
 
-        <div className="mt-4 flex flex-col items-center gap-1.5">
-          <p className="text-[12px] font-semibold tabular-nums text-[#9E3D08]">
-            {recipe.total_minutes} phút · Sơ chế {recipe.prep_minutes}p
-          </p>
-
-          {onSelectRecipe && (
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#181512] opacity-85 transition group-hover:text-[#9E3D08] group-hover:opacity-100">
+        {onSelectRecipe && (
+          <div className="mt-4 pt-1">
+            <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#B4490E] transition group-hover:text-[#181512]">
               <span>Xem công thức</span>
-              <ArrowRight className="h-3 w-3" aria-hidden="true" />
+              <span aria-hidden="true">→</span>
             </span>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </article>
   );

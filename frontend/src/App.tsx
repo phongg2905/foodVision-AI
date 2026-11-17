@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { MOCK_MAIN_INGREDIENTS } from './shared/api/mockData';
 import { Ingredient, RecommendationItem } from './shared/api/types';
 import { ActiveTab, AppLayout } from './shared/components/AppLayout';
 import { RecipeCatalogView } from './features/recipes/RecipeCatalogView';
@@ -8,7 +9,7 @@ import { RecommendationResultsView } from './features/recommend';
 
 interface ActiveRecipeDetailState {
   recipeId: string;
-  returnTab: ActiveTab;
+  returnTab: 'catalog' | 'kitchen';
   recommendationItem?: RecommendationItem;
 }
 
@@ -21,12 +22,15 @@ interface KitchenDraftStorage {
 
 const KITCHEN_DRAFT_STORAGE_KEY = 'foodvision_kitchen_draft_v1';
 
-function isValidTab(value: string | null): value is ActiveTab {
-  return value === 'catalog' || value === 'kitchen' || value === 'recommendations';
+function normalizeSpaceTab(rawTab: string | null): 'catalog' | 'kitchen' {
+  if (rawTab === 'kitchen' || rawTab === 'recommendations') {
+    return 'kitchen';
+  }
+  return 'catalog';
 }
 
 function parseRouteFromLocation(): {
-  tab: ActiveTab;
+  tab: 'catalog' | 'kitchen';
   detail: ActiveRecipeDetailState | null;
 } {
   if (typeof window === 'undefined') {
@@ -34,9 +38,8 @@ function parseRouteFromLocation(): {
   }
   try {
     const params = new URLSearchParams(window.location.search);
-    const rawTab = params.get('tab');
+    const tab = normalizeSpaceTab(params.get('tab'));
     const recipeId = params.get('recipe');
-    const tab: ActiveTab = isValidTab(rawTab) ? rawTab : 'catalog';
 
     if (recipeId && recipeId.trim().length > 0) {
       return {
@@ -55,7 +58,7 @@ function parseRouteFromLocation(): {
 }
 
 function buildRouteUrl(
-  tab: ActiveTab,
+  tab: 'catalog' | 'kitchen',
   detail: ActiveRecipeDetailState | null
 ): string {
   const basePath =
@@ -75,12 +78,12 @@ function buildRouteUrl(
   }
 
   const params = new URLSearchParams();
-  params.set('tab', tab);
+  params.set('tab', 'kitchen');
   return `${basePath}?${params.toString()}`;
 }
 
 function pushRouteHistory(
-  tab: ActiveTab,
+  tab: 'catalog' | 'kitchen',
   detail: ActiveRecipeDetailState | null
 ): void {
   if (typeof window === 'undefined' || !window.history?.pushState) return;
@@ -88,7 +91,11 @@ function pushRouteHistory(
     const targetUrl = buildRouteUrl(tab, detail);
     const currentUrl = `${window.location.pathname || '/'}${window.location.search || ''}`;
     if (targetUrl !== currentUrl) {
-      window.history.pushState({ tab, recipeId: detail?.recipeId ?? null }, '', targetUrl);
+      window.history.pushState(
+        { tab, recipeId: detail?.recipeId ?? null },
+        '',
+        targetUrl
+      );
     }
   } catch {
     // Bỏ qua trong môi trường hạn chế History API
@@ -112,7 +119,8 @@ function loadKitchenDraft(): KitchenDraftStorage {
         ? parsed.mainIngredientIds
         : [],
       desiredMinutes:
-        typeof parsed.desiredMinutes === 'number' || parsed.desiredMinutes === null
+        typeof parsed.desiredMinutes === 'number' ||
+        parsed.desiredMinutes === null
           ? parsed.desiredMinutes
           : null,
     };
@@ -135,6 +143,22 @@ function safeScrollToTop(): void {
   }
 }
 
+function safeScrollElementIntoView(elementId: string): void {
+  try {
+    if (
+      typeof document !== 'undefined' &&
+      !window.navigator?.userAgent?.includes('jsdom')
+    ) {
+      const target = document.getElementById(elementId);
+      if (target && typeof target.scrollIntoView === 'function') {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  } catch {
+    // Bỏ qua trong môi trường test
+  }
+}
+
 export const App: React.FC = () => {
   const initialRoute = useRef(parseRouteFromLocation()).current;
   const initialDraft = useRef(loadKitchenDraft()).current;
@@ -142,11 +166,13 @@ export const App: React.FC = () => {
     new Map()
   );
 
-  const [activeTab, setActiveTab] = useState<ActiveTab>(initialRoute.tab);
+  const [activeTab, setActiveTab] = useState<'catalog' | 'kitchen'>(
+    initialRoute.tab
+  );
+  const [catalogSearchQuery, setCatalogSearchQuery] = useState('');
   const [selectedIngredients, setSelectedIngredients] = useState<Ingredient[]>(
     () => initialDraft.selectedIngredients ?? []
   );
-  // Mặc định cả 5 gia vị sẵn có trong bếp đều được bật -> excludedPantryIds = [] (FR-05, ADR-008)
   const [excludedPantryIds, setExcludedPantryIds] = useState<string[]>(
     () => initialDraft.excludedPantryIds ?? []
   );
@@ -159,7 +185,6 @@ export const App: React.FC = () => {
   const [activeRecipeDetail, setActiveRecipeDetail] =
     useState<ActiveRecipeDetailState | null>(initialRoute.detail);
 
-  // Đồng bộ nút Back / Forward vật lý của trình duyệt (popstate)
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const handlePopState = () => {
@@ -167,7 +192,7 @@ export const App: React.FC = () => {
       setActiveTab(next.tab);
       if (next.detail) {
         const cachedItem =
-          next.detail.returnTab === 'recommendations'
+          next.detail.returnTab === 'kitchen'
             ? recommendationCacheRef.current.get(next.detail.recipeId)
             : undefined;
         setActiveRecipeDetail({
@@ -184,7 +209,6 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  // Lưu tạm danh sách nguyên liệu & tùy chọn bếp trong phiên làm việc (giữ trạng thái khi F5)
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
@@ -201,25 +225,67 @@ export const App: React.FC = () => {
     } catch {
       // Bỏ qua nếu trình duyệt chặn sessionStorage
     }
-  }, [selectedIngredients, excludedPantryIds, mainIngredientIds, desiredMinutes]);
+  }, [
+    selectedIngredients,
+    excludedPantryIds,
+    mainIngredientIds,
+    desiredMinutes,
+  ]);
 
-  const handleTabChange = (tab: ActiveTab) => {
+  const handleTabChange = (nextRawTab: ActiveTab) => {
+    const nextTab = normalizeSpaceTab(nextRawTab);
     setActiveRecipeDetail(null);
-    setActiveTab(tab);
-    pushRouteHistory(tab, null);
+    setActiveTab(nextTab);
+    pushRouteHistory(nextTab, null);
+    safeScrollToTop();
+  };
+
+  const handleQuickSearchChange = (query: string) => {
+    setCatalogSearchQuery(query);
+    if (
+      query.trim().length > 0 &&
+      (activeTab !== 'catalog' || activeRecipeDetail)
+    ) {
+      setActiveRecipeDetail(null);
+      setActiveTab('catalog');
+      pushRouteHistory('catalog', null);
+    }
+  };
+
+  const handleQuickSearchSubmit = () => {
+    setActiveRecipeDetail(null);
+    setActiveTab('catalog');
+    pushRouteHistory('catalog', null);
+    safeScrollElementIntoView('special-recipes');
+  };
+
+  const handleApplyStarterSlugs = (slugs: string[]) => {
+    const bySlug = new Map(
+      MOCK_MAIN_INGREDIENTS.map((item) => [item.slug, item] as const)
+    );
+    const matched = slugs
+      .map((slug) => bySlug.get(slug))
+      .filter((item): item is Ingredient => Boolean(item));
+    if (matched.length === 0) return;
+
+    setSelectedIngredients(matched);
+    setMainIngredientIds([matched[0].id]);
+    setActiveRecipeDetail(null);
+    setActiveTab('kitchen');
+    pushRouteHistory('kitchen', null);
     safeScrollToTop();
   };
 
   const handleTriggerRecommend = () => {
     setActiveRecipeDetail(null);
-    setActiveTab('recommendations');
-    pushRouteHistory('recommendations', null);
-    safeScrollToTop();
+    setActiveTab('kitchen');
+    pushRouteHistory('kitchen', null);
+    safeScrollElementIntoView('live-recommendations-panel');
   };
 
   const handleOpenRecipeDetail = (
     recipeId: string,
-    returnTab: ActiveTab,
+    returnTab: 'catalog' | 'kitchen',
     recommendationItem?: RecommendationItem
   ) => {
     if (recommendationItem) {
@@ -248,49 +314,69 @@ export const App: React.FC = () => {
       activeTab={activeRecipeDetail ? activeRecipeDetail.returnTab : activeTab}
       onTabChange={handleTabChange}
       selectedMainCount={selectedIngredients.length}
+      quickSearchQuery={catalogSearchQuery}
+      onQuickSearchChange={handleQuickSearchChange}
+      onQuickSearchSubmit={handleQuickSearchSubmit}
     >
       {activeRecipeDetail ? (
         <RecipeDetailView
           recipeId={activeRecipeDetail.recipeId}
           backLabel={
-            activeRecipeDetail.returnTab === 'recommendations'
-              ? 'Quay lại Danh sách gợi ý'
-              : 'Quay lại Danh mục công thức'
+            activeRecipeDetail.returnTab === 'kitchen'
+              ? 'Quay lại Gợi ý từ tủ bếp'
+              : 'Quay lại Khám phá công thức'
           }
           recommendationContext={activeRecipeDetail.recommendationItem}
           onBack={handleBackFromDetail}
         />
       ) : activeTab === 'catalog' ? (
         <RecipeCatalogView
+          externalSearchQuery={catalogSearchQuery}
+          onExternalSearchQueryChange={setCatalogSearchQuery}
+          onOpenKitchen={() => handleTabChange('kitchen')}
+          onApplyStarterSlugs={handleApplyStarterSlugs}
           onSelectRecipe={(recipeId) =>
             handleOpenRecipeDetail(recipeId, 'catalog')
           }
         />
-      ) : activeTab === 'kitchen' ? (
-        <IngredientKitchenView
-          selectedIngredients={selectedIngredients}
-          onSelectedIngredientsChange={setSelectedIngredients}
-          excludedPantryIds={excludedPantryIds}
-          onExcludedPantryIdsChange={setExcludedPantryIds}
-          mainIngredientIds={mainIngredientIds}
-          onMainIngredientIdsChange={setMainIngredientIds}
-          desiredMinutes={desiredMinutes}
-          onDesiredMinutesChange={setDesiredMinutes}
-          onTriggerRecommend={handleTriggerRecommend}
-        />
       ) : (
-        <RecommendationResultsView
-          selectedIngredients={selectedIngredients}
-          excludedPantryIds={excludedPantryIds}
-          mainIngredientIds={mainIngredientIds}
-          onMainIngredientIdsChange={setMainIngredientIds}
-          desiredMinutes={desiredMinutes}
-          onDesiredMinutesChange={setDesiredMinutes}
-          onBackToKitchen={() => handleTabChange('kitchen')}
-          onSelectRecipe={(recipeId, item) =>
-            handleOpenRecipeDetail(recipeId, 'recommendations', item)
-          }
-        />
+        /* KHÔNG GIAN 2 CHUẨN MOCKUP A: THANH TỦ BẾP NGANG GỌN PHÍA TRÊN + LƯỚI 4 CỘT ĐỒNG BỘ TRANG CHỦ */
+        <div
+          data-testid="kitchen-studio-workspace"
+          className="space-y-8 pt-2"
+        >
+          <h1 className="sr-only">Gợi ý từ tủ bếp</h1>
+
+          <IngredientKitchenView
+            studioMode
+            selectedIngredients={selectedIngredients}
+            onSelectedIngredientsChange={setSelectedIngredients}
+            excludedPantryIds={excludedPantryIds}
+            onExcludedPantryIdsChange={setExcludedPantryIds}
+            mainIngredientIds={mainIngredientIds}
+            onMainIngredientIdsChange={setMainIngredientIds}
+            desiredMinutes={desiredMinutes}
+            onDesiredMinutesChange={setDesiredMinutes}
+            onTriggerRecommend={handleTriggerRecommend}
+          />
+
+          <div id="live-recommendations-panel" className="scroll-mt-5">
+            <RecommendationResultsView
+              embeddedInStudio
+              selectedIngredients={selectedIngredients}
+              excludedPantryIds={excludedPantryIds}
+              mainIngredientIds={mainIngredientIds}
+              onMainIngredientIdsChange={setMainIngredientIds}
+              desiredMinutes={desiredMinutes}
+              onDesiredMinutesChange={setDesiredMinutes}
+              onBackToKitchen={() => safeScrollToTop()}
+              onApplyStarterSlugs={handleApplyStarterSlugs}
+              onSelectRecipe={(recipeId, item) =>
+                handleOpenRecipeDetail(recipeId, 'kitchen', item)
+              }
+            />
+          </div>
+        </div>
       )}
     </AppLayout>
   );

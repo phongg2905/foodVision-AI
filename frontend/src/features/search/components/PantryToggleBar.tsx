@@ -19,9 +19,9 @@ export const PantryToggleBar: React.FC<PantryToggleBarProps> = ({
 
   return (
     <section aria-label="Thanh 5 gia vị sẵn có trong bếp">
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="font-serif text-[18px] font-bold tracking-tight text-[#181512]">
+          <h2 className="font-serif text-[16px] font-bold text-[#181512]">
             5 Gia vị sẵn có trong bếp
           </h2>
           <p className="mt-0.5 text-[12px] text-[#595047]">
@@ -33,7 +33,7 @@ export const PantryToggleBar: React.FC<PantryToggleBarProps> = ({
           <button
             type="button"
             onClick={onResetPantryDefault}
-            className="inline-flex min-h-[36px] shrink-0 items-center rounded-full px-2 text-[12px] font-semibold text-[#0E6B4F] transition hover:underline"
+            className="inline-flex min-h-[34px] shrink-0 items-center rounded-full px-2.5 text-[12px] font-semibold text-[#B4490E] transition hover:bg-[#F5EADF]"
           >
             Chọn lại tất cả
           </button>
@@ -43,7 +43,7 @@ export const PantryToggleBar: React.FC<PantryToggleBarProps> = ({
       <div
         role="group"
         aria-label="Danh sách 5 gia vị cơ bản"
-        className="mt-3 grid grid-cols-2 gap-2"
+        className="mt-3 flex flex-wrap gap-2"
       >
         {pantryItems.map((item) => {
           const isAvailable = !excludedSet.has(item.id);
@@ -52,7 +52,11 @@ export const PantryToggleBar: React.FC<PantryToggleBarProps> = ({
             <label
               key={item.id}
               data-testid={`pantry-toggle-${item.slug}`}
-              className="group inline-flex min-h-[40px] cursor-pointer items-center gap-3 rounded-xl px-2.5 py-2 transition select-none hover:bg-[#F7EFE5] focus-within:outline-none"
+              className={`group inline-flex min-h-[36px] cursor-pointer items-center gap-2 rounded-full px-3.5 py-1.5 transition select-none focus-within:ring-2 focus-within:ring-[#B4490E] ${
+                isAvailable
+                  ? 'bg-[#EFE2D2] text-[#181512] hover:bg-[#E5D4BF]'
+                  : 'bg-[#F7EFE5] text-[#7A6D60] hover:bg-[#EFE2D2]'
+              }`}
             >
               <input
                 type="checkbox"
@@ -63,18 +67,18 @@ export const PantryToggleBar: React.FC<PantryToggleBarProps> = ({
 
               <span
                 aria-hidden="true"
-                className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-[6px] transition group-focus-within:ring-2 group-focus-within:ring-[#0E6B4F] group-focus-within:ring-offset-2 ${
+                className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] transition ${
                   isAvailable
-                    ? 'bg-[#0E6B4F] text-white'
-                    : 'bg-[#D8CABB] text-transparent group-hover:text-[#FFF8F0]'
+                    ? 'bg-[#B4490E] text-white'
+                    : 'border border-[#C4B19C] bg-transparent text-transparent'
                 }`}
               >
-                <Check className="h-3.5 w-3.5 stroke-[3]" />
+                <Check className="h-3 w-3 stroke-[3]" />
               </span>
 
               <span
-                className={`text-[14px] font-medium transition ${
-                  isAvailable ? 'text-[#0E6B4F]' : 'text-[#3B3027]'
+                className={`text-[13px] font-medium transition ${
+                  isAvailable ? '' : 'line-through decoration-[#9A8B7C]'
                 }`}
               >
                 {item.name_vi}

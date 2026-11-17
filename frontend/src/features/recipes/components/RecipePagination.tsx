@@ -26,16 +26,16 @@ export const RecipePagination: React.FC<RecipePaginationProps> = ({
   const pageNumbers = Array.from({ length: totalPages }, (_, idx) => idx + 1);
 
   return (
-    <div className="mt-12 flex justify-center">
+    <div className="mt-10 flex justify-center border-t border-[#CBB79F]/70 pt-6">
       <nav
         aria-label="Phân trang danh sách công thức"
-        className="inline-flex flex-wrap items-center justify-center gap-4 rounded-tl-[20px] rounded-br-[20px] rounded-tr-[6px] rounded-bl-[6px] border border-[#D8C6B2] bg-[#FFF8F0] px-7 py-3.5 shadow-[0_8px_28px_rgba(24,21,18,0.06)] sm:gap-6 sm:px-9"
+        className="inline-flex flex-wrap items-center justify-center gap-3 sm:gap-4"
       >
         <button
           type="button"
           disabled={!canGoPrev}
           onClick={() => onOffsetChange(Math.max(0, offset - limit))}
-          className="inline-flex min-h-[40px] items-center gap-1.5 px-2 text-[13px] font-semibold text-[#9E3D08] transition hover:text-[#181512] disabled:cursor-not-allowed disabled:opacity-40"
+          className="inline-flex min-h-[40px] items-center gap-1.5 rounded-[8px] px-3 text-[13px] font-semibold text-[#9E3D08] transition hover:bg-[#FFF8F0]/70 hover:text-[#181512] disabled:cursor-not-allowed disabled:opacity-40"
         >
           <ChevronLeft className="h-4 w-4" aria-hidden="true" />
           <span>Trang trước</span>
@@ -50,10 +50,10 @@ export const RecipePagination: React.FC<RecipePaginationProps> = ({
                 type="button"
                 aria-current={isCurrent ? 'page' : undefined}
                 onClick={() => onOffsetChange((page - 1) * limit)}
-                className={`inline-flex h-10 w-10 items-center justify-center rounded-lg text-[13px] font-semibold tabular-nums transition ${
+                className={`inline-flex h-10 w-10 items-center justify-center rounded-[8px] text-[13px] font-semibold tabular-nums transition ${
                   isCurrent
                     ? 'bg-[#C65112] text-white shadow-sm'
-                    : 'bg-[#F4EAE0] text-[#181512] hover:bg-[#E8D8C6]'
+                    : 'bg-[#FFF8F0] text-[#181512] hover:bg-[#F5EADF]'
                 }`}
               >
                 {page}
@@ -66,7 +66,7 @@ export const RecipePagination: React.FC<RecipePaginationProps> = ({
           type="button"
           disabled={!canGoNext}
           onClick={() => onOffsetChange(offset + limit)}
-          className="inline-flex min-h-[40px] items-center gap-1.5 px-2 text-[13px] font-semibold text-[#9E3D08] transition hover:text-[#181512] disabled:cursor-not-allowed disabled:opacity-40"
+          className="inline-flex min-h-[40px] items-center gap-1.5 rounded-[8px] px-3 text-[13px] font-semibold text-[#9E3D08] transition hover:bg-[#FFF8F0]/70 hover:text-[#181512] disabled:cursor-not-allowed disabled:opacity-40"
         >
           <span>Trang sau</span>
           <ChevronRight className="h-4 w-4" aria-hidden="true" />

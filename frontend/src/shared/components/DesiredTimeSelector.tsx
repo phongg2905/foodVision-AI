@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { Clock } from 'lucide-react';
 
 export interface DesiredTimeSelectorProps {
   desiredMinutes: number | null;
@@ -62,8 +61,8 @@ export const DesiredTimeSelector: React.FC<DesiredTimeSelectorProps> = ({
 
   const activeClass =
     activeTone === 'saffron'
-      ? 'bg-[#C65112] text-white shadow-sm hover:bg-[#A8430D]'
-      : 'bg-[#181512] text-[#FFF8F0] shadow-sm';
+      ? 'bg-[#B4490E] text-white'
+      : 'bg-[#181512] text-[#FFF8F0]';
 
   return (
     <div
@@ -80,10 +79,10 @@ export const DesiredTimeSelector: React.FC<DesiredTimeSelectorProps> = ({
             data-testid={`${testIdPrefix}-${preset.value ?? 'flexible'}`}
             aria-pressed={isActive}
             onClick={() => handlePresetClick(preset.value)}
-            className={`inline-flex min-h-[36px] items-center justify-center rounded-full px-3 py-1.5 text-[12px] font-semibold tabular-nums transition ${
+            className={`inline-flex min-h-[34px] items-center justify-center rounded-full px-3.5 py-1 text-[12.5px] font-medium tabular-nums transition ${
               isActive
                 ? activeClass
-                : 'border border-[#D8C6B2] bg-[#F7EFE5] text-[#4A4037] hover:border-[#EA6D27] hover:text-[#9E3D08]'
+                : 'bg-[#EFE2D2] text-[#3B3027] hover:bg-[#E5D4BF]'
             }`}
           >
             {preset.label}
@@ -92,14 +91,10 @@ export const DesiredTimeSelector: React.FC<DesiredTimeSelectorProps> = ({
       })}
 
       <label
-        className={`inline-flex min-h-[36px] items-center gap-1.5 rounded-full border border-[#D8C6B2] bg-[#F7EFE5] px-3 py-1 text-[12px] text-[#4A4037] focus-within:border-[#C65112] ${
+        className={`inline-flex min-h-[34px] items-center gap-1 rounded-full border border-[#D5C2AC] bg-[#FFFDF9] px-3 py-1 text-[12.5px] text-[#3B3027] focus-within:border-[#B4490E] ${
           compact ? 'mt-0.5' : ''
         }`}
       >
-        <Clock
-          className="h-3 w-3 shrink-0 text-[#9E3D08]"
-          aria-hidden="true"
-        />
         <input
           type="number"
           min={1}
@@ -110,9 +105,9 @@ export const DesiredTimeSelector: React.FC<DesiredTimeSelectorProps> = ({
           placeholder="Khác"
           aria-label="Nhập thời gian nấu mong muốn (phút)"
           data-testid={`${testIdPrefix}-custom-input`}
-          className="w-12 bg-transparent text-[12px] font-semibold text-[#181512] tabular-nums placeholder:font-normal placeholder:text-[#7D7064] focus:outline-none"
+          className="w-11 bg-transparent text-[12.5px] font-semibold text-[#181512] tabular-nums placeholder:font-normal placeholder:text-[#6B5E52] focus:outline-none"
         />
-        <span className="text-[11px] text-[#595047]">phút</span>
+        <span className="text-[11.5px] text-[#595047]">phút</span>
       </label>
     </div>
   );
