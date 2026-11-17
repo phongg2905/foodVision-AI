@@ -80,10 +80,53 @@ print(metrics.box.map)    # mAP@50:95
 3. **Bắt buộc công bố bảng chi tiết từng lớp:** báo cáo phải công bố đầy đủ **per-class `AP50`**, **per-class `Recall`** và **số lượng mẫu kiểm thử `N_test` của từng lớp** (lưu ý rõ phương sai thống kê cao khi `N_test ≈ 12–15` mẫu ở giai đoạn đầu).
 4. **Mục tiêu tham chiếu:** ngưỡng mục tiêu thiết kế là `mAP@50 >= 0.70` trên tập `test` độc lập và độ trễ API detect `p95 <= 10.0s` trên CPU demo (`<= 3.0s` trên GPU); ngưỡng nghiệm thu chính thức được chốt cùng Giảng viên hướng dẫn sau Pilot run.
 
-## 6. Biểu mẫu báo cáo kết quả (chỉ điền sau khi chạy thực nghiệm thật)
+## 6. Biểu mẫu báo cáo kết quả (Số liệu đo thực tế độc lập trên `split='test'`)
 
-| Model version | Dataset version | Số lớp mục tiêu ($K$) | Precision | Recall | mAP@50 | mAP@50:95 | p95 detect | Ghi chú (đính kèm bảng per-class `AP50`, `Recall`, `N_test`) |
-|---|---|---:|---:|---:|---:|---:|---:|---|
-| _Chưa thực nghiệm_ | _Chưa thực nghiệm_ | — | — | — | — | — | — | Không tự tạo số liệu giả định; cấm loại lớp yếu sau khi chạy test |
+### 6.1. Bảng tổng hợp chất lượng thị giác (`AI-01`, `AI-02`) & độ trễ suy luận (`PERF-01`)
+
+| Model version | Dataset version | Số lớp khóa ($K$) | Ảnh `test` (OOD) | Precision | Recall | F1 | mAP@50 | mAP@50:95 | `p50` / `p95` detect (`PERF-01`) | Trạng thái trọng số |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| `yolo11n-foodvision-v1.0` | `foodvision-yolo-v1.0.0` | `15` | `1116` (`118`) | `0.0000` | `0.0000` | `0.0000` | `0.0053` | `0.0053` | `28.12 ms` / `29.75 ms` (`30` req) | `pytorch_cpu_pilot` |
+
+- **Mã băm toàn vẹn:** `dataset_manifest_sha256 = b56aba197e6ef2ed...`, `weights_sha256 = 4d2677b38c341c64...`.
+- **Ghi chú trung thực thực nghiệm (`NFR-11`):** Checkpoint hiệu chuẩn CPU cục bộ (`pytorch_cpu_pilot`, chưa chạy huấn luyện đầy đủ trên GPU CUDA); chạy lại lệnh này sau khi nhập `ingredients_best.pt` từ Colab/Kaggle T4 để cập nhật `mAP` GPU chính thức.
+- **Kiểm soát OOD & Cảnh báo HITL (`AI-03`, $\tau = 0.80$):** Trên `118` ảnh đối chứng âm (`OOD` không chứa nguyên liệu mục tiêu), số ảnh phát sinh báo động giả là `73`; tỷ lệ hộp dự đoán có `confidence < 0.80` được chuyển sang luồng người dùng xác nhận HITL là `668 / 668`.
+
+### 6.2. Bảng chi tiết từng lớp trên toàn bộ $K$ lớp đã khóa (`NFR-11` — Cấm loại lớp yếu sau test)
+
+| `class_index` | Mã nhãn (`code`) | `N_test` (GT boxes) | `TP@50` | `FP@50` | `FN@50` | Precision | Recall | F1 | `AP@50` | `AP@50:95` |
+|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 0 | `tomato` | 180 | 0 | 0 | 180 | 0.0000 | 0.0000 | 0.0000 | 0.0000 | 0.0000 |
+| 1 | `egg` | 318 | 0 | 0 | 318 | 0.0000 | 0.0000 | 0.0000 | 0.0000 | 0.0000 |
+| 2 | `potato` | 215 | 0 | 0 | 215 | 0.0000 | 0.0000 | 0.0000 | 0.0000 | 0.0000 |
+| 3 | `carrot` | 72 | 0 | 1 | 72 | 0.0000 | 0.0000 | 0.0000 | 0.0099 | 0.0099 |
+| 4 | `onion` | 62 | 0 | 1 | 62 | 0.0000 | 0.0000 | 0.0000 | 0.0099 | 0.0099 |
+| 5 | `garlic` | 108 | 0 | 47 | 108 | 0.0000 | 0.0000 | 0.0000 | 0.0099 | 0.0099 |
+| 6 | `chili_pepper` | 518 | 0 | 65 | 518 | 0.0000 | 0.0000 | 0.0000 | 0.0099 | 0.0099 |
+| 7 | `cucumber` | 90 | 0 | 60 | 90 | 0.0000 | 0.0000 | 0.0000 | 0.0099 | 0.0099 |
+| 8 | `cabbage` | 135 | 0 | 0 | 135 | 0.0000 | 0.0000 | 0.0000 | 0.0000 | 0.0000 |
+| 9 | `broccoli` | 45 | 0 | 0 | 45 | 0.0000 | 0.0000 | 0.0000 | 0.0000 | 0.0000 |
+| 10 | `mushroom` | 385 | 0 | 0 | 385 | 0.0000 | 0.0000 | 0.0000 | 0.0000 | 0.0000 |
+| 13 | `raw_pork` | 59 | 0 | 485 | 59 | 0.0000 | 0.0000 | 0.0000 | 0.0099 | 0.0099 |
+| 17 | `scallion` | 129 | 0 | 8 | 129 | 0.0000 | 0.0000 | 0.0000 | 0.0099 | 0.0099 |
+| 18 | `bell_pepper` | 182 | 0 | 0 | 182 | 0.0000 | 0.0000 | 0.0000 | 0.0000 | 0.0000 |
+| 19 | `sweet_corn` | 68 | 0 | 1 | 68 | 0.0000 | 0.0000 | 0.0000 | 0.0099 | 0.0099 |
+
+### 6.3. Minh bạch 5 lớp ứng viên chuyển sang nhập tay / CLIP trước khi mở tập `test` (`NFR-11`)
+
+Theo quy tắc tại [`label-catalog.md`](label-catalog.md) (Mục 1), 5 lớp ứng viên có số mẫu thô `< 80` đã được khóa chuyển sang tìm kiếm tiếng Việt (`FR-18`) và nhánh phụ CLIP (`TP 02`) **tại mốc `dataset_ready` trước khi chạy `split='test'`**, tuyệt đối không phải loại bỏ hậu kiểm:
+
+| `class_index` | Mã nhãn (`code`) | Tổng mẫu thô hiện có | Thiếu hụt so với ngưỡng `80` | Cơ chế bù đắp trong kiến trúc 7 tầng |
+|---:|---|---:|---:|---|
+| 11 | `tofu` | 41 | 39 | `FR-18 manual search & TP-02 CLIP helper` |
+| 12 | `raw_chicken` | 52 | 28 | `FR-18 manual search & TP-02 CLIP helper` |
+| 14 | `raw_shrimp` | 0 | 80 | `FR-18 manual search & TP-02 CLIP helper` |
+| 15 | `whole_fish` | 6 | 74 | `FR-18 manual search & TP-02 CLIP helper` |
+| 16 | `ginger` | 23 | 57 | `FR-18 manual search & TP-02 CLIP helper` |
+
+### 6.4. Phân tích cặp lớp dễ nhầm lẫn & vai trò bù đắp của HITL (`TP 14`)
+
+- **Cặp hình thái tương đồng cao:** `raw_chicken` vs `raw_pork` (thớ thịt tươi phụ thuộc ánh sáng vàng/trắng nhà bếp), `tofu` vs phô mai trắng `Paneer` (khối vuông trắng đồng nhất), `cucumber` vs bí ngòi `zucchini`, và `tomato` vs `bell_pepper` đỏ.
+- **Vai trò bù đắp của HITL (`TP 14`) & CLIP (`TP 02`):** Mọi phát hiện có $p_{\max} < \tau = 0.80$ tự động đưa vào danh sách `uncertain_ingredients[]` kèm cờ `needs_confirmation = true`; người dùng xác nhận/sửa trực tiếp trên giao diện hoặc tra cứu tiếng Việt không dấu/từ đồng nghĩa (`pg_trgm`) trước khi hệ suy luận 3 trạng thái (`TP 04`) chấm điểm công thức, đảm bảo sai số tầng thị giác không lan truyền mù quáng sang tầng gợi ý.
 
 **Nguồn tham khảo:** Redmon et al. (*CVPR*, 2016), https://docs.ultralytics.com/datasets/detect, https://docs.ultralytics.com/tasks/detect và https://www.ultralytics.com/license.
