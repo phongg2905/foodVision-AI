@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from app.core.database import IngredientRecord, RecipeRecord
+    from app.core.database import AIModelRecord, IngredientRecord, RecipeRecord
 
 ING_CA_CHUA = "11111111-1111-4111-8111-111111111101"
 ING_TRUNG_GA = "11111111-1111-4111-8111-111111111102"
@@ -18,6 +18,10 @@ ING_DAU_AN = "11111111-1111-4111-8111-111111111108"
 ING_DUONG = "11111111-1111-4111-8111-111111111109"
 ING_TIEU_XAY = "11111111-1111-4111-8111-111111111110"
 ING_INACTIVE = "11111111-1111-4111-8111-111111111199"
+
+MODEL_YOLO_V1 = "55555555-5555-4555-8555-555555555501"
+MODEL_YOLO_V1_VERSION = "yolo11n-foodvision-v1.0"
+MODEL_YOLO_V1_SHA256 = "4d2677b38c341c64d7fc848707ed6416255ba8497bc31b5d4df562b89194c52a"
 
 REC_DAU_HU_SOT_CA = "22222222-2222-4222-8222-222222222201"
 REC_CANH_CA_CHUA_TRUNG = "22222222-2222-4222-8222-222222222202"
@@ -112,6 +116,136 @@ def build_default_seed_ingredients() -> list[IngredientRecord]:
             category="pantry",
             is_active=True,
             aliases=["hạt tiêu", "tiêu đen"],
+        ),
+        IngredientRecord(
+            id="11111111-1111-4111-8111-111111111202",
+            slug="khoai-tay",
+            name_vi="Khoai tây",
+            category="vegetable",
+            is_active=True,
+            aliases=["potato"],
+        ),
+        IngredientRecord(
+            id="11111111-1111-4111-8111-111111111203",
+            slug="ca-rot",
+            name_vi="Cà rốt",
+            category="vegetable",
+            is_active=True,
+            aliases=["củ cải đỏ", "carrot"],
+        ),
+        IngredientRecord(
+            id="11111111-1111-4111-8111-111111111204",
+            slug="hanh-tay",
+            name_vi="Hành tây",
+            category="vegetable",
+            is_active=True,
+            aliases=["onion"],
+        ),
+        IngredientRecord(
+            id="11111111-1111-4111-8111-111111111205",
+            slug="toi",
+            name_vi="Tỏi",
+            category="spice",
+            is_active=True,
+            aliases=["tỏi ta", "garlic"],
+        ),
+        IngredientRecord(
+            id="11111111-1111-4111-8111-111111111206",
+            slug="ot",
+            name_vi="Ớt",
+            category="spice",
+            is_active=True,
+            aliases=["ớt hiểm", "chili pepper"],
+        ),
+        IngredientRecord(
+            id="11111111-1111-4111-8111-111111111207",
+            slug="dua-leo",
+            name_vi="Dưa leo",
+            category="vegetable",
+            is_active=True,
+            aliases=["dưa chuột", "cucumber"],
+        ),
+        IngredientRecord(
+            id="11111111-1111-4111-8111-111111111208",
+            slug="bap-cai",
+            name_vi="Bắp cải",
+            category="vegetable",
+            is_active=True,
+            aliases=["cải bắp", "cabbage"],
+        ),
+        IngredientRecord(
+            id="11111111-1111-4111-8111-111111111209",
+            slug="bong-cai-xanh",
+            name_vi="Bông cải xanh",
+            category="vegetable",
+            is_active=True,
+            aliases=["súp lơ xanh", "broccoli"],
+        ),
+        IngredientRecord(
+            id="11111111-1111-4111-8111-111111111210",
+            slug="nam",
+            name_vi="Nấm",
+            category="vegetable",
+            is_active=True,
+            aliases=["nấm mỡ", "mushroom"],
+        ),
+        IngredientRecord(
+            id="11111111-1111-4111-8111-111111111212",
+            slug="thit-ga-song",
+            name_vi="Thịt gà sống",
+            category="protein",
+            is_active=True,
+            aliases=["thịt gà", "ức gà", "chicken"],
+        ),
+        IngredientRecord(
+            id="11111111-1111-4111-8111-111111111213",
+            slug="thit-heo-song",
+            name_vi="Thịt heo sống",
+            category="protein",
+            is_active=True,
+            aliases=["thịt lợn", "thịt heo", "pork"],
+        ),
+        IngredientRecord(
+            id="11111111-1111-4111-8111-111111111214",
+            slug="tom",
+            name_vi="Tôm tươi",
+            category="seafood",
+            is_active=True,
+            aliases=["tôm", "shrimp"],
+            allergen_ids=["shellfish"],
+        ),
+        IngredientRecord(
+            id="11111111-1111-4111-8111-111111111215",
+            slug="ca-nguyen-con",
+            name_vi="Cá nguyên con",
+            category="seafood",
+            is_active=True,
+            aliases=["cá tươi", "fish"],
+            allergen_ids=["fish"],
+        ),
+        IngredientRecord(
+            id="11111111-1111-4111-8111-111111111216",
+            slug="gung",
+            name_vi="Gừng",
+            category="spice",
+            is_active=True,
+            aliases=["gừng tươi", "ginger"],
+        ),
+        IngredientRecord(
+            id="11111111-1111-4111-8111-111111111218",
+            slug="ot-chuong",
+            name_vi="Ớt chuông",
+            category="vegetable",
+            is_active=True,
+            aliases=["ớt ngọt", "ớt đà lạt", "bell pepper"],
+        ),
+        IngredientRecord(
+            id="11111111-1111-4111-8111-111111111219",
+            slug="bap-ngot",
+            name_vi="Bắp ngọt",
+            category="vegetable",
+            is_active=True,
+            aliases=["ngô ngọt", "ngô", "bắp", "sweet corn"],
         ),
         IngredientRecord(
             id=ING_INACTIVE,
@@ -471,3 +605,59 @@ def build_default_seed_recipes() -> list[RecipeRecord]:
             steps=[],
         ),
     ]
+
+
+# THUẬT TOÁN: Khởi tạo cấu hình mô hình YOLO v1 active kèm 20 nhãn chuẩn (0..19) và mã băm SHA-256
+# - Ánh xạ toàn bộ 20 lớp `class_index (0..19)` sang các nguyên liệu chính (`category != 'pantry'`).
+def build_default_seed_ai_model() -> AIModelRecord:
+    from app.core.database import AILabelRecord, AIModelRecord
+
+    raw_labels: list[tuple[int, str, str, str, str]] = [
+        (0, "tomato", "11111111-1111-4111-8111-111111111101", "Cà chua", "vegetable"),
+        (1, "egg", "11111111-1111-4111-8111-111111111102", "Trứng gà", "protein"),
+        (2, "potato", "11111111-1111-4111-8111-111111111202", "Khoai tây", "vegetable"),
+        (3, "carrot", "11111111-1111-4111-8111-111111111203", "Cà rốt", "vegetable"),
+        (4, "onion", "11111111-1111-4111-8111-111111111204", "Hành tây", "vegetable"),
+        (5, "garlic", "11111111-1111-4111-8111-111111111205", "Tỏi", "spice"),
+        (6, "chili_pepper", "11111111-1111-4111-8111-111111111206", "Ớt", "spice"),
+        (7, "cucumber", "11111111-1111-4111-8111-111111111207", "Dưa leo", "vegetable"),
+        (8, "cabbage", "11111111-1111-4111-8111-111111111208", "Bắp cải", "vegetable"),
+        (9, "broccoli", "11111111-1111-4111-8111-111111111209", "Bông cải xanh", "vegetable"),
+        (10, "mushroom", "11111111-1111-4111-8111-111111111210", "Nấm", "vegetable"),
+        (11, "tofu", "11111111-1111-4111-8111-111111111103", "Đậu hũ", "protein"),
+        (12, "raw_chicken", "11111111-1111-4111-8111-111111111212", "Thịt gà sống", "protein"),
+        (13, "raw_pork", "11111111-1111-4111-8111-111111111213", "Thịt heo sống", "protein"),
+        (14, "raw_shrimp", "11111111-1111-4111-8111-111111111214", "Tôm tươi", "seafood"),
+        (15, "whole_fish", "11111111-1111-4111-8111-111111111215", "Cá nguyên con", "seafood"),
+        (16, "ginger", "11111111-1111-4111-8111-111111111216", "Gừng", "spice"),
+        (17, "scallion", "11111111-1111-4111-8111-111111111105", "Hành lá", "spice"),
+        (18, "bell_pepper", "11111111-1111-4111-8111-111111111218", "Ớt chuông", "vegetable"),
+        (19, "sweet_corn", "11111111-1111-4111-8111-111111111219", "Bắp ngọt", "vegetable"),
+    ]
+    labels_by_index = {
+        idx: AILabelRecord(
+            id=f"66666666-6666-4666-8666-6666666666{idx:02d}",
+            model_id=MODEL_YOLO_V1,
+            class_index=idx,
+            class_name=cls_name,
+            ingredient_id=ing_id,
+            ingredient_name_vi=name_vi,
+            category=cat,  # type: ignore[arg-type]
+            is_active=True,
+        )
+        for idx, cls_name, ing_id, name_vi, cat in raw_labels
+    }
+    return AIModelRecord(
+        id=MODEL_YOLO_V1,
+        version=MODEL_YOLO_V1_VERSION,
+        family="yolo11n",
+        dataset_version="food-ingredients-v1.0",
+        artifact_ref="weights/yolo/ingredients_best.pt",
+        weights_sha256=MODEL_YOLO_V1_SHA256,
+        class_count=20,
+        confidence_threshold=0.25,
+        review_threshold=0.80,
+        status="active",
+        labels_by_index=labels_by_index,
+    )
+

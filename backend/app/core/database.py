@@ -12,9 +12,12 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Protocol
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+from uuid import uuid4
 
 from app.core.config import settings
 from app.core.seed_fixtures import (
+    MODEL_YOLO_V1_SHA256,
+    build_default_seed_ai_model,
     build_default_seed_ingredients,
     build_default_seed_recipes,
 )
@@ -198,6 +201,34 @@ class ScanSessionRecord:
     user_id: str
     model_id: str
     ingredient_ids: list[str] = field(default_factory=list)
+    detections: list[dict[str, Any]] = field(default_factory=list)
+
+
+@dataclass
+class AILabelRecord:
+    id: str
+    model_id: str
+    class_index: int
+    class_name: str
+    ingredient_id: str
+    ingredient_name_vi: str
+    category: IngredientCategory
+    is_active: bool = True
+
+
+@dataclass
+class AIModelRecord:
+    id: str
+    version: str
+    family: str
+    dataset_version: str
+    artifact_ref: str
+    weights_sha256: str = MODEL_YOLO_V1_SHA256
+    class_count: int = 20
+    confidence_threshold: float = 0.25
+    review_threshold: float = 0.80
+    status: str = "active"
+    labels_by_index: dict[int, AILabelRecord] = field(default_factory=dict)
 
 
 @dataclass
@@ -212,7 +243,8 @@ class UserPreferencesRecord:
 
 
 class CatalogRepository(Protocol):
-    """Repository interface for Stage 1 & Stage 2 Catalog, Recipes, Reasoning, Preferences, and Scan Sessions."""
+    # CONFLICT-RESOLVED: Unify Stage 1..3 repository protocol (PR #12 preferences + Stage 3 AI models/scan sessions).
+    """Repository interface for Stage 1..3 Catalog, Recipes, Reasoning, Preferences, AI Models, and Scan Sessions."""
 
     def check_health(self) -> bool: ...
 
@@ -242,9 +274,20 @@ class CatalogRepository(Protocol):
 
     def get_all_published_recipes(self) -> list[RecipeRecord]: ...
 
+    # CONFLICT-RESOLVED: Retain both PR #12 user_preferences methods and Stage 3 AI model/scan session methods.
     def get_user_preferences(self, user_id: str) -> UserPreferencesRecord | None: ...
 
     def upsert_user_preferences(self, prefs: UserPreferencesRecord) -> UserPreferencesRecord: ...
+
+    def get_active_ai_model(self) -> AIModelRecord | None: ...
+
+    def create_scan_session(
+        self,
+        user_id: str,
+        model_id: str,
+        detections: list[dict[str, Any]] | None = None,
+        ingredient_ids: list[str] | None = None,
+    ) -> ScanSessionRecord: ...
 
     def verify_and_sync_scan_ingredients(
         self,
@@ -262,7 +305,9 @@ class InMemoryCatalogRepository:
         ingredients: list[IngredientRecord] | None = None,
         recipes: list[RecipeRecord] | None = None,
         scan_sessions: list[ScanSessionRecord] | None = None,
+        # CONFLICT-RESOLVED: Support both user_preferences (PR #12) and active_ai_model (Stage 3) in InMemoryCatalogRepository.
         user_preferences: list[UserPreferencesRecord] | None = None,
+        active_ai_model: AIModelRecord | None = ...,  # type: ignore[assignment]
     ) -> None:
         seed_ings = build_default_seed_ingredients() if ingredients is None else ingredients
         seed_recs = build_default_seed_recipes() if recipes is None else recipes
@@ -274,6 +319,11 @@ class InMemoryCatalogRepository:
         self._user_preferences: dict[str, UserPreferencesRecord] = {
             up.user_id: up for up in (user_preferences or [])
         }
+        self._active_ai_model: AIModelRecord | None = (
+            build_default_seed_ai_model()
+            if active_ai_model is ...
+            else active_ai_model
+        )
 
     def get_user_preferences(self, user_id: str) -> UserPreferencesRecord | None:
         return self._user_preferences.get(user_id)
@@ -293,8 +343,33 @@ class InMemoryCatalogRepository:
         self._user_preferences[prefs.user_id] = stored
         return stored
 
+    def get_active_ai_model(self) -> AIModelRecord | None:
+        if self._active_ai_model is None or self._active_ai_model.status != "active":
+            return None
+        return self._active_ai_model
+
+    def set_active_ai_model(self, model: AIModelRecord | None) -> None:
+        self._active_ai_model = model
+
     def register_scan_session(self, scan_session: ScanSessionRecord) -> None:
         self._scan_sessions[scan_session.id] = scan_session
+
+    def create_scan_session(
+        self,
+        user_id: str,
+        model_id: str,
+        detections: list[dict[str, Any]] | None = None,
+        ingredient_ids: list[str] | None = None,
+    ) -> ScanSessionRecord:
+        record = ScanSessionRecord(
+            id=str(uuid4()),
+            user_id=user_id,
+            model_id=model_id,
+            ingredient_ids=list(ingredient_ids or []),
+            detections=list(detections or []),
+        )
+        self._scan_sessions[record.id] = record
+        return record
 
     def get_scan_session(self, scan_id: str) -> ScanSessionRecord | None:
         return self._scan_sessions.get(scan_id)
@@ -951,6 +1026,132 @@ class PostgresCatalogRepository:
         prefs.updated_at = ret["updated_at"] if ret else datetime.now(timezone.utc)
         return prefs
 
+    def get_active_ai_model(self) -> AIModelRecord | None:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    id::text AS id,
+                    version,
+                    family,
+                    dataset_version,
+                    artifact_ref,
+                    class_count,
+                    confidence_threshold::float AS confidence_threshold,
+                    review_threshold::float AS review_threshold,
+                    status
+                FROM public.ai_models
+                WHERE status = 'active'
+                LIMIT 1
+                """
+            )
+            m = cur.fetchone()
+            if not m:
+                return None
+
+            cur.execute(
+                """
+                SELECT
+                    l.id::text AS id,
+                    l.model_id::text AS model_id,
+                    l.class_index,
+                    l.class_name,
+                    l.ingredient_id::text AS ingredient_id,
+                    i.name_vi AS ingredient_name_vi,
+                    i.category,
+                    i.is_active
+                FROM public.ai_labels l
+                JOIN public.ingredients i ON i.id = l.ingredient_id
+                WHERE l.model_id::text = %s
+                ORDER BY l.class_index ASC
+                """,
+                (m["id"],),
+            )
+            lbl_rows = cur.fetchall()
+
+        labels_by_idx = {
+            int(r["class_index"]): AILabelRecord(
+                id=r["id"],
+                model_id=r["model_id"],
+                class_index=int(r["class_index"]),
+                class_name=r["class_name"],
+                ingredient_id=r["ingredient_id"],
+                ingredient_name_vi=r["ingredient_name_vi"],
+                category=r["category"],
+                is_active=bool(r["is_active"]),
+            )
+            for r in lbl_rows
+        }
+        return AIModelRecord(
+            id=m["id"],
+            version=m["version"],
+            family=m["family"],
+            dataset_version=m["dataset_version"],
+            artifact_ref=m["artifact_ref"],
+            class_count=int(m["class_count"]),
+            confidence_threshold=float(m["confidence_threshold"]),
+            review_threshold=float(m["review_threshold"]),
+            status=m["status"],
+            labels_by_index=labels_by_idx,
+        )
+
+    def create_scan_session(
+        self,
+        user_id: str,
+        model_id: str,
+        detections: list[dict[str, Any]] | None = None,
+        ingredient_ids: list[str] | None = None,
+    ) -> ScanSessionRecord:
+        scan_id = str(uuid4())
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO public.scan_sessions (id, user_id, model_id)
+                VALUES (%s::uuid, %s::uuid, %s::uuid)
+                """,
+                (scan_id, user_id, model_id),
+            )
+            if detections:
+                cur.executemany(
+                    """
+                    INSERT INTO public.scan_detections (
+                        scan_session_id, ai_label_id, confidence,
+                        x1, y1, x2, y2, needs_confirmation
+                    )
+                    VALUES (%s::uuid, %s::uuid, %s, %s, %s, %s, %s, %s)
+                    """,
+                    [
+                        (
+                            scan_id,
+                            det["ai_label_id"],
+                            det["confidence"],
+                            det["x1"],
+                            det["y1"],
+                            det["x2"],
+                            det["y2"],
+                            det.get("needs_confirmation", False),
+                        )
+                        for det in detections
+                    ],
+                )
+            if ingredient_ids:
+                cur.executemany(
+                    """
+                    INSERT INTO public.scan_ingredients (scan_session_id, ingredient_id, provenance)
+                    VALUES (%s::uuid, %s::uuid, 'detected')
+                    ON CONFLICT (scan_session_id, ingredient_id) DO NOTHING
+                    """,
+                    [(scan_id, iid) for iid in ingredient_ids],
+                )
+            conn.commit()
+        return ScanSessionRecord(
+            id=scan_id,
+            user_id=user_id,
+            model_id=model_id,
+            ingredient_ids=list(ingredient_ids or []),
+            detections=list(detections or []),
+        )
+
     def verify_and_sync_scan_ingredients(
         self,
         scan_id: str,
@@ -976,14 +1177,14 @@ class PostgresCatalogRepository:
                 "DELETE FROM public.scan_ingredients WHERE scan_session_id::text = %s",
                 (scan_id,),
             )
-            for iid in ingredient_ids:
-                cur.execute(
+            if ingredient_ids:
+                cur.executemany(
                     """
                     INSERT INTO public.scan_ingredients (scan_session_id, ingredient_id, provenance)
                     VALUES (%s::uuid, %s::uuid, 'corrected')
                     ON CONFLICT (scan_session_id, ingredient_id) DO NOTHING
                     """,
-                    (scan_id, iid),
+                    [(scan_id, iid) for iid in ingredient_ids],
                 )
             conn.commit()
         return True
