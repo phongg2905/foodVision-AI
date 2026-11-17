@@ -355,8 +355,8 @@ SET slug = EXCLUDED.slug,
     content_license = EXCLUDED.content_license,
     status = EXCLUDED.status;
 
--- Role weights & dish_role follow ADR-013 (recommendation-design.md Section 4):
--- core = 4.00 (dish_role = 'main'), secondary = 2.00 ('sub'), spice = 1.00 ('sub'), optional = 0.00 (is_required = false, 'sub')
+-- CONFLICT-RESOLVED: Synchronize TV1 Stage 1 seed rows with PR #11 & PR #12 (ADR-013 v1.1.0):
+-- role IN ('core', 'secondary', 'spice', 'optional'), dish_role IN ('main', 'sub'), weight scale 4.00 / 2.00 / 1.00 / 0.00.
 INSERT INTO public.recipe_ingredients (
     recipe_id, ingredient_id, is_required, role, dish_role, weight, grams, display_quantity, sort_order
 )
