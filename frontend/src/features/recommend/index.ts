@@ -1,4 +1,6 @@
-/**
- * Khung module Xếp hạng & Gợi ý Món ăn (Tier 1/2/3) — sẽ được triển khai chi tiết tại Thẻ #19 (GĐ2 - Core UI).
- */
-export const RECOMMEND_FEATURE_MODULE = 'features/recommend';
+export { RecommendationResultsView } from './RecommendationResultsView';
+export type { RecommendationResultsViewProps } from './RecommendationResultsView';
+export { RecommendationCard } from './components/RecommendationCard';
+export type { RecommendationCardProps } from './components/RecommendationCard';
+export { RecommendationFilterBar } from './components/RecommendationFilterBar';
+export type { RecommendationFilterBarProps } from './components/RecommendationFilterBar';

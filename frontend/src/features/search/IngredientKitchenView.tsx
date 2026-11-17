@@ -1,124 +1,45 @@
-import React, { useEffect, useState } from 'react';
-import { Check, CheckCircle2 } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Camera, ChevronDown, X } from 'lucide-react';
 import { Ingredient, RecommendDraftPayload } from '../../shared/api/types';
-import { listPantryIngredients } from '../../shared/api/ingredientsApi';
+import {
+  listPantryIngredients,
+  searchMainIngredients,
+} from '../../shared/api/ingredientsApi';
 import {
   MOCK_MAIN_INGREDIENTS,
   MOCK_PANTRY_INGREDIENTS,
 } from '../../shared/api/mockData';
-import { matchesIngredientQuery } from '../../shared/utils/vietnamese';
 import { IngredientSearchBox } from './components/IngredientSearchBox';
 import { SelectedIngredientsList } from './components/SelectedIngredientsList';
 import { PantryToggleBar } from './components/PantryToggleBar';
+import { DesiredTimeSelector } from '../../shared/components/DesiredTimeSelector';
 
 export interface IngredientKitchenViewProps {
   selectedIngredients: Ingredient[];
   onSelectedIngredientsChange: (ingredients: Ingredient[]) => void;
   excludedPantryIds: string[];
   onExcludedPantryIdsChange: (ids: string[]) => void;
+  mainIngredientIds?: string[];
+  onMainIngredientIdsChange?: (ids: string[]) => void;
+  desiredMinutes?: number | null;
+  onDesiredMinutesChange?: (minutes: number | null) => void;
   onTriggerRecommend?: (payload: RecommendDraftPayload) => void;
+  studioMode?: boolean;
 }
 
-interface CulinaryGroupConfig {
-  id: string;
-  title: string;
-  slugs: string[];
-}
-
-const DEFAULT_VISIBLE_LIMIT = 6;
-
-/**
- * Phân loại 6 nhóm nguyên liệu chuẩn thói quen mở tủ lạnh & nấu bữa cơm Việt:
- * Mỗi nhóm ưu tiên xếp 6 nguyên liệu thông dụng nhất lên đầu; phần còn lại tự động thu gọn vào nút "+X xem thêm".
- */
-const CULINARY_GROUPS: CulinaryGroupConfig[] = [
-  {
-    id: 'meat-poultry',
-    title: 'Thịt & Gia cầm',
-    slugs: [
-      'thit-heo',
-      'thit-ba-chi',
-      'suon-heo',
-      'thit-bo',
-      'uc-ga',
-      'thit-ga-ta',
-      'thit-bam',
-      'thit-vit',
-      'cha-lua',
-    ],
-  },
-  {
-    id: 'seafood',
-    title: 'Tôm, Cá & Hải sản',
-    slugs: [
-      'tom-tuoi',
-      'ca-hoi',
-      'ca-basa',
-      'muc-tuoi',
-      'ngheu-tuoi',
-      'cua-bien',
-      'ca-thu',
-      'cha-ca',
-      'oc-buou',
-    ],
-  },
-  {
-    id: 'eggs-tofu',
-    title: 'Trứng & Đậu',
-    slugs: [
-      'dau-hu',
-      'trung-ga',
-      'trung-cut',
-      'trung-vit',
-      'dau-hu-non',
-      'tau-hu-ky',
-      'trung-muoi',
-    ],
-  },
-  {
-    id: 'leafy-greens',
-    title: 'Rau xanh & Các loại cải',
-    slugs: [
-      'rau-muong',
-      'cai-thia',
-      'bap-cai',
-      'bong-cai-xanh',
-      'xa-lach',
-      'rau-ngot',
-      'cai-ngot',
-      'rau-mong-toi',
-    ],
-  },
-  {
-    id: 'roots-fruits-mushrooms',
-    title: 'Củ, Quả & Nấm',
-    slugs: [
-      'ca-chua',
-      'ca-rot',
-      'khoai-tay',
-      'dua-leo',
-      'bap',
-      'hanh-tay',
-      'thom',
-      'nam-huong',
-      'nam-kim-cham',
-    ],
-  },
-  {
-    id: 'aromatics-herbs',
-    title: 'Hành, Tỏi & Rau thơm',
-    slugs: [
-      'hanh-la',
-      'hanh-tim',
-      'toi',
-      'gung',
-      'sa-cay',
-      'ot-sung',
-      'ngo-ri',
-      'la-chanh',
-      'rau-ram',
-    ],
-  },
+const POPULAR_SLUGS = [
+  'dau-hu',
+  'ca-chua',
+  'thit-heo',
+  'trung-ga',
+  'thit-bo',
+  'uc-ga',
+  'tom-tuoi',
+  'bap',
+  'dua-leo',
+  'bong-cai-xanh',
+  'hanh-tay',
+  'hanh-la',
 ];
 
 export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
@@ -126,35 +47,101 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
   onSelectedIngredientsChange,
   excludedPantryIds,
   onExcludedPantryIdsChange,
+  mainIngredientIds: controlledMainIds,
+  onMainIngredientIdsChange,
+  desiredMinutes: controlledDesiredMinutes,
+  onDesiredMinutesChange,
   onTriggerRecommend,
+  studioMode = false,
 }) => {
+  const barRef = useRef<HTMLDivElement | null>(null);
+  const [catalogIngredients, setCatalogIngredients] = useState<Ingredient[]>(
+    MOCK_MAIN_INGREDIENTS
+  );
   const [pantryItems, setPantryItems] = useState<Ingredient[]>(
     MOCK_PANTRY_INGREDIENTS
   );
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
-    {}
+  const [internalMainIds, setInternalMainIds] = useState<string[]>([]);
+  const [internalDesiredMinutes, setInternalDesiredMinutes] = useState<
+    number | null
+  >(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [openPopover, setOpenPopover] = useState<
+    'none' | 'pantry' | 'time' | 'camera'
+  >('none');
+  const [showQuickPick, setShowQuickPick] = useState<boolean>(
+    () => selectedIngredients.length === 0
   );
   const [submittedPayload, setSubmittedPayload] =
     useState<RecommendDraftPayload | null>(null);
 
+  const activeMainIds = controlledMainIds ?? internalMainIds;
+  const setActiveMainIds = (nextIds: string[]) => {
+    if (onMainIngredientIdsChange) {
+      onMainIngredientIdsChange(nextIds);
+    } else {
+      setInternalMainIds(nextIds);
+    }
+  };
+
+  const activeDesiredMinutes =
+    controlledDesiredMinutes !== undefined
+      ? controlledDesiredMinutes
+      : internalDesiredMinutes;
+  const setActiveDesiredMinutes = (minutes: number | null) => {
+    if (onDesiredMinutesChange) {
+      onDesiredMinutesChange(minutes);
+    } else {
+      setInternalDesiredMinutes(minutes);
+    }
+  };
+
   const selectedIdSet = new Set(selectedIngredients.map((item) => item.id));
+  const mainIdSet = new Set(activeMainIds);
   const ingredientBySlug = new Map(
-    MOCK_MAIN_INGREDIENTS.map((item) => [item.slug, item])
+    catalogIngredients.map((item) => [item.slug, item])
   );
 
   useEffect(() => {
+    const handleOutside = (e: MouseEvent) => {
+      if (barRef.current && !barRef.current.contains(e.target as Node)) {
+        setOpenPopover('none');
+      }
+    };
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, []);
+
+  useEffect(() => {
     let isCancelled = false;
+
     listPantryIngredients()
       .then((res) => {
         if (!isCancelled && res.items.length > 0) {
           setPantryItems(res.items);
         }
       })
-      .catch(() => {
-        // Fallback giữ nguyên 5 gia vị chuẩn trong MOCK_PANTRY_INGREDIENTS
-      });
+      .catch(() => {});
+
+    searchMainIngredients('', 50, 0)
+      .then((res) => {
+        if (isCancelled || res.items.length === 0) return;
+        const liveBySlug = new Map(
+          res.items.map((item) => [item.slug, item] as const)
+        );
+        setCatalogIngredients((prev) => {
+          const merged = prev.map((item) => liveBySlug.get(item.slug) ?? item);
+          const knownSlugs = new Set(merged.map((item) => item.slug));
+          for (const liveItem of res.items) {
+            if (!knownSlugs.has(liveItem.slug)) {
+              merged.push(liveItem);
+            }
+          }
+          return merged;
+        });
+      })
+      .catch(() => {});
+
     return () => {
       isCancelled = true;
     };
@@ -172,6 +159,9 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
     onSelectedIngredientsChange(
       selectedIngredients.filter((item) => item.id !== ingredientId)
     );
+    if (activeMainIds.includes(ingredientId)) {
+      setActiveMainIds(activeMainIds.filter((id) => id !== ingredientId));
+    }
     setSubmittedPayload(null);
   };
 
@@ -185,6 +175,16 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
 
   const handleClearAllIngredients = () => {
     onSelectedIngredientsChange([]);
+    setActiveMainIds([]);
+    setSubmittedPayload(null);
+  };
+
+  const handleToggleMainIngredient = (ingredientId: string) => {
+    const exists = activeMainIds.includes(ingredientId);
+    const updated = exists
+      ? activeMainIds.filter((id) => id !== ingredientId)
+      : [...activeMainIds, ingredientId];
+    setActiveMainIds(updated);
     setSubmittedPayload(null);
   };
 
@@ -202,18 +202,20 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
     setSubmittedPayload(null);
   };
 
-  const toggleGroupExpand = (groupId: string) => {
-    setExpandedGroups((prev) => ({
-      ...prev,
-      [groupId]: !prev[groupId],
-    }));
-  };
-
   const canRecommend = selectedIngredients.length > 0;
+  const validMainIds = activeMainIds.filter((id) => selectedIdSet.has(id));
+  const computedDesiredHours =
+    typeof activeDesiredMinutes === 'number' && activeDesiredMinutes > 0
+      ? Math.round((activeDesiredMinutes / 60) * 10000) / 10000
+      : undefined;
 
   const currentDraftPayload: RecommendDraftPayload = {
     ingredient_ids: selectedIngredients.map((item) => item.id),
     excluded_pantry_ids: excludedPantryIds,
+    ...(validMainIds.length > 0 ? { main_ingredient_ids: validMainIds } : {}),
+    ...(computedDesiredHours !== undefined
+      ? { desired_hours: computedDesiredHours }
+      : {}),
   };
 
   const handleRecommendClick = () => {
@@ -222,212 +224,359 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
     onTriggerRecommend?.(currentDraftPayload);
   };
 
-  return (
-    <div className="space-y-6">
-      {/* Tiêu đề trang ngắn gọn, tinh tế */}
-      <div className="pt-1 text-center">
-        <h1 className="font-serif text-3xl font-bold tracking-tight text-[#181512] sm:text-4xl">
-          Tủ Bếp Nguyên Liệu
-        </h1>
-        <p className="mx-auto mt-1.5 max-w-lg text-xs text-[#6E655C] sm:text-sm">
-          Chọn nguyên liệu sẵn có ở bàn bên trái và kiểm tra phiếu bếp bên phải
-          để nhận gợi ý món ngon.
-        </p>
-      </div>
+  const popularItems = POPULAR_SLUGS.map((slug) =>
+    ingredientBySlug.get(slug)
+  ).filter((item): item is Ingredient => Boolean(item));
 
-      {/* =====================================================================
-          UNIFIED 2-PANEL KITCHEN (CO GIÃN THÔNG MINH CHO DỮ LIỆU LỚN)
-          - Khối Trái (8/12): Bàn Chọn Nguyên Liệu hợp nhất
-            + Mặc định mỗi nhóm hiển thị 6 nguyên liệu thông dụng nhất + các nguyên liệu đã chọn; phần còn lại gọn trong chip "+X xem thêm".
-            + Khi gõ từ khóa vào ô Search, các nhóm bên dưới tự động lọc trực tiếp các chip khớp từ khóa.
-          - Khối Phải (4/12, Sticky): Phiếu Bếp hợp nhất chia 3 ngăn.
-         ===================================================================== */}
-      <div className="grid grid-cols-1 items-start gap-7 lg:grid-cols-12">
-        {/* KHỐI TRÁI (8/12): BÀN CHỌN NGUYÊN LIỆU HỢP NHẤT */}
-        <div
-          aria-label="Phân loại nguyên liệu theo nhóm"
-          className="rounded-[28px] border border-[#DFD3C3] bg-white p-5 shadow-[0_14px_40px_rgba(24,21,18,0.05)] sm:p-7 lg:col-span-8"
-        >
-          {/* Phần đầu Bàn Nguyên Liệu: Ô Search Box gọn gàng */}
-          <div className="border-b border-[#EFE8DF] pb-5">
+  const availablePantryCount = Math.max(
+    0,
+    pantryItems.length - excludedPantryIds.length
+  );
+
+  /* =========================================================================
+     CHẾ ĐỘ STUDIO (MOCKUP PHƯƠNG ÁN A): THANH TỦ BẾP NGANG GỌN 2 DÒNG Ở TRÊN
+     ========================================================================= */
+  if (studioMode) {
+    return (
+      <section
+        ref={barRef}
+        aria-label="Thanh tủ bếp thông minh"
+        className="relative mx-auto max-w-5xl rounded-[22px] bg-[#FFF8F0] px-5 py-4 shadow-[0_12px_34px_rgba(24,21,18,0.06)] sm:px-6 sm:py-5"
+      >
+        {/* DÒNG 1: Ô tìm kiếm nguyên liệu + Nút viền Quét ảnh AI */}
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+          <div className="min-w-0 flex-1">
             <IngredientSearchBox
               selectedIngredients={selectedIngredients}
               onAddIngredient={handleAddIngredient}
-              onSearchingChange={setIsSearching}
-              onQueryChange={setSearchQuery}
+              onDropdownOpenChange={setIsDropdownOpen}
             />
           </div>
 
-          {/* Phần thân Bàn Nguyên Liệu: Chia 6 nhóm thực phẩm chuẩn bếp Việt dạng lưới 2 cột cân đối */}
-          <div className="mt-6 grid grid-cols-1 gap-x-8 gap-y-7 sm:grid-cols-2">
-            {CULINARY_GROUPS.map((group) => {
-              const allItemsInGroup = group.slugs
-                .map((slug) => ingredientBySlug.get(slug))
-                .filter((item): item is Ingredient => Boolean(item));
+          <button
+            type="button"
+            data-testid="kitchen-camera-mode-tab"
+            aria-expanded={openPopover === 'camera'}
+            onClick={() =>
+              setOpenPopover((prev) => (prev === 'camera' ? 'none' : 'camera'))
+            }
+            className={`inline-flex min-h-[44px] shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full border px-4.5 px-5 py-2 text-[13.5px] font-medium transition ${
+              openPopover === 'camera'
+                ? 'border-[#181512] bg-[#181512] text-[#FFF8F0]'
+                : 'border-[#B89F86] bg-transparent text-[#3B3027] hover:border-[#181512] hover:text-[#181512]'
+            }`}
+          >
+            <Camera className="h-4 w-4 stroke-[1.75]" aria-hidden="true" />
+            <span>Quét ảnh AI</span>
+          </button>
+        </div>
 
-              const filteredItems = isSearching
-                ? allItemsInGroup.filter((item) =>
-                    matchesIngredientQuery(item, searchQuery)
-                  )
-                : allItemsInGroup;
+        {/* Khay chờ tính năng Quét ảnh YOLO Giai đoạn 3 (chỉ mở khi bấm Quét ảnh AI) */}
+        {openPopover === 'camera' && (
+          <div
+            data-testid="kitchen-camera-slot-preview"
+            className="mt-3.5 flex flex-col items-center justify-between gap-3 rounded-[14px] border border-dashed border-[#C7B39C] bg-[#FAF2E8] px-4 py-4 text-center sm:flex-row sm:text-left"
+          >
+            <div>
+              <p className="font-serif text-[16px] font-bold text-[#181512]">
+                Nhận diện nguyên liệu từ ảnh chụp (YOLO — Thẻ #22)
+              </p>
+              <p className="mt-0.5 text-[12.5px] text-[#595047]">
+                Tính năng tải ảnh &amp; xác nhận vùng nhận diện Giai đoạn 3 sẽ
+                đặt trực tiếp tại khung này.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setOpenPopover('none')}
+              className="inline-flex min-h-[34px] shrink-0 items-center rounded-full bg-[#EFE2D2] px-3.5 py-1 text-xs font-semibold text-[#181512] hover:bg-[#E5D4BF]"
+            >
+              Đóng
+            </button>
+          </div>
+        )}
 
-              if (isSearching && filteredItems.length === 0) {
-                return null;
-              }
-
-              const isExpanded = !!expandedGroups[group.id];
-
-              // Khi chưa mở rộng và không đang gõ tìm kiếm:
-              // Hiển thị 6 nguyên liệu đầu + bất kỳ nguyên liệu nào ở phần ẩn nhưng đã được người dùng chọn
-              const defaultSlice = filteredItems.slice(
-                0,
-                DEFAULT_VISIBLE_LIMIT
-              );
-              const selectedBeyondLimit = filteredItems
-                .slice(DEFAULT_VISIBLE_LIMIT)
-                .filter((item) => selectedIdSet.has(item.id));
-
-              const visibleItems =
-                isSearching || isExpanded
-                  ? filteredItems
-                  : [...defaultSlice, ...selectedBeyondLimit];
-
-              const hiddenCount = isSearching
-                ? 0
-                : Math.max(
-                    0,
-                    filteredItems.length -
-                      (defaultSlice.length + selectedBeyondLimit.length)
-                  );
-
-              const canToggleMore =
-                !isSearching && filteredItems.length > DEFAULT_VISIBLE_LIMIT;
-
+        {/* DÒNG 2: Bên trái là Tag nguyên liệu đã chọn — Bên phải là 2 nút xổ Gia vị & Thời gian */}
+        <div className="mt-3.5 flex flex-wrap items-center justify-between gap-3">
+          {/* Cụm tag nguyên liệu đã chọn + Nút bật/tắt gợi ý chọn nhanh */}
+          <div className="flex flex-wrap items-center gap-2">
+            {selectedIngredients.map((item) => {
+              const isMain = mainIdSet.has(item.id);
               return (
-                <section
-                  key={group.id}
-                  aria-label={group.title}
-                  className="border-b border-[#F2ECE4] pb-6 last:border-b-0 last:pb-0 sm:[&:nth-last-child(-n+2)]:border-b-0 sm:[&:nth-last-child(-n+2)]:pb-0"
+                <span
+                  key={item.id}
+                  data-testid={`selected-chip-${item.slug}`}
+                  className={`inline-flex min-h-[34px] items-center rounded-full text-[13px] transition ${
+                    isMain
+                      ? 'bg-[#F4DEC9] font-semibold text-[#9E3D08]'
+                      : 'bg-[#EFE2D2] font-medium text-[#181512]'
+                  }`}
                 >
-                  {/* Tiêu đề nhóm thuần chữ (Typographic Header), không icon */}
-                  <h2 className="mb-3 font-serif text-[17px] font-bold text-[#181512]">
-                    {group.title}
-                  </h2>
-
-                  {/* Các chip nguyên liệu (Mục 6 — muc6-tags-2) + Chip "+X xem thêm / Thu gọn" */}
-                  <div className="flex flex-wrap gap-2">
-                    {visibleItems.map((item) => {
-                      const isSelected = selectedIdSet.has(item.id);
-                      return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          data-testid={
-                            isSearching
-                              ? `pantry-category-chip-${item.slug}`
-                              : `suggestion-item-${item.slug}`
-                          }
-                          aria-pressed={isSelected}
-                          onClick={() => handleToggleIngredient(item)}
-                          className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-medium transition ${
-                            isSelected
-                              ? 'bg-[#6E7781] text-white shadow-sm hover:bg-[#586069]'
-                              : 'bg-[#EAECEE] text-[#374151] hover:bg-[#DCE0E5]'
-                          }`}
-                        >
-                          {isSelected && (
-                            <Check
-                              className="h-3.5 w-3.5 shrink-0 stroke-[2.5]"
-                              aria-hidden="true"
-                            />
-                          )}
-                          <span>{item.name_vi}</span>
-                        </button>
-                      );
-                    })}
-
-                    {canToggleMore && (isExpanded || hiddenCount > 0) && (
-                      <button
-                        type="button"
-                        onClick={() => toggleGroupExpand(group.id)}
-                        className="inline-flex items-center rounded-full border border-dashed border-[#C7B9A5] bg-[#FAF7F2] px-3.5 py-2 text-[12px] font-semibold text-[#6E655C] transition hover:border-[#181512] hover:text-[#181512]"
-                      >
-                        {isExpanded ? 'Thu gọn' : `+${hiddenCount} xem thêm`}
-                      </button>
-                    )}
-                  </div>
-                </section>
+                  <button
+                    type="button"
+                    data-testid={`toggle-main-${item.slug}`}
+                    aria-pressed={isMain}
+                    aria-label={`Ưu tiên ${item.name_vi} làm nguyên liệu chính`}
+                    title="Bấm để đặt hoặc bỏ ưu tiên làm nguyên liệu chính"
+                    onClick={() => handleToggleMainIngredient(item.id)}
+                    className="inline-flex min-h-[34px] items-center gap-1 pl-3.5 pr-2"
+                  >
+                    {isMain && <span aria-hidden="true">★</span>}
+                    <span>{item.name_vi}</span>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Xóa ${item.name_vi}`}
+                    onClick={() => handleRemoveIngredient(item.id)}
+                    className="inline-flex min-h-[34px] items-center pr-3 pl-1 text-[#595047] transition hover:text-[#181512]"
+                  >
+                    <X className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
+                </span>
               );
             })}
+
+            <button
+              type="button"
+              data-testid="toggle-quick-ingredients"
+              aria-expanded={showQuickPick}
+              onClick={() => setShowQuickPick((prev) => !prev)}
+              className="inline-flex min-h-[34px] items-center gap-1 rounded-full px-2.5 text-[12.5px] font-medium text-[#595047] transition hover:bg-[#F5EADF] hover:text-[#181512]"
+            >
+              <span>{showQuickPick ? 'Ẩn gợi ý' : '+ Chọn nhanh'}</span>
+              <ChevronDown
+                className={`h-3.5 w-3.5 transition-transform ${
+                  showQuickPick ? 'rotate-180' : ''
+                }`}
+                aria-hidden="true"
+              />
+            </button>
+
+            {selectedIngredients.length > 1 && (
+              <button
+                type="button"
+                onClick={handleClearAllIngredients}
+                className="inline-flex min-h-[34px] items-center rounded-full px-2 text-[12px] text-[#7A6D60] transition hover:text-[#B4490E]"
+              >
+                Xóa hết
+              </button>
+            )}
+          </div>
+
+          {/* Cụm 2 nút Dropdown gọn sạch bên phải chuẩn Mockup A */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              data-testid="studio-pantry-trigger"
+              aria-expanded={openPopover === 'pantry'}
+              onClick={() =>
+                setOpenPopover((prev) =>
+                  prev === 'pantry' ? 'none' : 'pantry'
+                )
+              }
+              className={`inline-flex min-h-[34px] items-center gap-1.5 rounded-full border px-3.5 py-1 text-[12.5px] font-medium tabular-nums transition ${
+                openPopover === 'pantry'
+                  ? 'border-[#181512] bg-[#F5EADF] text-[#181512]'
+                  : 'border-[#D5C2AC] bg-[#FFFDF9] text-[#3B3027] hover:border-[#181512]'
+              }`}
+            >
+              <span>
+                Gia vị sẵn có: {availablePantryCount}/{pantryItems.length}
+              </span>
+              <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+
+            <button
+              type="button"
+              data-testid="studio-time-trigger"
+              aria-expanded={openPopover === 'time'}
+              onClick={() =>
+                setOpenPopover((prev) => (prev === 'time' ? 'none' : 'time'))
+              }
+              className={`inline-flex min-h-[34px] items-center gap-1.5 rounded-full border px-3.5 py-1 text-[12.5px] font-medium tabular-nums transition ${
+                openPopover === 'time'
+                  ? 'border-[#181512] bg-[#F5EADF] text-[#181512]'
+                  : 'border-[#D5C2AC] bg-[#FFFDF9] text-[#3B3027] hover:border-[#181512]'
+              }`}
+            >
+              <span>
+                Thời gian:{' '}
+                {activeDesiredMinutes
+                  ? `≤ ${activeDesiredMinutes} phút`
+                  : 'Mọi mốc'}
+              </span>
+              <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
           </div>
         </div>
 
-        {/* KHỐI PHẢI (4/12, Sticky): PHIẾU BẾP HỢP NHẤT (1 THẺ DUY NHẤT CHIA 3 NGĂN) */}
-        <aside
-          aria-label="Phiếu bếp tổng hợp nguyên liệu và gia vị"
-          className="rounded-[28px] border border-[#DFD3C3] bg-white p-5 shadow-[0_14px_40px_rgba(24,21,18,0.05)] sm:p-7 lg:sticky lg:top-6 lg:col-span-4"
-        >
-          {/* Ngăn 1: Nguyên liệu đã chọn */}
-          <SelectedIngredientsList
-            selectedIngredients={selectedIngredients}
-            onRemoveIngredient={handleRemoveIngredient}
-            onClearAll={handleClearAllIngredients}
-          />
-
-          {/* Đường kẻ nét đứt ngăn cách như phiếu bếp */}
-          <hr className="my-5 border-t border-dashed border-[#DFD3C3]" />
-
-          {/* Ngăn 2: 5 Gia vị sẵn có trong bếp */}
-          <PantryToggleBar
-            pantryItems={pantryItems}
-            excludedPantryIds={excludedPantryIds}
-            onTogglePantryItem={handleTogglePantryItem}
-            onResetPantryDefault={handleResetPantryDefault}
-          />
-
-          {/* Đường kẻ nét đứt ngăn cách */}
-          <hr className="my-5 border-t border-dashed border-[#DFD3C3]" />
-
-          {/* Ngăn 3: Hành động Gợi ý món ăn */}
-          <section aria-label="Hành động gợi ý món ăn">
-            <button
-              type="button"
-              data-testid="recommend-submit-btn"
-              disabled={!canRecommend}
-              onClick={handleRecommendClick}
-              className="inline-flex w-full items-center justify-center rounded-full bg-[#E87838] px-6 py-3.5 text-[14px] font-semibold text-white shadow-sm transition hover:bg-[#D16426] disabled:cursor-not-allowed disabled:bg-[#E4E4E7] disabled:text-[#A1A1AA]"
-            >
-              <span>
-                Gợi ý món ăn
-                {canRecommend
-                  ? ` (${currentDraftPayload.ingredient_ids.length} nguyên liệu)`
-                  : ''}
+        {/* Khay gợi ý chọn nhanh nguyên liệu (Mở sẵn khi giỏ trống, thu gọn gọn gàng khi cần) */}
+        {showQuickPick && (
+          <div className="mt-3 border-t border-[#EAE0D3] pt-3">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="mr-1 text-[12px] text-[#595047]">
+                Nguyên liệu phổ biến:
               </span>
-            </button>
+              {popularItems.map((item) => {
+                const isSelected = selectedIdSet.has(item.id);
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    data-testid={
+                      isDropdownOpen
+                        ? `category-chip-${item.slug}`
+                        : `suggestion-item-${item.slug}`
+                    }
+                    aria-pressed={isSelected}
+                    onClick={() => handleToggleIngredient(item)}
+                    className={`inline-flex min-h-[32px] items-center rounded-full px-3 py-1 text-[12.5px] transition ${
+                      isSelected
+                        ? 'bg-[#181512] font-medium text-[#FFF8F0]'
+                        : 'bg-[#F5EADF] text-[#3B3027] hover:bg-[#E8D8C6]'
+                    }`}
+                  >
+                    {isSelected ? `✓ ${item.name_vi}` : `+ ${item.name_vi}`}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
-            {!canRecommend && (
-              <p
-                data-testid="recommend-disabled-hint"
-                className="mt-2.5 text-center text-xs text-[#6E655C]"
-              >
-                Chọn ít nhất 1 nguyên liệu chính để nhận gợi ý món ăn.
-              </p>
-            )}
+        {/* Popover chỉnh 5 Gia vị cơ bản */}
+        {openPopover === 'pantry' && (
+          <div className="mt-3 rounded-[14px] border border-[#E4D5C3] bg-[#FAF3EB] p-4">
+            <PantryToggleBar
+              pantryItems={pantryItems}
+              excludedPantryIds={excludedPantryIds}
+              onTogglePantryItem={handleTogglePantryItem}
+              onResetPantryDefault={handleResetPantryDefault}
+            />
+          </div>
+        )}
 
-            {submittedPayload && (
-              <div
-                data-testid="recommend-payload-preview"
-                className="mt-3 flex items-center justify-center gap-1.5 text-xs font-semibold text-[#1E8E6E]"
+        {/* Popover chỉnh Thời gian mong muốn */}
+        {openPopover === 'time' && (
+          <div className="mt-3 rounded-[14px] border border-[#E4D5C3] bg-[#FAF3EB] p-4">
+            <p className="mb-2 text-[12.5px] font-semibold text-[#181512]">
+              Thời gian nấu mong muốn (tính điểm ưu tiên):
+            </p>
+            <DesiredTimeSelector
+              desiredMinutes={activeDesiredMinutes}
+              onDesiredMinutesChange={(minutes) => {
+                setActiveDesiredMinutes(minutes);
+              }}
+              testIdPrefix="desired-time-preset"
+              activeTone="saffron"
+              compact
+            />
+          </div>
+        )}
+      </section>
+    );
+  }
+
+  /* =========================================================================
+     CHẾ ĐỘ ĐỘC LẬP (DÙNG CHO BÀI TEST ĐƠN VỊ INGREDIENTKITCHENVIEW)
+     ========================================================================= */
+  return (
+    <div className="mx-auto max-w-4xl space-y-5">
+      <div className="rounded-[22px] bg-[#FFF8F0] p-5 shadow-[0_12px_34px_rgba(24,21,18,0.06)] sm:p-6">
+        <IngredientSearchBox
+          selectedIngredients={selectedIngredients}
+          onAddIngredient={handleAddIngredient}
+          onDropdownOpenChange={setIsDropdownOpen}
+        />
+
+        <div className="mt-4 flex flex-wrap gap-1.5">
+          {popularItems.map((item) => {
+            const isSelected = selectedIdSet.has(item.id);
+            return (
+              <button
+                key={item.id}
+                type="button"
+                data-testid={
+                  isDropdownOpen
+                    ? `category-chip-${item.slug}`
+                    : `suggestion-item-${item.slug}`
+                }
+                aria-pressed={isSelected}
+                onClick={() => handleToggleIngredient(item)}
+                className={`inline-flex min-h-[36px] items-center rounded-full px-3.5 py-1.5 text-[13px] font-medium transition ${
+                  isSelected
+                    ? 'bg-[#181512] text-[#FFF8F0]'
+                    : 'bg-[#F5EADF] text-[#3B3027] hover:bg-[#E8D8C6]'
+                }`}
               >
-                <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
-                <span>
-                  Đã sẵn sàng tìm món từ {submittedPayload.ingredient_ids.length}{' '}
-                  nguyên liệu đã chọn
-                </span>
-              </div>
-            )}
-          </section>
-        </aside>
+                {item.name_vi}
+              </button>
+            );
+          })}
+        </div>
+
+        <hr className="my-5 border-t border-[#EAE0D3]" />
+
+        <SelectedIngredientsList
+          selectedIngredients={selectedIngredients}
+          onRemoveIngredient={handleRemoveIngredient}
+          onClearAll={handleClearAllIngredients}
+          mainIngredientIds={activeMainIds}
+          onToggleMainIngredient={handleToggleMainIngredient}
+        />
+
+        <hr className="my-5 border-t border-[#EAE0D3]" />
+
+        <PantryToggleBar
+          pantryItems={pantryItems}
+          excludedPantryIds={excludedPantryIds}
+          onTogglePantryItem={handleTogglePantryItem}
+          onResetPantryDefault={handleResetPantryDefault}
+        />
+
+        <hr className="my-5 border-t border-[#EAE0D3]" />
+
+        <DesiredTimeSelector
+          desiredMinutes={activeDesiredMinutes}
+          onDesiredMinutesChange={setActiveDesiredMinutes}
+          testIdPrefix="desired-time-preset"
+          activeTone="saffron"
+          compact
+        />
+
+        <div className="mt-5">
+          <button
+            type="button"
+            data-testid="recommend-submit-btn"
+            disabled={!canRecommend}
+            onClick={handleRecommendClick}
+            className="inline-flex min-h-[44px] w-full items-center justify-center rounded-full bg-[#B4490E] px-6 py-2.5 text-[14px] font-semibold text-white transition hover:bg-[#963B0A] disabled:cursor-not-allowed disabled:bg-[#E2D4C3] disabled:text-[#595047]"
+          >
+            Gợi ý món ăn
+            {canRecommend
+              ? ` (${currentDraftPayload.ingredient_ids.length} nguyên liệu)`
+              : ''}
+          </button>
+
+          {!canRecommend && (
+            <p
+              data-testid="recommend-disabled-hint"
+              className="mt-2 text-center text-xs text-[#595047]"
+            >
+              Chọn ít nhất 1 nguyên liệu chính để nhận gợi ý món ăn.
+            </p>
+          )}
+
+          {submittedPayload && (
+            <p
+              data-testid="recommend-payload-preview"
+              className="mt-2 text-center text-xs font-semibold text-[#B4490E]"
+            >
+              Đã sẵn sàng tìm món từ {submittedPayload.ingredient_ids.length}{' '}
+              nguyên liệu đã chọn
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
