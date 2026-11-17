@@ -324,6 +324,23 @@ class InMemoryCatalogRepository:
             if active_ai_model is ...
             else active_ai_model
         )
+        self._personalization_engine: Any = None
+
+    @property
+    def personalization_engine(self) -> Any:
+        if self._personalization_engine is None:
+            from app.intelligence.personalization import (
+                InMemoryPersonalizationRepository,
+                PersonalizationEngine,
+            )
+
+            self._personalization_engine = PersonalizationEngine(
+                repository=InMemoryPersonalizationRepository()
+            )
+        return self._personalization_engine
+
+    def set_personalization_engine(self, engine: Any) -> None:
+        self._personalization_engine = engine
 
     def get_user_preferences(self, user_id: str) -> UserPreferencesRecord | None:
         return self._user_preferences.get(user_id)
