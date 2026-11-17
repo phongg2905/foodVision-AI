@@ -5,10 +5,10 @@
 
 ## Summary
 
-Mở rộng ứng dụng Frontend SPA (`frontend/`) trong phạm vi `TV3` (Single-Owner) theo thiết kế chuẩn **NEWTASTE** (`#EFE6D8` Warm Almond Cream, `#E87838` Spiced Saffron, `#181512` Deep Espresso, `#1E8E6E`/`#00C48C` Herb Emerald, font `Fraunces` + `Plus Jakarta Sans`):
+Mở rộng ứng dụng Frontend SPA (`frontend/`) trong phạm vi `TV3` (Single-Owner) theo thiết kế chuẩn toàn diện từ 10 slide Hi-Fi của **NEWTASTE Case Study** (`#E8D8C6` Warm Almond Canvas, `#FFF8F0` Warm Off-White surface, `#F59E28` Saffron section tag pill chữ Espresso `#181512`, `#EA6D27` / `#C65112` Persimmon Orange đạt chuẩn WCAG AA, `#0E6B4F`/`#00C48C` Herb Emerald, `#595047` Warm Stone, cặp font `David Libre` + `Plus Jakarta Sans`, đường cong & nhánh thảo mộc `BotanicalDecor`, hình khối cắt chéo chiếc lá `rounded-tl-[28px] rounded-br-[28px]` và Footer 2 tầng):
 1. Mở rộng `features/search/` (Tủ Bếp) hỗ trợ tùy chọn không bắt buộc **nguyên liệu chính ưu tiên (`main_ingredient_ids`)** và **thời gian mong muốn (`desired_hours`)** trước khi bấm *"Gợi ý món ăn"*.
-2. Xây dựng **Màn hình Kết quả Gợi ý (`features/recommend/`)** gọi `POST /api/v1/recommendations` (`v1.1.0`), phân tách rõ khu vực **"Nấu được ngay" (`ready`)** và **"Còn thiếu nguyên liệu" (`missing`)**, giải quyết UUID sang tên tiếng Việt cho badge khớp/thiếu, hiển thị điểm MCDA 4 tiêu chí (`C, G, T, P`), giải thích `explanation_vi` và bộ lọc `cuisine_codes`, `max_total_minutes`, `include_missing`, `diversify` (MMR).
-3. Xây dựng **Trang Chi tiết Công thức (`features/recipes/RecipeDetailView.tsx`)** theo bố cục 2 cột `"CHICKEN PASTA"` của NEWTASTE gọi `GET /api/v1/recipes/{recipe_id}`: hiển thị `prep_minutes`, `cook_minutes` (lưu ý `BR-05`), `total_minutes`, tách nhóm `pantry` / non-pantry, các bước `steps`, nhãn dinh dưỡng định tính + `source_urls`, nguồn/bản quyền và nguyên văn tuyên bố miễn trừ `BR-03` (`TC-15`).
+2. Xây dựng **Màn hình Kết quả Gợi ý (`features/recommend/`)** gọi `POST /api/v1/recommendations` (`v1.1.0`), phân tách rõ khu vực **"Nấu được ngay" (`ready`)** và **"Còn thiếu nguyên liệu" (`missing`)** với tiêu đề dạng thẻ tag `#F59E28`, giải quyết UUID sang tên tiếng Việt cho badge khớp/thiếu, hiển thị điểm MCDA 4 tiêu chí (`C, G, T, P`), giải thích `explanation_vi` và bộ lọc `cuisine_codes`, `max_total_minutes`, `include_missing`, `diversify` (MMR).
+3. Xây dựng **Trang Chi tiết Công thức (`features/recipes/RecipeDetailView.tsx`)** theo bố cục mở `"CHICKEN PASTA"` của NEWTASTE gọi `GET /api/v1/recipes/{recipe_id}`: cột trái hiển thị tiêu đề, dải thông số vạch dọc (`prep_minutes`, `cook_minutes` kèm lưu ý `BR-05`, `total_minutes`), dãy huy chương tròn dinh dưỡng định tính (`NutritionEvidence`) + `source_urls` và nguyên văn tuyên bố miễn trừ `BR-03` (`TC-15`); cột phải hiển thị ảnh món ăn cắt chéo chiếc lá cùng nhánh thảo mộc; bên dưới trình bày mở danh sách chấm tròn tách riêng nhóm `pantry` / non-pantry, các bước `steps`, thẻ công thức và nguồn/bản quyền.
 
 ## Constitution Check
 
@@ -30,7 +30,7 @@ specs/011-gd2-fe-recommend/
     └── ui-api-contracts.md
 
 frontend/src/
-├── App.tsx
+├── App.tsx                                   # Đồng bộ History API (?tab & ?recipe) + lưu nháp sessionStorage + Back/F5 an toàn
 ├── shared/
 │   ├── api/
 │   │   ├── client.ts                     # + apiPostWithFallback & dual FastAPI/ErrorResponse error parser
@@ -38,8 +38,13 @@ frontend/src/
 │   │   ├── mockData.ts                   # + MOCK_RECIPE_DETAILS (8 món), nutrition_evidence & getIngredientNameById
 │   │   ├── recipesApi.ts                 # + getRecipeById
 │   │   └── recommendationsApi.ts         # + postRecommendations & ADR-013/MMR offline fallback
+│   ├── utils/
+│   │   ├── vietnamese.ts                 # Chuẩn hóa tiếng Việt & đồng nghĩa vùng miền
+│   │   └── formatters.ts                 # + formatScoreValue dùng chung giữa Card & Detail
 │   └── components/
-│       └── AppLayout.tsx                 # + tab "Gợi ý món ăn" (desktop & mobile)
+│       ├── AppLayout.tsx                 # Header & Footer 2 tầng NEWTASTE + thanh 3 tab 1 hàng ở mobile 360px
+│       ├── BotanicalDecor.tsx            # Họa tiết đường cong góc Header & nhánh thảo mộc nét mảnh NEWTASTE
+│       └── DesiredTimeSelector.tsx       # Bộ chọn thời gian nấu mong muốn (preset & tùy chỉnh)
 ├── features/
 │   ├── search/
 │   │   ├── IngredientKitchenView.tsx     # + mainIngredientIds & desiredMinutes selectors + slug UUID sync

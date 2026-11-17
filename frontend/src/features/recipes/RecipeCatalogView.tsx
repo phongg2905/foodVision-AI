@@ -111,7 +111,7 @@ export const RecipeCatalogView: React.FC<RecipeCatalogViewProps> = ({
       {errorMessage && (
         <div
           role="alert"
-          className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+          className="rounded-tl-[18px] rounded-br-[18px] rounded-tr-[6px] rounded-bl-[6px] border border-[#D48A6A] bg-[#FFF8F0] p-4 text-sm text-[#8F2D0A]"
         >
           {errorMessage}
         </div>
@@ -124,30 +124,30 @@ export const RecipeCatalogView: React.FC<RecipeCatalogViewProps> = ({
         >
           {Array.from({ length: 4 }).map((_, index) => (
             <div key={index} className="flex flex-col items-center pt-14">
-              <div className="z-10 -mb-14 h-32 w-32 animate-pulse rounded-full bg-[#DFD3C3]" />
-              <div className="h-52 w-full animate-pulse rounded-bl-[12px] rounded-br-[30px] rounded-tl-[30px] rounded-tr-[12px] bg-white shadow-sm" />
+              <div className="z-10 -mb-14 h-32 w-32 animate-pulse rounded-full bg-[#D6C3AE]" />
+              <div className="h-52 w-full animate-pulse rounded-tl-[28px] rounded-br-[28px] rounded-tr-[6px] rounded-bl-[6px] bg-[#FFF8F0] shadow-sm" />
             </div>
           ))}
         </div>
       ) : recipes.length === 0 ? (
         <div
           data-testid="recipes-empty-state"
-          className="flex flex-col items-center justify-center rounded-2xl border border-[#DFD3C3] bg-white px-6 py-14 text-center shadow-[0_4px_20px_rgba(24,21,18,0.04)]"
+          className="flex flex-col items-center justify-center rounded-tl-[28px] rounded-br-[28px] rounded-tr-[6px] rounded-bl-[6px] border border-[#D8C6B2] bg-[#FFF8F0] px-6 py-14 text-center shadow-[0_8px_24px_rgba(24,21,18,0.05)]"
         >
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F7F2EA] text-[#E87838]">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F4EAE0] text-[#9E3D08]">
             <SearchX className="h-6 w-6" aria-hidden="true" />
           </div>
           <h3 className="mt-4 font-serif text-lg font-bold text-[#181512]">
             Không tìm thấy công thức phù hợp
           </h3>
-          <p className="mt-1 max-w-md text-sm text-[#6E655C]">
+          <p className="mt-1 max-w-md text-sm text-[#595047]">
             Thử tìm kiếm với từ khóa khác hoặc mở rộng bộ lọc nền ẩm thực và
             thời gian chế biến.
           </p>
           <button
             type="button"
             onClick={handleResetFilters}
-            className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#E87838] px-6 py-2.5 text-xs font-semibold text-white transition hover:bg-[#D16426]"
+            className="mt-5 inline-flex items-center gap-2 rounded-tl-[14px] rounded-br-[14px] rounded-tr-[4px] rounded-bl-[4px] bg-[#C65112] px-6 py-2.5 text-xs font-semibold text-white transition hover:bg-[#A8430D]"
           >
             <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
             Xóa bộ lọc

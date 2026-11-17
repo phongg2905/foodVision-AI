@@ -1,5 +1,12 @@
 import React from 'react';
-import { Menu, ArrowRight, ExternalLink, UtensilsCrossed } from 'lucide-react';
+import {
+  ChefHat,
+  Globe,
+  Mail,
+  Share2,
+  Sparkles,
+} from 'lucide-react';
+import { BotanicalDecor } from './BotanicalDecor';
 
 export type ActiveTab = 'catalog' | 'kitchen' | 'recommendations';
 
@@ -17,40 +24,57 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   children,
 }) => {
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#EFE6D8] text-[#181512]">
-      {/* MỤC 1A — Website Header (Bố cục Fodium + Màu & Chữ của web-6-newtaste-recipe-website.jpg) */}
-      <header className="bg-[#EFE6D8]">
+    <div className="relative min-h-screen overflow-x-hidden bg-[#E8D8C6] text-[#181512]">
+      {/* Đường cong & nhánh thảo mộc nét mảnh nền chuẩn NEWTASTE */}
+      <BotanicalDecor
+        variant="header-arcs"
+        className="pointer-events-none absolute left-0 top-0 h-44 w-72 text-[#A7927A]/45"
+      />
+      <BotanicalDecor
+        variant="rosemary"
+        className="pointer-events-none fixed -left-8 top-1/3 hidden h-56 w-56 text-[#9A856E]/20 xl:block"
+      />
+      <BotanicalDecor
+        variant="basil"
+        className="pointer-events-none fixed -right-10 bottom-24 hidden h-60 w-60 text-[#9A856E]/20 xl:block"
+      />
+
+      {/* HEADER CHUẨN NEWTASTE */}
+      <header className="relative z-10 bg-transparent">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-6 sm:px-6 lg:px-8">
-          {/* Trái: Logo Serif chữ Cam Spiced Orange (#E87838) */}
+          {/* Trái: Biểu tượng đầu bếp nét mảnh & Logo serif David Libre */}
           <button
             type="button"
             onClick={() => onTabChange('catalog')}
-            className="text-left focus:outline-none"
+            className="inline-flex shrink-0 items-center gap-2.5 whitespace-nowrap text-left transition hover:opacity-90 focus:outline-none"
           >
-            <span className="font-serif text-[28px] font-bold tracking-tight text-[#E87838] transition hover:opacity-90 sm:text-[32px]">
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-tl-[14px] rounded-br-[14px] rounded-tr-[4px] rounded-bl-[4px] border border-[#EA6D27]/50 bg-[#FFF8F0]/75 text-[#C65112]">
+              <ChefHat className="h-5 w-5 stroke-[1.75]" aria-hidden="true" />
+            </span>
+            <span className="font-serif text-[26px] font-bold tracking-tight text-[#C65112] sm:text-[30px]">
               FoodVision
             </span>
           </button>
 
-          {/* Giữa: Menu chữ thoáng, gạch chân cam #E87838 ở mục đang chọn (giống Home trong New Taste) */}
+          {/* Giữa: Điều hướng Serif thanh lịch chuẩn NEWTASTE (chỉ bung full nav từ lg 1024px để tránh chồng/xuống dòng ở tablet 768px) */}
           <nav
             aria-label="Điều hướng chính"
-            className="hidden items-center gap-10 md:flex"
+            className="hidden items-center gap-6 lg:flex xl:gap-8"
           >
             <button
               type="button"
               data-testid="nav-tab-catalog"
               aria-current={activeTab === 'catalog' ? 'page' : undefined}
               onClick={() => onTabChange('catalog')}
-              className={`relative py-1 text-[12px] font-semibold uppercase tracking-[0.16em] transition ${
+              className={`relative inline-flex min-h-[38px] shrink-0 items-center whitespace-nowrap py-1.5 font-serif text-[16px] font-medium transition ${
                 activeTab === 'catalog'
-                  ? 'text-[#E87838]'
-                  : 'text-[#181512] hover:text-[#E87838]'
+                  ? 'font-bold text-[#9E3D08]'
+                  : 'text-[#181512] hover:text-[#9E3D08]'
               }`}
             >
               Tra cứu công thức
               {activeTab === 'catalog' && (
-                <span className="absolute -bottom-1 left-0 right-0 h-[2px] rounded-full bg-[#E87838]" />
+                <span className="absolute -bottom-0.5 left-0 right-0 h-[2px] rounded-full bg-[#EA6D27]" />
               )}
             </button>
 
@@ -59,23 +83,23 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
               data-testid="nav-tab-kitchen"
               aria-current={activeTab === 'kitchen' ? 'page' : undefined}
               onClick={() => onTabChange('kitchen')}
-              className={`relative inline-flex items-center gap-2 py-1 text-[12px] font-semibold uppercase tracking-[0.16em] transition ${
+              className={`relative inline-flex min-h-[38px] shrink-0 items-center gap-2 whitespace-nowrap py-1.5 font-serif text-[16px] font-medium transition ${
                 activeTab === 'kitchen'
-                  ? 'text-[#E87838]'
-                  : 'text-[#181512] hover:text-[#E87838]'
+                  ? 'font-bold text-[#9E3D08]'
+                  : 'text-[#181512] hover:text-[#9E3D08]'
               }`}
             >
               <span>Chọn nguyên liệu &amp; Bếp</span>
               {selectedMainCount > 0 && (
                 <span
                   data-testid="nav-selected-badge"
-                  className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-[#E87838] px-1.5 text-[10px] font-bold tracking-normal text-white tabular-nums"
+                  className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-[#C65112] px-1.5 font-sans text-[11px] font-bold text-white tabular-nums"
                 >
                   {selectedMainCount}
                 </span>
               )}
               {activeTab === 'kitchen' && (
-                <span className="absolute -bottom-1 left-0 right-0 h-[2px] rounded-full bg-[#E87838]" />
+                <span className="absolute -bottom-0.5 left-0 right-0 h-[2px] rounded-full bg-[#EA6D27]" />
               )}
             </button>
 
@@ -86,236 +110,215 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
                 activeTab === 'recommendations' ? 'page' : undefined
               }
               onClick={() => onTabChange('recommendations')}
-              className={`relative py-1 text-[12px] font-semibold uppercase tracking-[0.16em] transition ${
+              className={`relative inline-flex min-h-[38px] shrink-0 items-center whitespace-nowrap py-1.5 font-serif text-[16px] font-medium transition ${
                 activeTab === 'recommendations'
-                  ? 'text-[#E87838]'
-                  : 'text-[#181512] hover:text-[#E87838]'
+                  ? 'font-bold text-[#9E3D08]'
+                  : 'text-[#181512] hover:text-[#9E3D08]'
               }`}
             >
               Gợi ý món ăn
               {activeTab === 'recommendations' && (
-                <span className="absolute -bottom-1 left-0 right-0 h-[2px] rounded-full bg-[#E87838]" />
+                <span className="absolute -bottom-0.5 left-0 right-0 h-[2px] rounded-full bg-[#EA6D27]" />
               )}
             </button>
           </nav>
 
-          {/* Phải: Nút đen Espresso (#181512) + Nút vuông cam (#E87838) đồng điệu với cặp nút Discover / Create Recipe của New Taste */}
-          <div className="flex items-center gap-2.5">
+          {/* Phải: Cặp nút cắt chéo chiếc lá Đen Espresso + Cam Persimmon */}
+          <div className="flex shrink-0 items-center gap-2.5">
             <button
               type="button"
               onClick={() => onTabChange('kitchen')}
-              className="hidden items-center justify-center rounded-lg bg-[#181512] px-5 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#2E2924] sm:inline-flex"
+              className="hidden min-h-[40px] items-center justify-center whitespace-nowrap rounded-tl-[12px] rounded-br-[12px] rounded-tr-[4px] rounded-bl-[4px] bg-[#181512] px-4 py-2 text-xs font-semibold text-[#FFF8F0] shadow-[0_6px_16px_rgba(24,21,18,0.16)] transition hover:bg-[#2E2720] sm:inline-flex tabular-nums"
             >
               Tủ bếp{selectedMainCount > 0 ? ` (${selectedMainCount})` : ''}
             </button>
 
             <button
               type="button"
-              onClick={() =>
-                onTabChange(activeTab === 'catalog' ? 'kitchen' : 'catalog')
-              }
-              title="Chuyển nhanh chế độ Tra cứu / Tủ bếp"
-              aria-label="Chuyển chế độ hiển thị"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[#E87838] text-white shadow-sm transition hover:bg-[#D16426]"
+              onClick={() => onTabChange('recommendations')}
+              title="Mở danh sách gợi ý món ăn phù hợp với gian bếp"
+              aria-label="Mở gợi ý món ăn"
+              className="inline-flex min-h-[40px] items-center justify-center gap-1.5 whitespace-nowrap rounded-tl-[12px] rounded-br-[12px] rounded-tr-[4px] rounded-bl-[4px] bg-[#C65112] px-3.5 py-2 text-xs font-semibold text-white shadow-[0_6px_16px_rgba(198,81,18,0.22)] transition hover:bg-[#A8430D]"
             >
-              <Menu className="h-4 w-4" aria-hidden="true" />
+              <Sparkles className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span className="hidden sm:inline">Gợi ý món</span>
             </button>
           </div>
         </div>
 
-        {/* Thanh điều hướng rút gọn trên màn hình nhỏ (Mobile) */}
-        <div className="flex flex-wrap items-center justify-center gap-4 border-t border-[#DFD3C3] py-2.5 md:hidden">
+        {/* Thanh điều hướng gọn 1 hàng cân đối trên thiết bị di động & tablet (< lg) */}
+        <nav
+          aria-label="Điều hướng di động"
+          className="grid grid-cols-3 border-t border-[#D8C6B2] px-2 lg:hidden"
+        >
           <button
             type="button"
+            aria-current={activeTab === 'catalog' ? 'page' : undefined}
             onClick={() => onTabChange('catalog')}
-            className={`text-[11px] font-semibold uppercase tracking-[0.15em] ${
-              activeTab === 'catalog' ? 'text-[#E87838]' : 'text-[#6E655C]'
+            className={`relative flex min-h-[44px] items-center justify-center px-1 text-center font-serif text-[14px] transition ${
+              activeTab === 'catalog'
+                ? 'font-bold text-[#9E3D08]'
+                : 'font-medium text-[#595047]'
             }`}
           >
-            Tra cứu công thức
+            <span>Tra cứu</span>
+            {activeTab === 'catalog' && (
+              <span className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full bg-[#EA6D27]" />
+            )}
           </button>
           <button
             type="button"
+            aria-current={activeTab === 'kitchen' ? 'page' : undefined}
             onClick={() => onTabChange('kitchen')}
-            className={`text-[11px] font-semibold uppercase tracking-[0.15em] ${
-              activeTab === 'kitchen' ? 'text-[#E87838]' : 'text-[#6E655C]'
+            className={`relative flex min-h-[44px] items-center justify-center px-1 text-center font-serif text-[14px] tabular-nums transition ${
+              activeTab === 'kitchen'
+                ? 'font-bold text-[#9E3D08]'
+                : 'font-medium text-[#595047]'
             }`}
           >
-            Chọn nguyên liệu ({selectedMainCount})
+            <span>Tủ bếp ({selectedMainCount})</span>
+            {activeTab === 'kitchen' && (
+              <span className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full bg-[#EA6D27]" />
+            )}
           </button>
           <button
             type="button"
+            aria-current={activeTab === 'recommendations' ? 'page' : undefined}
             onClick={() => onTabChange('recommendations')}
-            className={`text-[11px] font-semibold uppercase tracking-[0.15em] ${
+            className={`relative flex min-h-[44px] items-center justify-center px-1 text-center font-serif text-[14px] transition ${
               activeTab === 'recommendations'
-                ? 'text-[#E87838]'
-                : 'text-[#6E655C]'
+                ? 'font-bold text-[#9E3D08]'
+                : 'font-medium text-[#595047]'
             }`}
           >
-            Gợi ý món ăn
+            <span>Gợi ý món</span>
+            {activeTab === 'recommendations' && (
+              <span className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full bg-[#EA6D27]" />
+            )}
           </button>
-        </div>
+        </nav>
       </header>
 
       {/* Nội dung chính */}
-      <main className="mx-auto max-w-7xl px-4 pb-12 pt-2 sm:px-6 lg:px-8">
+      <main className="relative z-10 mx-auto max-w-7xl px-4 pb-12 pt-2 sm:px-6 lg:px-8">
         {children}
       </main>
 
-      {/* MỤC 1B — Website Footer (Bố cục 3 tầng web-footer-6 nổi bật trên nền kem hạnh nhân #EFE6D8 của New Taste) */}
-      <footer className="mt-16 px-4 pb-12 pt-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl rounded-[28px] border border-[#DFD3C3] bg-white px-6 py-10 shadow-[0_14px_40px_rgba(24,21,18,0.05)] sm:px-12 sm:py-12">
-          {/* Tầng 1: Cột giới thiệu bên trái + 3 cột liên kết có tiêu đề gạch chân */}
-          <div className="grid grid-cols-1 gap-10 pb-10 md:grid-cols-12">
-            <div className="md:col-span-4">
-              <h3 className="font-serif text-[16px] font-bold text-[#181512]">
-                Về chúng tôi
-              </h3>
-              <p className="mt-3 max-w-xs text-[13px] leading-relaxed text-[#6E655C]">
-                FoodVision AI là nền tảng tra cứu công thức nấu ăn và gợi ý món
-                ngon thông minh từ nguyên liệu sẵn có trong gian bếp gia đình
-                Việt.
-              </p>
-              <div className="mt-6">
-                <h4 className="font-serif text-[15px] font-bold text-[#181512]">
-                  Liên hệ
-                </h4>
-                <p className="mt-1.5 text-[13px] text-[#6E655C]">
-                  hello@foodvision.ai
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-8 sm:grid-cols-3 md:col-span-8">
-              <div>
-                <h4 className="inline-block border-b-[1.5px] border-[#181512] pb-0.5 font-serif text-[15px] font-bold text-[#181512]">
-                  Khám phá Bếp
-                </h4>
-                <ul className="mt-4 space-y-3 text-[13px] text-[#6E655C]">
-                  <li>
-                    <button
-                      type="button"
-                      onClick={() => onTabChange('catalog')}
-                      className="font-medium text-[#E87838] transition hover:underline"
-                    >
-                      Danh mục Công thức
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      type="button"
-                      onClick={() => onTabChange('kitchen')}
-                      className="transition hover:text-[#181512]"
-                    >
-                      Tìm kiếm Nguyên liệu
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      type="button"
-                      onClick={() => onTabChange('kitchen')}
-                      className="transition hover:text-[#181512]"
-                    >
-                      Gia vị Cơ bản trong Bếp
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      type="button"
-                      onClick={() => onTabChange('recommendations')}
-                      className="inline-flex items-center gap-1.5 font-medium text-[#E87838] transition hover:underline"
-                    >
-                      <span>Gợi ý Món ăn</span>
-                      <ExternalLink className="h-3 w-3" aria-hidden="true" />
-                    </button>
-                  </li>
-                </ul>
-              </div>
-
-              <div>
-                <h4 className="inline-block border-b-[1.5px] border-[#181512] pb-0.5 font-serif text-[15px] font-bold text-[#181512]">
-                  Nền Ẩm thực
-                </h4>
-                <ul className="mt-4 space-y-3 text-[13px] text-[#6E655C]">
-                  <li>Ẩm thực Việt Nam</li>
-                  <li>Ẩm thực Châu Âu</li>
-                  <li>Ẩm thực Hiện đại</li>
-                  <li className="inline-flex items-center gap-1.5 font-medium text-[#E87838]">
-                    <span>Bộ sưu tập Theo mùa</span>
-                    <ExternalLink className="h-3 w-3" aria-hidden="true" />
-                  </li>
-                </ul>
-              </div>
-
-              <div>
-                <h4 className="inline-block border-b-[1.5px] border-[#181512] pb-0.5 font-serif text-[15px] font-bold text-[#181512]">
-                  Món Ngon Nổi Bật
-                </h4>
-                <ul className="mt-4 space-y-3 text-[13px] text-[#6E655C]">
-                  <li>Canh cà chua trứng</li>
-                  <li>Đậu hũ nhồi thịt sốt cà</li>
-                  <li>Bò lúc lắc xào hành tây</li>
-                  <li>Salad dưa leo cà chua</li>
-                  <li>Ức gà áp chảo sốt bơ tỏi</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          {/* Tầng 2: Logo + Lời mời nhận bản tin + Ô nhập Email & Nút Pill cam #E87838 */}
-          <div className="flex flex-col gap-5 border-t border-[#EFECE6] py-8 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-center gap-3">
-              <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#E87838] text-white">
-                <UtensilsCrossed className="h-4 w-4" aria-hidden="true" />
-              </span>
-              <span className="font-serif text-[20px] font-bold tracking-tight text-[#181512]">
-                FoodVision
-              </span>
-            </div>
-
-            <p className="max-w-md text-[15px] font-medium leading-snug text-[#181512]">
-              Nhận thực đơn công thức món ngon hàng tuần dành riêng cho gian bếp
-              của bạn.
-            </p>
-
-            <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
-              <input
-                type="email"
-                placeholder="Email của bạn*"
-                aria-label="Email đăng ký nhận công thức"
-                className="rounded-full border border-[#DFD3C3] bg-[#FAF7F2] px-5 py-2.5 text-[13px] text-[#181512] placeholder:text-[#9A9086] focus:border-[#E87838] focus:outline-none sm:w-60"
-              />
-              <button
-                type="button"
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-[#E87838] px-6 py-2.5 text-[13px] font-semibold text-white transition hover:bg-[#D16426]"
-              >
-                <span>Đăng ký miễn phí</span>
-                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-              </button>
-            </div>
-          </div>
-
-          {/* Tầng 3: Bản quyền + Điều khoản + 3 nút tròn mạng xã hội */}
-          <div className="flex flex-col items-center justify-between gap-4 border-t border-[#EFECE6] pt-7 text-[11px] text-[#6E655C] sm:flex-row">
-            <span className="tracking-wide">
-              ©2026 FOODVISION AI. ALL RIGHTS RESERVED.
-            </span>
-
-            <div className="flex items-center gap-7 text-[12px] font-medium text-[#181512]">
-              <span>Điều khoản</span>
-              <span>Bảo mật</span>
-              <span>Cookies</span>
-            </div>
-
-            <div className="flex items-center gap-2.5">
-              {['in', 'f', '𝕏'].map((social) => (
-                <span
-                  key={social}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#DFD3C3] text-[11px] font-semibold text-[#181512] transition hover:border-[#E87838] hover:text-[#E87838]"
-                >
-                  {social}
+      {/* FOOTER 2 TẦNG CHUẨN NEWTASTE (#FFF8F0 trên nền #E8D8C6) */}
+      <footer className="relative z-10 mt-14 px-4 pb-10 pt-2 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl rounded-b-[26px] rounded-t-[6px] border border-[#D8C6B2] bg-[#FFF8F0] px-6 py-9 shadow-[0_12px_34px_rgba(24,21,18,0.06)] sm:px-12 sm:py-11">
+          {/* Tầng 1: 4 cột thoáng đãng */}
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-12">
+            {/* Cột 1: Thương hiệu */}
+            <div className="md:col-span-5">
+              <div className="inline-flex items-center gap-2.5">
+                <ChefHat
+                  className="h-6 w-6 stroke-[1.75] text-[#C65112]"
+                  aria-hidden="true"
+                />
+                <span className="font-serif text-[22px] font-bold tracking-tight text-[#C65112]">
+                  FoodVision
                 </span>
-              ))}
+              </div>
+              <p className="mt-3 max-w-[38ch] text-[13px] leading-relaxed text-[#595047]">
+                FoodVision AI là trợ lý bếp thông minh giúp bạn khám phá công
+                thức chuẩn vị và tận dụng tối đa nguyên liệu sẵn có mỗi ngày.
+              </p>
+            </div>
+
+            {/* Cột 2: Điều hướng */}
+            <div className="md:col-span-2">
+              <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#181512]">
+                ĐIỀU HƯỚNG
+              </h3>
+              <ul className="mt-3 space-y-1 text-[13px] text-[#595047]">
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => onTabChange('catalog')}
+                    className="inline-flex min-h-[34px] items-center transition hover:text-[#9E3D08]"
+                  >
+                    Tra cứu công thức
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => onTabChange('kitchen')}
+                    className="inline-flex min-h-[34px] items-center transition hover:text-[#9E3D08]"
+                  >
+                    Tủ bếp nguyên liệu
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => onTabChange('recommendations')}
+                    className="inline-flex min-h-[34px] items-center transition hover:text-[#9E3D08]"
+                  >
+                    Gợi ý món ăn
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            {/* Cột 3: Món ngon tiêu biểu */}
+            <div className="md:col-span-3">
+              <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#181512]">
+                MÓN NGON TIÊU BIỂU
+              </h3>
+              <ul className="mt-3.5 space-y-2.5 text-[13px] text-[#595047]">
+                <li>Đậu hũ sốt cà chua</li>
+                <li>Canh cà chua trứng</li>
+                <li>Ức gà áp chảo sốt bơ tỏi</li>
+                <li>Bò lúc lắc xào hành tây</li>
+              </ul>
+            </div>
+
+            {/* Cột 4: Kết nối */}
+            <div className="md:col-span-2">
+              <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#181512]">
+                KẾT NỐI
+              </h3>
+              <div className="mt-3.5 flex items-center gap-2.5">
+                <a
+                  href="#top"
+                  aria-label="Cộng đồng FoodVision"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onTabChange('catalog');
+                  }}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#181512] text-[#181512] transition hover:border-[#C65112] hover:text-[#C65112]"
+                >
+                  <Globe className="h-4 w-4 stroke-[1.75]" aria-hidden="true" />
+                </a>
+                <a
+                  href="#kitchen"
+                  aria-label="Chia sẻ công thức FoodVision"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onTabChange('kitchen');
+                  }}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#181512] text-[#181512] transition hover:border-[#C65112] hover:text-[#C65112]"
+                >
+                  <Share2 className="h-4 w-4 stroke-[1.75]" aria-hidden="true" />
+                </a>
+                <span
+                  aria-label="Hỗ trợ qua thư điện tử"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#181512] text-[#181512]"
+                >
+                  <Mail className="h-4 w-4 stroke-[1.75]" aria-hidden="true" />
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Tầng 2: Bản quyền & Pháp lý */}
+          <div className="mt-8 flex flex-col items-center justify-between gap-3 border-t border-[#E4D5C3] pt-6 text-[12px] text-[#595047] sm:flex-row">
+            <span>© 2026 FoodVision AI. Bảo lưu mọi quyền.</span>
+            <div className="flex flex-wrap items-center gap-6">
+              <span>Miễn trừ dinh dưỡng (BR-03)</span>
+              <span>Giấy phép nội dung</span>
             </div>
           </div>
         </div>

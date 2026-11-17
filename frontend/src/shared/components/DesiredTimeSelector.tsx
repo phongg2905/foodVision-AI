@@ -62,8 +62,8 @@ export const DesiredTimeSelector: React.FC<DesiredTimeSelectorProps> = ({
 
   const activeClass =
     activeTone === 'saffron'
-      ? 'bg-[#E87838] text-white shadow-sm'
-      : 'bg-[#181512] text-white shadow-sm';
+      ? 'bg-[#C65112] text-white shadow-sm hover:bg-[#A8430D]'
+      : 'bg-[#181512] text-[#FFF8F0] shadow-sm';
 
   return (
     <div
@@ -80,10 +80,10 @@ export const DesiredTimeSelector: React.FC<DesiredTimeSelectorProps> = ({
             data-testid={`${testIdPrefix}-${preset.value ?? 'flexible'}`}
             aria-pressed={isActive}
             onClick={() => handlePresetClick(preset.value)}
-            className={`rounded-full px-3 py-1.5 text-[12px] font-semibold tabular-nums transition ${
+            className={`inline-flex min-h-[36px] items-center justify-center rounded-full px-3 py-1.5 text-[12px] font-semibold tabular-nums transition ${
               isActive
                 ? activeClass
-                : 'border border-[#DFD3C3] bg-[#FAF7F2] text-[#4A4139] hover:border-[#E87838] hover:text-[#C2591B]'
+                : 'border border-[#D8C6B2] bg-[#F7EFE5] text-[#4A4037] hover:border-[#EA6D27] hover:text-[#9E3D08]'
             }`}
           >
             {preset.label}
@@ -92,11 +92,14 @@ export const DesiredTimeSelector: React.FC<DesiredTimeSelectorProps> = ({
       })}
 
       <label
-        className={`inline-flex items-center gap-1.5 rounded-full border border-[#DFD3C3] bg-[#FAF7F2] px-3 py-1 text-[12px] text-[#4A4139] focus-within:border-[#E87838] ${
+        className={`inline-flex min-h-[36px] items-center gap-1.5 rounded-full border border-[#D8C6B2] bg-[#F7EFE5] px-3 py-1 text-[12px] text-[#4A4037] focus-within:border-[#C65112] ${
           compact ? 'mt-0.5' : ''
         }`}
       >
-        <Clock className="h-3 w-3 shrink-0 text-[#E87838]" aria-hidden="true" />
+        <Clock
+          className="h-3 w-3 shrink-0 text-[#9E3D08]"
+          aria-hidden="true"
+        />
         <input
           type="number"
           min={1}
@@ -107,9 +110,9 @@ export const DesiredTimeSelector: React.FC<DesiredTimeSelectorProps> = ({
           placeholder="Khác"
           aria-label="Nhập thời gian nấu mong muốn (phút)"
           data-testid={`${testIdPrefix}-custom-input`}
-          className="w-12 bg-transparent text-[12px] font-semibold text-[#181512] tabular-nums placeholder:font-normal placeholder:text-[#8C8277] focus:outline-none"
+          className="w-12 bg-transparent text-[12px] font-semibold text-[#181512] tabular-nums placeholder:font-normal placeholder:text-[#7D7064] focus:outline-none"
         />
-        <span className="text-[11px] text-[#6E655C]">phút</span>
+        <span className="text-[11px] text-[#595047]">phút</span>
       </label>
     </div>
   );

@@ -2,16 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer utilities {
+  .font-serif {
+    font-family: 'David Libre', 'Playfair Display', Georgia, serif;
+  }
+}
+
 @layer base {
   html {
-    background-color: #efe6d8;
+    background-color: #e8d8c6;
     color: #181512;
-    caret-color: #e87838;
+    caret-color: #c65112;
     scroll-behavior: smooth;
   }
 
   body {
-    background-color: #efe6d8;
+    background-color: #e8d8c6;
     color: #181512;
     font-family:
       'Plus Jakarta Sans',
@@ -26,7 +32,7 @@
   }
 
   ::selection {
-    background-color: #f7e4d4;
+    background-color: #f4e2cf;
     color: #181512;
   }
 
@@ -38,29 +44,29 @@
   a:focus-visible,
   input:focus-visible,
   select:focus-visible {
-    outline: 2px solid #e87838;
+    outline: 2px solid #c65112;
     outline-offset: 2px;
   }
 }
 
-/* Custom Warm Almond Scrollbar (New Taste Palette) */
+/* Custom Warm Almond Scrollbar (NEWTASTE Palette) */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #efe6d8;
+  background: #e8d8c6;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #d5c7b4;
+  background: #c9b49c;
   border-radius: 9999px;
-  border: 2px solid #efe6d8;
+  border: 2px solid #e8d8c6;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #e87838;
+  background: #ea6d27;
 }
 
 @media (prefers-reduced-motion: reduce) {

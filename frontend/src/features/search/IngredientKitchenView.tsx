@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Check, CheckCircle2, Clock } from 'lucide-react';
+import { ArrowRight, Check, CheckCircle2, Clock } from 'lucide-react';
 import { Ingredient, RecommendDraftPayload } from '../../shared/api/types';
 import {
   listPantryIngredients,
@@ -9,7 +9,6 @@ import {
   MOCK_MAIN_INGREDIENTS,
   MOCK_PANTRY_INGREDIENTS,
 } from '../../shared/api/mockData';
-import { matchesIngredientQuery } from '../../shared/utils/vietnamese';
 import { IngredientSearchBox } from './components/IngredientSearchBox';
 import { SelectedIngredientsList } from './components/SelectedIngredientsList';
 import { PantryToggleBar } from './components/PantryToggleBar';
@@ -150,8 +149,7 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
   const [internalDesiredMinutes, setInternalDesiredMinutes] = useState<
     number | null
   >(null);
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
     {}
   );
@@ -309,12 +307,12 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${canRecommend ? 'pb-20 lg:pb-0' : ''}`}>
       <div className="pt-1 text-center">
         <h1 className="font-serif text-3xl font-bold tracking-tight text-[#181512] sm:text-4xl">
           Tủ Bếp Nguyên Liệu
         </h1>
-        <p className="mx-auto mt-1.5 max-w-lg text-xs text-[#6E655C] sm:text-sm">
+        <p className="mx-auto mt-1.5 max-w-[60ch] text-xs text-[#595047] sm:text-sm">
           Chọn nguyên liệu sẵn có ở bàn bên trái và kiểm tra phiếu bếp bên phải
           để nhận gợi ý món ngon.
         </p>
@@ -324,14 +322,13 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
         {/* KHỐI TRÁI (8/12): BÀN CHỌN NGUYÊN LIỆU HỢP NHẤT */}
         <div
           aria-label="Phân loại nguyên liệu theo nhóm"
-          className="rounded-bl-[16px] rounded-br-[28px] rounded-tl-[28px] rounded-tr-[16px] border border-[#DFD3C3] bg-white p-5 shadow-[0_14px_40px_rgba(24,21,18,0.05)] sm:p-7 lg:col-span-8"
+          className="rounded-tl-[26px] rounded-br-[26px] rounded-tr-[6px] rounded-bl-[6px] border border-[#D8C6B2] bg-[#FFF8F0] p-5 shadow-[0_12px_34px_rgba(24,21,18,0.06)] sm:p-7 lg:col-span-8"
         >
-          <div className="border-b border-[#EFE8DF] pb-5">
+          <div className="border-b border-[#E6DACB] pb-5">
             <IngredientSearchBox
               selectedIngredients={selectedIngredients}
               onAddIngredient={handleAddIngredient}
-              onSearchingChange={setIsSearching}
-              onQueryChange={setSearchQuery}
+              onDropdownOpenChange={setIsDropdownOpen}
             />
           </div>
 
@@ -341,48 +338,35 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
                 .map((slug) => ingredientBySlug.get(slug))
                 .filter((item): item is Ingredient => Boolean(item));
 
-              const filteredItems = isSearching
-                ? allItemsInGroup.filter((item) =>
-                    matchesIngredientQuery(item, searchQuery)
-                  )
-                : allItemsInGroup;
-
-              if (isSearching && filteredItems.length === 0) {
-                return null;
-              }
-
               const isExpanded = !!expandedGroups[group.id];
-              const defaultSlice = filteredItems.slice(
+              const defaultSlice = allItemsInGroup.slice(
                 0,
                 DEFAULT_VISIBLE_LIMIT
               );
-              const selectedBeyondLimit = filteredItems
+              const selectedBeyondLimit = allItemsInGroup
                 .slice(DEFAULT_VISIBLE_LIMIT)
                 .filter((item) => selectedIdSet.has(item.id));
 
-              const visibleItems =
-                isSearching || isExpanded
-                  ? filteredItems
-                  : [...defaultSlice, ...selectedBeyondLimit];
+              const visibleItems = isExpanded
+                ? allItemsInGroup
+                : [...defaultSlice, ...selectedBeyondLimit];
 
-              const hiddenCount = isSearching
-                ? 0
-                : Math.max(
-                    0,
-                    filteredItems.length -
-                      (defaultSlice.length + selectedBeyondLimit.length)
-                  );
+              const hiddenCount = Math.max(
+                0,
+                allItemsInGroup.length -
+                  (defaultSlice.length + selectedBeyondLimit.length)
+              );
 
               const canToggleMore =
-                !isSearching && filteredItems.length > DEFAULT_VISIBLE_LIMIT;
+                allItemsInGroup.length > DEFAULT_VISIBLE_LIMIT;
 
               return (
                 <section
                   key={group.id}
                   aria-label={group.title}
-                  className="border-b border-[#F2ECE4] pb-6 last:border-b-0 last:pb-0 sm:[&:nth-last-child(-n+2)]:border-b-0 sm:[&:nth-last-child(-n+2)]:pb-0"
+                  className="border-b border-[#E6DACB] pb-6 last:border-b-0 last:pb-0 sm:[&:nth-last-child(-n+2)]:border-b-0 sm:[&:nth-last-child(-n+2)]:pb-0"
                 >
-                  <h2 className="mb-3 font-serif text-[17px] font-bold text-[#181512]">
+                  <h2 className="mb-3 font-serif text-[18px] font-bold text-[#181512]">
                     {group.title}
                   </h2>
 
@@ -394,16 +378,16 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
                           key={item.id}
                           type="button"
                           data-testid={
-                            isSearching
-                              ? `pantry-category-chip-${item.slug}`
+                            isDropdownOpen
+                              ? `category-chip-${item.slug}`
                               : `suggestion-item-${item.slug}`
                           }
                           aria-pressed={isSelected}
                           onClick={() => handleToggleIngredient(item)}
-                          className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-medium transition ${
+                          className={`inline-flex min-h-[36px] items-center gap-1.5 rounded-full px-4 py-1.5 text-[13px] font-medium transition ${
                             isSelected
-                              ? 'bg-[#2E2620] text-white shadow-sm hover:bg-[#181512]'
-                              : 'bg-[#F4EFE7] text-[#3B3027] hover:bg-[#EAE1D3]'
+                              ? 'bg-[#181512] text-[#FFF8F0] shadow-sm hover:bg-[#2E2720]'
+                              : 'bg-[#F4EAE0] text-[#3B3027] hover:bg-[#E8D8C6]'
                           }`}
                         >
                           {isSelected && (
@@ -421,7 +405,7 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
                       <button
                         type="button"
                         onClick={() => toggleGroupExpand(group.id)}
-                        className="inline-flex items-center rounded-full border border-dashed border-[#C7B9A5] bg-[#FAF7F2] px-3.5 py-2 text-[12px] font-semibold text-[#6E655C] transition hover:border-[#181512] hover:text-[#181512]"
+                        className="inline-flex min-h-[36px] items-center rounded-full border border-dashed border-[#C7B39C] bg-[#F7EFE5] px-3.5 py-1.5 text-[12px] font-semibold text-[#595047] transition hover:border-[#181512] hover:text-[#181512]"
                       >
                         {isExpanded ? 'Thu gọn' : `+${hiddenCount} xem thêm`}
                       </button>
@@ -436,7 +420,7 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
         {/* KHỐI PHẢI (4/12, Sticky): PHIẾU BẾP HỢP NHẤT */}
         <aside
           aria-label="Phiếu bếp tổng hợp nguyên liệu và gia vị"
-          className="rounded-bl-[16px] rounded-br-[28px] rounded-tl-[28px] rounded-tr-[16px] border border-[#DFD3C3] bg-white p-5 shadow-[0_14px_40px_rgba(24,21,18,0.05)] sm:p-7 lg:sticky lg:top-6 lg:col-span-4"
+          className="rounded-tl-[26px] rounded-br-[26px] rounded-tr-[6px] rounded-bl-[6px] border border-[#D8C6B2] bg-[#FFF8F0] p-5 shadow-[0_12px_34px_rgba(24,21,18,0.06)] sm:p-7 lg:sticky lg:top-6 lg:col-span-4"
         >
           {/* Ngăn 1: Nguyên liệu đã chọn + chọn ưu tiên món chính (tùy chọn) */}
           <SelectedIngredientsList
@@ -447,7 +431,7 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
             onToggleMainIngredient={handleToggleMainIngredient}
           />
 
-          <hr className="my-5 border-t border-dashed border-[#DFD3C3]" />
+          <hr className="my-5 border-t border-dashed border-[#D8C6B2]" />
 
           {/* Ngăn 2: 5 Gia vị sẵn có trong bếp */}
           <PantryToggleBar
@@ -457,21 +441,21 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
             onResetPantryDefault={handleResetPantryDefault}
           />
 
-          <hr className="my-5 border-t border-dashed border-[#DFD3C3]" />
+          <hr className="my-5 border-t border-dashed border-[#D8C6B2]" />
 
           {/* Ngăn 3: Tùy chọn Thời gian mong muốn */}
           <section aria-label="Thời gian nấu mong muốn">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-1.5">
                 <Clock
-                  className="h-4 w-4 text-[#E87838]"
+                  className="h-4 w-4 text-[#9E3D08]"
                   aria-hidden="true"
                 />
-                <h2 className="font-serif text-[16px] font-bold text-[#181512]">
+                <h2 className="font-serif text-[17px] font-bold text-[#181512]">
                   Thời gian mong muốn
                 </h2>
               </div>
-              <span className="text-[11px] font-medium text-[#6E655C]">
+              <span className="text-[11px] font-medium text-[#595047]">
                 Tùy chọn
               </span>
             </div>
@@ -490,7 +474,7 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
             </div>
           </section>
 
-          <hr className="my-5 border-t border-dashed border-[#DFD3C3]" />
+          <hr className="my-5 border-t border-dashed border-[#D8C6B2]" />
 
           {/* Ngăn 4: Hành động Gợi ý món ăn */}
           <section aria-label="Hành động gợi ý món ăn">
@@ -499,7 +483,7 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
               data-testid="recommend-submit-btn"
               disabled={!canRecommend}
               onClick={handleRecommendClick}
-              className="inline-flex w-full items-center justify-center rounded-full bg-[#E87838] px-6 py-3.5 text-[14px] font-semibold text-white shadow-sm transition hover:bg-[#D16426] disabled:cursor-not-allowed disabled:bg-[#EAE1D3] disabled:text-[#8C8277]"
+              className="inline-flex w-full items-center justify-center rounded-tl-[16px] rounded-br-[16px] rounded-tr-[4px] rounded-bl-[4px] bg-[#C65112] px-6 py-3.5 text-[14px] font-semibold text-white shadow-sm transition hover:bg-[#A8430D] disabled:cursor-not-allowed disabled:bg-[#E2D4C3] disabled:text-[#595047]"
             >
               <span>
                 Gợi ý món ăn
@@ -512,7 +496,7 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
             {!canRecommend && (
               <p
                 data-testid="recommend-disabled-hint"
-                className="mt-2.5 text-center text-xs text-[#6E655C]"
+                className="mt-2.5 text-center text-xs text-[#595047]"
               >
                 Chọn ít nhất 1 nguyên liệu chính để nhận gợi ý món ăn.
               </p>
@@ -521,7 +505,7 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
             {submittedPayload && (
               <div
                 data-testid="recommend-payload-preview"
-                className="mt-3 flex items-center justify-center gap-1.5 text-xs font-semibold text-[#1E8E6E]"
+                className="mt-3 flex items-center justify-center gap-1.5 text-xs font-semibold text-[#0E6B4F]"
               >
                 <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
                 <span>
@@ -533,6 +517,36 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
           </section>
         </aside>
       </div>
+
+      {/* Thanh nổi Hành động dưới đáy Mobile khi đã chọn >= 1 nguyên liệu */}
+      {canRecommend && (
+        <div
+          data-testid="mobile-recommend-sticky-bar"
+          className="fixed inset-x-0 bottom-0 z-30 border-t border-[#D8C6B2] bg-[#FFF8F0]/95 px-4 py-2.5 shadow-[0_-8px_24px_rgba(24,21,18,0.1)] backdrop-blur-sm lg:hidden"
+        >
+          <div className="mx-auto flex max-w-md items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[13px] font-bold text-[#181512] tabular-nums">
+                Đã chọn {selectedIngredients.length} nguyên liệu
+              </p>
+              <p className="truncate text-[11px] text-[#595047]">
+                {activeDesiredMinutes
+                  ? `Ưu tiên ≤ ${activeDesiredMinutes} phút`
+                  : 'Sẵn sàng gợi ý theo tủ bếp'}
+              </p>
+            </div>
+            <button
+              type="button"
+              data-testid="mobile-recommend-sticky-btn"
+              onClick={handleRecommendClick}
+              className="inline-flex min-h-[42px] shrink-0 items-center justify-center gap-1.5 rounded-tl-[14px] rounded-br-[14px] rounded-tr-[4px] rounded-bl-[4px] bg-[#C65112] px-4 py-2 text-[13px] font-semibold text-white shadow-sm transition hover:bg-[#A8430D]"
+            >
+              <span>Gợi ý món</span>
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
