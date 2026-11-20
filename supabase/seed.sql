@@ -136,7 +136,7 @@ ON CONFLICT (ingredient_id, allergen_id) DO NOTHING;
 -- ============================================================================
 -- 3. ACTIVE AI MODEL & 20 CLASS LABELS (0..19 -> Non-Pantry Ingredients, BR-12)
 --    Weights artifact: backend/weights/yolo/ingredients_best.pt
---    SHA-256 (64 hex): 4d2677b38c341c64d7fc848707ed6416255ba8497bc31b5d4df562b89194c52a
+--    SHA-256 (64 hex): e6bb515c5f15ffed95187aa71113f071fb2485687e838cf68d77684675da3eb8
 -- ============================================================================
 INSERT INTO public.ai_models (
     id, version, family, dataset_version, artifact_ref,

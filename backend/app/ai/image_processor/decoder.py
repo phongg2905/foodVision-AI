@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from io import BytesIO
+from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageOps, UnidentifiedImageError
@@ -139,6 +140,21 @@ def normalize_image_input(
 ) -> ProcessedImage:
     """Convert supported raw/decoded image inputs into a clean RGB `ProcessedImage`."""
     limit_bytes, limit_pixels = _resolve_limits(max_upload_bytes, max_image_pixels)
+
+    if isinstance(image, (str, Path)):
+        img_path = Path(image)
+        if not img_path.is_file():
+            raise AppError(
+                status_code=422,
+                code=ErrorCode.INVALID_IMAGE,
+                message="Đường dẫn tệp ảnh đầu vào không tồn tại.",
+                details={"reason": "missing_image_file"},
+            )
+        return preprocess_uploaded_image(
+            img_path.read_bytes(),
+            max_upload_bytes=limit_bytes,
+            max_image_pixels=limit_pixels,
+        )
 
     if isinstance(image, (bytes, bytearray, memoryview)):
         return preprocess_uploaded_image(

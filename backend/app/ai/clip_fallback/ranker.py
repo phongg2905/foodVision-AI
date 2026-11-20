@@ -7,6 +7,7 @@ from .openclip_provider import OpenCLIPEmbeddingProvider
 
 from collections.abc import Sequence
 import os
+import threading
 from typing import Any, Protocol, runtime_checkable
 
 import numpy as np
@@ -25,11 +26,14 @@ from .vlm_provider import OpenAICompatibleVLMProvider
 from .models import (
     CandidateEmbedding,
     ConfirmationReason,
+    FallbackModelError,
+    FallbackProvider,
     FallbackResult,
     FallbackStatus,
     FallbackTriggerReason,
     InitialYOLOPrediction,
     KBCandidateIngredient,
+    ProviderAssessment,
     RankedCandidate,
     ScoreMetricType,
 )
@@ -215,13 +219,87 @@ class MultimodalFallbackProtocol(Protocol):
     ) -> list[FallbackResult]: ...
 
 
+class ResilientMultimodalProvider:
+    """Primary-to-secondary multimodal failover (e.g., Cloud VLM -> Local OpenCLIP)."""
+
+    def __init__(
+        self,
+        primary: FallbackProvider,
+        secondary: FallbackProvider,
+    ) -> None:
+        self._primary = primary
+        self._secondary = secondary
+        self._primary_quota_exhausted = False
+
+    @property
+    def model_source(self) -> str:
+        if self._primary_quota_exhausted:
+            return self._secondary.model_source
+        return f"{self._primary.model_source}|fallback:{self._secondary.model_source}"
+
+    def assess_candidates(
+        self,
+        rgb_image: np.ndarray,
+        candidates: Sequence[KBCandidateIngredient],
+    ) -> ProviderAssessment:
+        if not self._primary_quota_exhausted:
+            try:
+                return self._primary.assess_candidates(rgb_image, candidates)
+            except Exception as exc:
+                cause_text = f"{exc} {getattr(exc, '__cause__', '')}".lower()
+                if "402" in cause_text or "payment required" in cause_text or "quota" in cause_text:
+                    self._primary_quota_exhausted = True
+        return self._secondary.assess_candidates(rgb_image, candidates)
+
+
+_service_cache_lock = threading.Lock()
+_cached_service_key: tuple[str, ...] | None = None
+_cached_service: CLIPFallbackService | None = None
+
+
 def get_clip_fallback_service() -> CLIPFallbackService:
-    """FastAPI dependency factory building a provider from environment without hardcoding."""
+    """FastAPI singleton dependency factory supporting VLM, OpenCLIP, or automatic failover."""
+    global _cached_service_key, _cached_service
+    vlm_base = (os.getenv("VLM_API_BASE_URL") or "").strip()
     vlm_model = (os.getenv("VLM_MODEL_NAME") or "").strip()
+    vlm_key = (os.getenv("VLM_API_KEY") or os.getenv("OLLAMA_API_KEY") or "").strip()
     clip_model = (os.getenv("CLIP_MODEL_NAME") or "").strip()
-    provider: FallbackProvider | None = None
-    if vlm_model:
-        provider = OpenAICompatibleVLMProvider()
-    elif clip_model:
-        provider = CLIPCosineProvider(OpenCLIPEmbeddingProvider())
-    return CLIPFallbackService(provider=provider)
+    clip_pretrained = (os.getenv("CLIP_PRETRAINED") or "").strip()
+    clip_weights = (os.getenv("CLIP_WEIGHTS_PATH") or "").strip()
+    clip_device = (os.getenv("CLIP_DEVICE") or "").strip()
+
+    key = (
+        vlm_base,
+        vlm_model,
+        vlm_key,
+        clip_model,
+        clip_pretrained,
+        clip_weights,
+        clip_device,
+    )
+    with _service_cache_lock:
+        if _cached_service is None or _cached_service_key != key:
+            vlm_provider = OpenAICompatibleVLMProvider() if vlm_model else None
+            clip_provider = (
+                CLIPCosineProvider(
+                    OpenCLIPEmbeddingProvider(),
+                    non_food_prompts=(
+                        "a photo of a laptop keyboard or computer screen",
+                        "a photo of a person face or selfie",
+                        "a photo of a car or street building",
+                        "a blank document or text screenshot",
+                    ),
+                )
+                if clip_model
+                else None
+            )
+            provider: FallbackProvider | None
+            if vlm_provider is not None and clip_provider is not None:
+                provider = ResilientMultimodalProvider(vlm_provider, clip_provider)
+            elif vlm_provider is not None:
+                provider = vlm_provider
+            else:
+                provider = clip_provider
+            _cached_service = CLIPFallbackService(provider=provider)
+            _cached_service_key = key
+        return _cached_service

@@ -8,7 +8,7 @@ transport, reporting `p50`, `p95`, `p99`, mean latency, and peak memory allocati
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import os
 from pathlib import Path
 import platform
@@ -128,8 +128,13 @@ async def _async_benchmark_detect(
     from app.main import app
 
     cfg = get_settings()
+    env_info = collect_runtime_environment(cfg.max_concurrent_inferences)
+    bench_cfg = replace(cfg, enable_clip_fallback=False)
     payloads = _load_sample_jpegs(dataset_dir, max_samples=max(10, num_requests))
     transport = httpx.ASGITransport(app=app)
+
+    prev_settings_override = app.dependency_overrides.get(get_settings)
+    app.dependency_overrides[get_settings] = lambda: bench_cfg
 
     override_applied = False
     active_repo = get_catalog_repo()
@@ -138,8 +143,8 @@ async def _async_benchmark_detect(
         app.dependency_overrides[get_catalog_repo] = lambda: mem_repo
         override_applied = True
 
-    tracemalloc.start()
     latencies_ms = np.empty(num_requests, dtype=np.float64)
+    peak_bytes = 0
     try:
         async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
             for w_idx in range(warmup_requests):
@@ -153,6 +158,7 @@ async def _async_benchmark_detect(
                         f"Warmup request failed ({resp.status_code}): {resp.text}"
                     )
 
+            tracemalloc.start()
             for r_idx in range(num_requests):
                 fname, raw = payloads[r_idx % len(payloads)]
                 t0_ns = time.perf_counter_ns()
@@ -167,9 +173,14 @@ async def _async_benchmark_detect(
                     )
                 latencies_ms[r_idx] = elapsed_ms
 
-        _cur, peak_bytes = tracemalloc.get_traced_memory()
+            _cur, peak_bytes = tracemalloc.get_traced_memory()
     finally:
-        tracemalloc.stop()
+        if tracemalloc.is_tracing():
+            tracemalloc.stop()
+        if prev_settings_override is None:
+            app.dependency_overrides.pop(get_settings, None)
+        else:
+            app.dependency_overrides[get_settings] = prev_settings_override
         if override_applied:
             app.dependency_overrides.pop(get_catalog_repo, None)
 
@@ -188,7 +199,7 @@ async def _async_benchmark_detect(
         target_cpu_p95_ms=target_ms,
         passes_cpu_target=bool(p95 <= target_ms),
         peak_tracemalloc_mib=round(peak_bytes / (1024.0 * 1024.0), 2),
-        environment=collect_runtime_environment(cfg.max_concurrent_inferences),
+        environment=env_info,
     )
 
 

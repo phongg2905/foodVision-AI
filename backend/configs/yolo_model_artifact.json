@@ -2,13 +2,13 @@
   "model_id": "55555555-5555-4555-8555-555555555501",
   "version": "yolo11n-foodvision-v1.0",
   "family": "yolo11n",
-  "training_backend": "pytorch_cpu_pilot",
+  "training_backend": "ultralytics_gpu_imported",
   "dataset_version": "food-ingredients-v1.0",
   "dataset_manifest_sha256": "b56aba197e6ef2ed4b8076cbb176bfbb895e14f377e3f4f29f07325cb27dfc97",
   "locked_eval_class_count": 15,
   "artifact_ref": "weights/yolo/ingredients_best.pt",
-  "weights_sha256": "4d2677b38c341c64d7fc848707ed6416255ba8497bc31b5d4df562b89194c52a",
-  "weights_size_bytes": 111512,
+  "weights_sha256": "e6bb515c5f15ffed95187aa71113f071fb2485687e838cf68d77684675da3eb8",
+  "weights_size_bytes": 5481114,
   "class_count": 20,
   "confidence_threshold": 0.25,
   "review_threshold": 0.8,
@@ -20,20 +20,12 @@
     "patience": 20,
     "mosaic": 0.7,
     "mixup": 0.1,
-    "degrees": 15.0,
-    "fliplr": 0.5,
-    "hsv_h": 0.015,
-    "hsv_s": 0.5,
-    "hsv_v": 0.4,
     "confidence_threshold": 0.25,
     "review_threshold": 0.8,
     "nms_iou_threshold": 0.5
   },
   "pilot_metrics": {
-    "train_loss": 1.0148,
-    "val_loss": 3.8901,
-    "train_samples_used": 64,
-    "val_samples_used": 32
+    "imported_from": "ingredients_best.pt"
   },
   "labels": [
     {
@@ -197,5 +189,5 @@
       "category": "vegetable"
     }
   ],
-  "exported_at": "2026-11-17T05:15:15.611076+00:00"
+  "exported_at": "2026-11-19T04:33:08.559991+00:00"
 }

@@ -8,6 +8,7 @@ Supports:
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Protocol
@@ -43,6 +44,8 @@ def sanitize_psycopg_dsn(url: str) -> str:
 
 
 def is_db_configured() -> bool:
+    if os.getenv("USE_IN_MEMORY_CATALOG", "").strip().lower() in {"1", "true", "yes", "on"}:
+        return False
     url = settings.database_url or settings.direct_url
     return bool(url and "[YOUR-PASSWORD]" not in url)
 
