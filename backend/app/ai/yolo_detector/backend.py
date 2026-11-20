@@ -140,7 +140,8 @@ class UltralyticsYOLOBackend:
                         "artifact_path": str(self._artifact_path),
                     },
                 )
-            if self._artifact_path.stat().st_size <= 0:
+            file_size = self._artifact_path.stat().st_size
+            if file_size <= 0:
                 raise ModelWeightsNotFoundError(
                     "Tệp trọng số mô hình YOLO rỗng (0 bytes).",
                     details={
@@ -149,33 +150,34 @@ class UltralyticsYOLOBackend:
                     },
                 )
 
-            try:
-                import torch
+            if file_size < 1_000_000:
+                try:
+                    import torch
 
-                raw_ckpt = torch.load(
-                    str(self._artifact_path),
-                    map_location="cpu",
-                    weights_only=False,
-                )
-                if (
-                    isinstance(raw_ckpt, dict)
-                    and raw_ckpt.get("format_version") == "foodvision-yolo-v1"
-                ):
-                    self._pt_adapter = _PyTorchCheckpointAdapter(raw_ckpt)
-                    return
-            except (
-                ImportError,
-                RuntimeError,
-                OSError,
-                pickle.UnpicklingError,
-                KeyError,
-                TypeError,
-                ValueError,
-            ) as probe_err:
-                logger.debug(
-                    "Checkpoint is not foodvision-yolo-v1 dict format (%s); falling back to Ultralytics loader.",
-                    type(probe_err).__name__,
-                )
+                    raw_ckpt = torch.load(
+                        str(self._artifact_path),
+                        map_location="cpu",
+                        weights_only=False,
+                    )
+                    if (
+                        isinstance(raw_ckpt, dict)
+                        and raw_ckpt.get("format_version") == "foodvision-yolo-v1"
+                    ):
+                        self._pt_adapter = _PyTorchCheckpointAdapter(raw_ckpt)
+                        return
+                except (
+                    ImportError,
+                    RuntimeError,
+                    OSError,
+                    pickle.UnpicklingError,
+                    KeyError,
+                    TypeError,
+                    ValueError,
+                ) as probe_err:
+                    logger.debug(
+                        "Checkpoint is not foodvision-yolo-v1 dict format (%s); falling back to Ultralytics loader.",
+                        type(probe_err).__name__,
+                    )
 
             try:
                 from ultralytics import YOLO
@@ -214,8 +216,14 @@ class UltralyticsYOLOBackend:
                 return self._pt_adapter.predict(
                     rgb_image, conf=confidence_threshold
                 )
+            # Ultralytics interprets NumPy ndarrays as OpenCV BGR; convert RGB -> BGR.
+            bgr_image = (
+                np.ascontiguousarray(rgb_image[:, :, ::-1])
+                if rgb_image.ndim == 3 and rgb_image.shape[2] == 3
+                else rgb_image
+            )
             results = self._model.predict(
-                source=rgb_image,
+                source=bgr_image,
                 conf=confidence_threshold,
                 verbose=False,
             )

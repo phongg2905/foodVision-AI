@@ -188,6 +188,51 @@ class FallbackResult:
         """Return ranked top candidates requiring explicit user confirmation."""
         return self.candidates
 
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize `FallbackResult` to a JSON-compatible dictionary."""
+        return {
+            "status": self.status.value if hasattr(self.status, "value") else str(self.status),
+            "activated": self.activated,
+            "needs_confirmation": self.needs_confirmation,
+            "model_source": self.model_source,
+            "trigger_reason": (
+                self.trigger_reason.value
+                if self.trigger_reason is not None and hasattr(self.trigger_reason, "value")
+                else self.trigger_reason
+            ),
+            "confirmation_reasons": [
+                r.value if hasattr(r, "value") else str(r)
+                for r in self.confirmation_reasons
+            ],
+            "confirmation_message_vi": self.confirmation_message_vi,
+            "score_type": (
+                self.score_type.value
+                if hasattr(self.score_type, "value")
+                else str(self.score_type)
+            ),
+            "is_calibrated_probability": self.is_calibrated_probability,
+            "was_cropped": self.was_cropped,
+            "initial_yolo_label": self.initial_yolo_label,
+            "initial_yolo_confidence": self.initial_yolo_confidence,
+            "candidates": [
+                {
+                    "ingredient_id": str(c.ingredient_id),
+                    "name_vi": c.name_vi,
+                    "slug": c.slug,
+                    "similarity": c.similarity,
+                    "model_source": c.model_source,
+                    "needs_confirmation": c.needs_confirmation,
+                    "score_type": (
+                        c.score_type.value
+                        if hasattr(c.score_type, "value")
+                        else str(c.score_type)
+                    ),
+                    "is_calibrated_probability": c.is_calibrated_probability,
+                }
+                for c in self.candidates
+            ],
+        }
+
 
 @dataclass(frozen=True)
 class ProviderAssessment:

@@ -171,10 +171,13 @@ def _predict_test_split(
     device = 0 if torch.cuda.is_available() else "cpu"
     for start in range(0, len(image_paths), batch_size):
         chunk_paths = image_paths[start : start + batch_size]
+        # COCO/Ultralytics PR-curve integration uses conf=0.001, iou=0.70, max_det=300;
+        # operating-point P/R/F1/Confusion Matrix/OOD metrics filter at `conf_threshold` (0.25).
         results = yolo.predict(
             source=chunk_paths,
-            conf=conf_threshold,
-            iou=0.50,
+            conf=0.001,
+            iou=0.70,
+            max_det=300,
             device=device,
             verbose=False,
         )
@@ -210,7 +213,7 @@ def _render_markdown_section(
         "Checkpoint hiệu chuẩn CPU cục bộ (`pytorch_cpu_pilot`, chưa chạy huấn luyện đầy đủ trên GPU CUDA); "
         "chạy lại lệnh này sau khi nhập `ingredients_best.pt` từ Colab/Kaggle T4 để cập nhật `mAP` GPU chính thức."
         if backend_tag == "pytorch_cpu_pilot"
-        else "Trọng số Ultralytics YOLO11n huấn luyện đầy đủ trên GPU (`ultralytics_yolo`)."
+        else "Trọng số Ultralytics YOLO11s (`imgsz=640`) huấn luyện đầy đủ trên GPU Tesla T4 (`ultralytics_yolo`); tích phân PR-curve theo chuẩn COCO (`conf=0.001`), vận hành tại `conf=0.25`."
     )
 
     lines: list[str] = [
@@ -321,6 +324,7 @@ def run_full_stage5_yolo_evaluation(
         gt_by_image=gt_by_image,
         pred_by_image=pred_by_image,
         review_threshold=review_threshold,
+        op_conf_threshold=conf_threshold,
     )
     latency_report: LatencyBenchmarkReport = run_detect_latency_benchmark(
         dataset_dir=dataset_dir,

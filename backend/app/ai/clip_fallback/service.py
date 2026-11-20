@@ -188,10 +188,17 @@ class CLIPFallbackService(_FallbackResultBuilderMixin):
             assessment = self._provider.assess_candidates(region.rgb_array, kb_candidates)
         except Exception as exc:
             logger.warning("Multimodal provider inference failed: %s", type(exc).__name__)
+            cause_str = f"{exc} {getattr(exc, '__cause__', '')}"
+            err_msg = (
+                "Provider VLM trả về HTTP 402 Payment Required (tài khoản Ollama Cloud chưa nạp credit); "
+                "có thể nạp credit tại ollama.com/plans, chạy Ollama local (127.0.0.1:11434/v1) hoặc đổi sang khóa Gemini Free Tier."
+                if "402" in cause_str or "Payment Required" in cause_str
+                else "Mô hình hỗ trợ CLIP/VLM gặp sự cố khi suy luận; vui lòng chọn nguyên liệu thủ công."
+            )
             return self._unknown_result(
                 trigger=trigger,
                 reason=ConfirmationReason.MODEL_ERROR,
-                message_vi="Mô hình hỗ trợ CLIP/VLM gặp sự cố khi suy luận; vui lòng chọn nguyên liệu thủ công.",
+                message_vi=err_msg,
                 yolo_pred=yolo_pred,
                 was_cropped=region.was_cropped,
             )

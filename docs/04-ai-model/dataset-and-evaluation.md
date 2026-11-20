@@ -86,31 +86,31 @@ print(metrics.box.map)    # mAP@50:95
 
 | Model version | Dataset version | Số lớp khóa ($K$) | Ảnh `test` (OOD) | Precision | Recall | F1 | mAP@50 | mAP@50:95 | `p50` / `p95` detect (`PERF-01`) | Trạng thái trọng số |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| `yolo11n-foodvision-v1.0` | `foodvision-yolo-v1.0.0` | `15` | `1116` (`118`) | `0.0000` | `0.0000` | `0.0000` | `0.0053` | `0.0053` | `28.12 ms` / `29.75 ms` (`30` req) | `pytorch_cpu_pilot` |
+| `yolo11n-foodvision-v1.0` | `foodvision-yolo-v1.0.0` | `15` | `1116` (`118`) | `0.5434` | `0.4864` | `0.5133` | `0.4934` | `0.2414` | `119.07 ms` / `136.61 ms` (`30` req) | `ultralytics_yolo` |
 
-- **Mã băm toàn vẹn:** `dataset_manifest_sha256 = b56aba197e6ef2ed...`, `weights_sha256 = 4d2677b38c341c64...`.
-- **Ghi chú trung thực thực nghiệm (`NFR-11`):** Checkpoint hiệu chuẩn CPU cục bộ (`pytorch_cpu_pilot`, chưa chạy huấn luyện đầy đủ trên GPU CUDA); chạy lại lệnh này sau khi nhập `ingredients_best.pt` từ Colab/Kaggle T4 để cập nhật `mAP` GPU chính thức.
-- **Kiểm soát OOD & Cảnh báo HITL (`AI-03`, $\tau = 0.80$):** Trên `118` ảnh đối chứng âm (`OOD` không chứa nguyên liệu mục tiêu), số ảnh phát sinh báo động giả là `73`; tỷ lệ hộp dự đoán có `confidence < 0.80` được chuyển sang luồng người dùng xác nhận HITL là `668 / 668`.
+- **Mã băm toàn vẹn:** `dataset_manifest_sha256 = b56aba197e6ef2ed...`, `weights_sha256 = ae5e3c16c0e80281...`.
+- **Ghi chú trung thực thực nghiệm (`NFR-11`):** Trọng số Ultralytics YOLO11s (`imgsz=640`) huấn luyện đầy đủ trên GPU Tesla T4 (`ultralytics_yolo`); tích phân PR-curve theo chuẩn COCO (`conf=0.001`), vận hành tại `conf=0.25`.
+- **Kiểm soát OOD & Cảnh báo HITL (`AI-03`, $\tau = 0.80$):** Trên `118` ảnh đối chứng âm (`OOD` không chứa nguyên liệu mục tiêu), số ảnh phát sinh báo động giả là `43`; tỷ lệ hộp dự đoán có `confidence < 0.80` được chuyển sang luồng người dùng xác nhận HITL là `1918 / 2274`.
 
 ### 6.2. Bảng chi tiết từng lớp trên toàn bộ $K$ lớp đã khóa (`NFR-11` — Cấm loại lớp yếu sau test)
 
 | `class_index` | Mã nhãn (`code`) | `N_test` (GT boxes) | `TP@50` | `FP@50` | `FN@50` | Precision | Recall | F1 | `AP@50` | `AP@50:95` |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 0 | `tomato` | 180 | 0 | 0 | 180 | 0.0000 | 0.0000 | 0.0000 | 0.0000 | 0.0000 |
-| 1 | `egg` | 318 | 0 | 0 | 318 | 0.0000 | 0.0000 | 0.0000 | 0.0000 | 0.0000 |
-| 2 | `potato` | 215 | 0 | 0 | 215 | 0.0000 | 0.0000 | 0.0000 | 0.0000 | 0.0000 |
-| 3 | `carrot` | 72 | 0 | 1 | 72 | 0.0000 | 0.0000 | 0.0000 | 0.0099 | 0.0099 |
-| 4 | `onion` | 62 | 0 | 1 | 62 | 0.0000 | 0.0000 | 0.0000 | 0.0099 | 0.0099 |
-| 5 | `garlic` | 108 | 0 | 47 | 108 | 0.0000 | 0.0000 | 0.0000 | 0.0099 | 0.0099 |
-| 6 | `chili_pepper` | 518 | 0 | 65 | 518 | 0.0000 | 0.0000 | 0.0000 | 0.0099 | 0.0099 |
-| 7 | `cucumber` | 90 | 0 | 60 | 90 | 0.0000 | 0.0000 | 0.0000 | 0.0099 | 0.0099 |
-| 8 | `cabbage` | 135 | 0 | 0 | 135 | 0.0000 | 0.0000 | 0.0000 | 0.0000 | 0.0000 |
-| 9 | `broccoli` | 45 | 0 | 0 | 45 | 0.0000 | 0.0000 | 0.0000 | 0.0000 | 0.0000 |
-| 10 | `mushroom` | 385 | 0 | 0 | 385 | 0.0000 | 0.0000 | 0.0000 | 0.0000 | 0.0000 |
-| 13 | `raw_pork` | 59 | 0 | 485 | 59 | 0.0000 | 0.0000 | 0.0000 | 0.0099 | 0.0099 |
-| 17 | `scallion` | 129 | 0 | 8 | 129 | 0.0000 | 0.0000 | 0.0000 | 0.0099 | 0.0099 |
-| 18 | `bell_pepper` | 182 | 0 | 0 | 182 | 0.0000 | 0.0000 | 0.0000 | 0.0000 | 0.0000 |
-| 19 | `sweet_corn` | 68 | 0 | 1 | 68 | 0.0000 | 0.0000 | 0.0000 | 0.0099 | 0.0099 |
+| 0 | `tomato` | 180 | 70 | 28 | 110 | 0.7143 | 0.3889 | 0.5036 | 0.3781 | 0.1615 |
+| 1 | `egg` | 318 | 283 | 135 | 35 | 0.6770 | 0.8899 | 0.7690 | 0.8212 | 0.4350 |
+| 2 | `potato` | 215 | 68 | 7 | 147 | 0.9067 | 0.3163 | 0.4690 | 0.4507 | 0.1983 |
+| 3 | `carrot` | 72 | 5 | 26 | 67 | 0.1613 | 0.0694 | 0.0971 | 0.0537 | 0.0214 |
+| 4 | `onion` | 62 | 60 | 31 | 2 | 0.6593 | 0.9677 | 0.7843 | 0.9376 | 0.6256 |
+| 5 | `garlic` | 108 | 15 | 99 | 93 | 0.1316 | 0.1389 | 0.1351 | 0.1002 | 0.0423 |
+| 6 | `chili_pepper` | 518 | 148 | 190 | 370 | 0.4379 | 0.2857 | 0.3458 | 0.2788 | 0.1022 |
+| 7 | `cucumber` | 90 | 36 | 30 | 54 | 0.5455 | 0.4000 | 0.4615 | 0.4511 | 0.2011 |
+| 8 | `cabbage` | 135 | 82 | 41 | 53 | 0.6667 | 0.6074 | 0.6357 | 0.6360 | 0.2272 |
+| 9 | `broccoli` | 45 | 42 | 21 | 3 | 0.6667 | 0.9333 | 0.7778 | 0.9153 | 0.3627 |
+| 10 | `mushroom` | 385 | 168 | 204 | 217 | 0.4516 | 0.4364 | 0.4439 | 0.3962 | 0.1481 |
+| 13 | `raw_pork` | 59 | 28 | 26 | 31 | 0.5185 | 0.4746 | 0.4956 | 0.4886 | 0.3425 |
+| 17 | `scallion` | 129 | 68 | 157 | 61 | 0.3022 | 0.5271 | 0.3842 | 0.4286 | 0.1990 |
+| 18 | `bell_pepper` | 182 | 79 | 93 | 103 | 0.4593 | 0.4341 | 0.4463 | 0.4656 | 0.2373 |
+| 19 | `sweet_corn` | 68 | 29 | 5 | 39 | 0.8529 | 0.4265 | 0.5686 | 0.5994 | 0.3163 |
 
 ### 6.3. Minh bạch 5 lớp ứng viên chuyển sang nhập tay / CLIP trước khi mở tập `test` (`NFR-11`)
 

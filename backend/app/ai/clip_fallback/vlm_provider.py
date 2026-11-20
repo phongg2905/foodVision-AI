@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from .candidates import _env_float
 from app.core.config import get_settings
@@ -50,7 +51,9 @@ class OpenAICompatibleVLMProvider:
     ) -> None:
         self._base_url = (base_url or os.getenv("VLM_API_BASE_URL") or "").strip().rstrip("/")
         self._model_name = (model_name or os.getenv("VLM_MODEL_NAME") or "").strip()
-        self._api_key = (api_key or os.getenv("VLM_API_KEY") or "").strip() or None
+        self._api_key = (
+            api_key or os.getenv("VLM_API_KEY") or os.getenv("OLLAMA_API_KEY") or ""
+        ).strip() or None
         env_timeout = _env_float("VLM_TIMEOUT_SEC")
         self._timeout_sec = (
             float(timeout_sec)
@@ -87,7 +90,7 @@ class OpenAICompatibleVLMProvider:
             }
             for c in candidates
         ]
-        image_b64 = _encode_rgb_to_png_base64(rgb_image)
+        image_b64, image_mime = _encode_rgb_for_vlm(rgb_image)
         request_body: dict[str, Any] = {
             "model": self._model_name,
             "temperature": 0.0,
@@ -96,24 +99,28 @@ class OpenAICompatibleVLMProvider:
                 {
                     "role": "system",
                     "content": (
-                        "Return strict JSON with keys: is_non_food (bool), "
-                        "is_out_of_distribution (bool), candidates (list of "
-                        "{ingredient_id, score} restricted strictly to provided catalog IDs; "
-                        "score in [0, 1] represents relative visual relevance, not probability)."
+                        "You are a kitchen food ingredient identifier. Return strict JSON with keys: "
+                        "is_non_food (bool: true ONLY if zero food ingredients exist anywhere in the image; "
+                        "false whenever any food ingredient is visible, even with knives or cutting boards), "
+                        "is_out_of_distribution (bool: true ONLY if food is present but matches none of the catalog), "
+                        "candidates (list of {ingredient_id, score} restricted strictly to matching catalog IDs "
+                        "visible in the image, with score in [0.5, 0.99] reflecting visual match strength)."
                     ),
                 },
                 {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": json.dumps({"catalog": kb_catalog_payload})},
+                        {"type": "text", "text": json.dumps({"catalog": kb_catalog_payload}, ensure_ascii=False)},
                         {
                             "type": "image_url",
-                            "image_url": {"url": f"data:image/png;base64,{image_b64}"},
+                            "image_url": {"url": f"data:{image_mime};base64,{image_b64}"},
                         },
                     ],
                 },
             ],
         }
+        if "gemini" in self._model_name.lower() and "lite" not in self._model_name.lower():
+            request_body["reasoning_effort"] = "low"
 
         try:
             raw_resp = (
@@ -133,12 +140,13 @@ class OpenAICompatibleVLMProvider:
                     if math.isfinite(val):
                         scores_by_id[cand_id] = max(-1.0, min(1.0, val))
 
+            has_strong_food = any(v >= 0.5 for v in scores_by_id.values())
             return ProviderAssessment(
                 scores_by_id=scores_by_id,
                 model_source=self.model_source,
                 score_type=ScoreMetricType.PROVIDER_RELEVANCE,
-                is_non_food=bool(parsed.get("is_non_food", False)),
-                is_out_of_distribution=bool(parsed.get("is_out_of_distribution", False)),
+                is_non_food=bool(parsed.get("is_non_food", False)) and not has_strong_food,
+                is_out_of_distribution=bool(parsed.get("is_out_of_distribution", False)) and not has_strong_food,
             )
         except FallbackModelError:
             raise
@@ -157,6 +165,19 @@ class OpenAICompatibleVLMProvider:
                 headers=headers,
                 json=request_body,
             )
+            if resp.status_code == 400 and (
+                "response_format" in request_body or "reasoning_effort" in request_body
+            ):
+                fallback_body = {
+                    k: v
+                    for k, v in request_body.items()
+                    if k not in {"response_format", "reasoning_effort"}
+                }
+                resp = client.post(
+                    f"{self._base_url}/chat/completions",
+                    headers=headers,
+                    json=fallback_body,
+                )
             resp.raise_for_status()
             data = resp.json()
             if not isinstance(data, Mapping):
@@ -164,15 +185,22 @@ class OpenAICompatibleVLMProvider:
             return data
 
 
-def _encode_rgb_to_png_base64(rgb_image: np.ndarray) -> str:
+def _encode_rgb_for_vlm(rgb_image: np.ndarray, max_side: int = 448) -> tuple[str, str]:
     buf = BytesIO()
-    pil_img = Image.fromarray(rgb_image, mode="RGB")
+    pil_img = Image.fromarray(rgb_image)
     try:
-        pil_img.save(buf, format="PNG")
-        return base64.b64encode(buf.getvalue()).decode("ascii")
+        w, h = pil_img.size
+        if max(w, h) > max_side:
+            pil_img.thumbnail((max_side, max_side), Image.Resampling.BILINEAR)
+        pil_img.save(buf, format="JPEG", quality=85)
+        return base64.b64encode(buf.getvalue()).decode("ascii"), "image/jpeg"
     finally:
         pil_img.close()
         buf.close()
+
+
+_THINK_TAG_RE = re.compile(r"<think>.*?</think>", flags=re.DOTALL | re.IGNORECASE)
+_CODE_FENCE_RE = re.compile(r"^```(?:json)?\s*|\s*```$", flags=re.IGNORECASE)
 
 
 def _extract_vlm_json(raw_resp: Mapping[str, Any]) -> Mapping[str, Any]:
@@ -183,7 +211,14 @@ def _extract_vlm_json(raw_resp: Mapping[str, Any]) -> Mapping[str, Any]:
         msg = choices[0].get("message", {}) if isinstance(choices[0], Mapping) else {}
         content = msg.get("content", "") if isinstance(msg, Mapping) else ""
         if isinstance(content, str) and content.strip():
-            loaded = json.loads(content)
+            cleaned = _THINK_TAG_RE.sub("", content).strip()
+            cleaned = _CODE_FENCE_RE.sub("", cleaned).strip()
+            if not cleaned.startswith("{"):
+                start = cleaned.find("{")
+                end = cleaned.rfind("}")
+                if start != -1 and end != -1 and end > start:
+                    cleaned = cleaned[start : end + 1]
+            loaded = json.loads(cleaned)
             if isinstance(loaded, Mapping):
                 return loaded
     raise FallbackModelError("Unable to parse structured VLM JSON output")
