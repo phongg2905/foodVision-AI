@@ -1,31 +1,31 @@
 {
   "model_id": "55555555-5555-4555-8555-555555555501",
   "version": "yolo11n-foodvision-v1.0",
-  "family": "yolo11n",
+  "family": "yolo11s",
   "training_backend": "ultralytics_gpu_imported",
   "dataset_version": "food-ingredients-v1.0",
   "dataset_manifest_sha256": "b56aba197e6ef2ed4b8076cbb176bfbb895e14f377e3f4f29f07325cb27dfc97",
   "locked_eval_class_count": 15,
   "artifact_ref": "weights/yolo/ingredients_best.pt",
-  "weights_sha256": "e6bb515c5f15ffed95187aa71113f071fb2485687e838cf68d77684675da3eb8",
-  "weights_size_bytes": 5481114,
+  "weights_sha256": "ae5e3c16c0e80281babe423ab37318b6f6ee318a720e7aa0da3704530d0e0d92",
+  "weights_size_bytes": 19191642,
   "class_count": 20,
   "confidence_threshold": 0.25,
   "review_threshold": 0.8,
   "status": "active",
   "hyperparameters": {
-    "model_family": "yolo11n",
+    "model_family": "yolo11s",
     "imgsz": 640,
-    "epochs": 100,
+    "epochs": 80,
     "patience": 20,
-    "mosaic": 0.7,
+    "mosaic": 0.8,
     "mixup": 0.1,
     "confidence_threshold": 0.25,
     "review_threshold": 0.8,
     "nms_iou_threshold": 0.5
   },
   "pilot_metrics": {
-    "imported_from": "ingredients_best.pt"
+    "imported_from": "ingredients_best_s640.pt"
   },
   "labels": [
     {
@@ -189,5 +189,5 @@
       "category": "vegetable"
     }
   ],
-  "exported_at": "2026-11-19T04:33:08.559991+00:00"
+  "exported_at": "2026-11-20T05:12:51.615270+00:00"
 }
