@@ -167,9 +167,9 @@ def test_tracked_yolo_evaluation_report_and_dataset_evaluation_docs_synced() -> 
     assert report["dataset_manifest_sha256"] == ds_manifest["manifest_sha256"]
 
     ev = report["evaluation"]
-    assert ev["locked_eval_class_count"] == len(expected_locked) == 15
-    assert len(ev["per_class"]) == 15
-    assert len(ev["confusion_matrix"]) == 16  # 15 locked + 1 background
+    assert ev["locked_eval_class_count"] == len(expected_locked) == 20
+    assert len(ev["per_class"]) == len(expected_locked)
+    assert len(ev["confusion_matrix"]) == len(expected_locked) + 1  # K locked + 1 background
 
     perf = report["perf01_latency"]
     assert perf["num_requests"] >= 30

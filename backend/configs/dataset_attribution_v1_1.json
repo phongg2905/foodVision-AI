@@ -1,0 +1,90 @@
+{
+  "generated_at": "2026-11-22T17:41:24.349865+00:00",
+  "supplement_dir": "datasets/raw/custom-supplement-v1",
+  "adr_compliance": "ADR-005 (CC BY 4.0 / CC BY 2.0 verified open licenses only)",
+  "total_ingested_images": 2166,
+  "total_ingested_boxes": 9411,
+  "boxes_by_canonical_class": {
+    "0:tomato": 435,
+    "1:egg": 404,
+    "2:potato": 895,
+    "3:carrot": 539,
+    "4:onion": 1076,
+    "5:garlic": 1059,
+    "6:chili_pepper": 127,
+    "7:cucumber": 440,
+    "8:cabbage": 149,
+    "9:broccoli": 143,
+    "10:mushroom": 0,
+    "11:tofu": 433,
+    "12:raw_chicken": 871,
+    "13:raw_pork": 963,
+    "14:raw_shrimp": 460,
+    "15:whole_fish": 443,
+    "16:ginger": 321,
+    "17:scallion": 0,
+    "18:bell_pepper": 653,
+    "19:sweet_corn": 0
+  },
+  "sources": [
+    {
+      "name": "food ingredients (v5, 1x raw 640px)",
+      "author": "My workspace (Roboflow Universe)",
+      "license": "CC BY 4.0",
+      "source_url": "https://universe.roboflow.com/my-workspace-idgwe/food-ingredients-2alny/dataset/5",
+      "ingested_images": 1753,
+      "ingested_boxes": 8852,
+      "classes_contributed": {
+        "tomato": 435,
+        "egg": 404,
+        "potato": 895,
+        "carrot": 539,
+        "onion": 1076,
+        "garlic": 1059,
+        "chili_pepper": 127,
+        "cucumber": 440,
+        "cabbage": 149,
+        "tofu": 187,
+        "raw_chicken": 871,
+        "raw_pork": 963,
+        "raw_shrimp": 460,
+        "whole_fish": 273,
+        "ginger": 321,
+        "bell_pepper": 653
+      }
+    },
+    {
+      "name": "Fish (v1, 1x raw whole market fish)",
+      "author": "blxm (Roboflow Universe)",
+      "license": "CC BY 4.0",
+      "source_url": "https://universe.roboflow.com/blxm/fish-yjekd/dataset/1",
+      "ingested_images": 168,
+      "ingested_boxes": 170,
+      "classes_contributed": {
+        "whole_fish": 170
+      }
+    },
+    {
+      "name": "Tofu (v1)",
+      "author": "SAGES (Roboflow Universe)",
+      "license": "CC BY 4.0",
+      "source_url": "https://universe.roboflow.com/sages/tofu-47uo2/dataset/1",
+      "ingested_images": 165,
+      "ingested_boxes": 246,
+      "classes_contributed": {
+        "tofu": 246
+      }
+    },
+    {
+      "name": "Google Open Images Dataset v7 (Broccoli /m/0hkxq)",
+      "author": "Google / Flickr Contributors",
+      "license": "CC BY 4.0 / CC BY 2.0",
+      "source_url": "https://storage.googleapis.com/openimages/web/index.html",
+      "ingested_images": 80,
+      "ingested_boxes": 143,
+      "classes_contributed": {
+        "broccoli": 143
+      }
+    }
+  ]
+}

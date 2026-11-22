@@ -47,18 +47,17 @@ CANONICAL_CLASSES: dict[int, str] = {
 }
 
 # Raw Roboflow class index (0..119) -> Canonical FoodVision AI class_index (0..19).
-# Strictly maps 31 ('Chicken') -> 12 ('raw_chicken') and excludes 32 ('Chicken Gizzards')
-# and 79 ('Paneer' white cheese, kept as OOD hard negative per label-catalog.md line 20).
+# Strictly maps 31 ('Chicken') -> 12 ('raw_chicken') and excludes 32 ('Chicken Gizzards'),
+# 79 ('Paneer' white cheese, OOD hard negative per label-catalog.md), 110 ('Tree Tomato' /
+# Solanum betaceum), and 0 ('Akabare Khursani' round cherry chili) to eliminate domain noise.
 ROBOFLOW_TO_CANONICAL: dict[int, int] = {
-    108: 0,   # Tomato -> tomato (710)
-    110: 0,   # Tree Tomato -Rukh Tamatar- -> tomato (450) => 1,160
+    108: 0,   # Tomato -> tomato (710; replaced Tree Tomato with clean CC-BY-4.0 supplement)
     43: 1,    # Egg -> egg (2,081)
     85: 2,    # Potato -> potato (1,479)
     26: 3,    # Carrot -> carrot (451)
     74: 4,    # Onion -> onion (400)
     49: 5,    # Garlic -> garlic (683)
-    34: 6,    # Chili Pepper -Khursani- -> chili_pepper (2,937)
-    0: 6,     # Akabare Khursani -> chili_pepper (446) => 3,383
+    34: 6,    # Chili Pepper -Khursani- -> chili_pepper (2,937; excluded Akabare round chili)
     42: 7,    # Cucumber -> cucumber (437)
     24: 8,    # Cabbage -> cabbage (829)
     21: 9,    # Broccoli -> broccoli (211)

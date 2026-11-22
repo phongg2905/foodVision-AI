@@ -165,13 +165,20 @@ def import_external_yolo_weights(
     if source_pt_path.resolve() != weights_path.resolve():
         shutil.copyfile(source_pt_path, weights_path)
 
+    inferred_family = "yolo11s" if (
+        "11s" in source_pt_path.name.lower()
+        or "_s640" in source_pt_path.name.lower()
+        or source_pt_path.stat().st_size > 12_000_000
+    ) else "yolo11n"
     hparams = hyperparameters or {
-        "model_family": "yolo11n",
+        "model_family": inferred_family,
         "imgsz": 640,
-        "epochs": 100,
-        "patience": 20,
+        "epochs": 55 if inferred_family == "yolo11s" else 100,
+        "patience": 15 if inferred_family == "yolo11s" else 20,
         "mosaic": 0.7,
-        "mixup": 0.1,
+        "mixup": 0.05 if inferred_family == "yolo11s" else 0.1,
+        "copy_paste": 0.15 if inferred_family == "yolo11s" else 0.0,
+        "cos_lr": True if inferred_family == "yolo11s" else False,
         "confidence_threshold": 0.25,
         "review_threshold": 0.80,
         "nms_iou_threshold": 0.50,
