@@ -33,6 +33,7 @@ class Settings:
     supabase_url: str = field(
         default_factory=lambda: os.getenv("SUPABASE_URL", "https://aqjeztwtqkhvjjxnsijs.supabase.co")
     )
+    supabase_jwt_secret: str = field(default_factory=lambda: os.getenv("SUPABASE_JWT_SECRET", ""))
     database_url: str = field(default_factory=lambda: os.getenv("DATABASE_URL", ""))
     direct_url: str = field(default_factory=lambda: os.getenv("DIRECT_URL", ""))
     allowed_origins: list[str] = field(
