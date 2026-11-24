@@ -1,35 +1,30 @@
-r"""Component 07 (TP 07) & Component 14 (TP 14): Unified 4-Criteria MCDA Scoring & Linear XAI Breakdown (`ADR-013`).
+"""Component 07 (TP 07), Component 08 (TP 08) & Component 14 (TP 14): Unified 4-Criteria MCDA Scoring, Logistic Regression Blending & Linear XAI (`ADR-013`).
 
 Implements exact mathematical specifications from `docs/05-recommendation/recommendation-design.md` & `ADR-013`:
 1. Criterion 1 — Weighted Ingredient Coverage `C(r, A) in [0, 1]` (`TP 05`, weight `0.50`):
    4-tier required weights: `core = 4`, `secondary = 2`, `spice = 1`, `optional = 0` (`is_required = false`, excluded from `R_r`).
-   `A = U U S_bep` (confirmed non-pantry ingredients + available kitchen spices).
 2. Criterion 2 — Main Ingredient Role Score `G(r) in [0, 1]` (`Cách B`, weight `0.25`):
-   - Recipe ingredient role `g(i, r)`: `dish_role == 'main' -> 1.0`, `'sub' -> 0.5`, absent -> `0.0`.
-   - User confirmed ingredients `U = U_main U U_sub`:
-     Total weight `0.7` split across `U_main` (`w_i = 0.7 / |U_main|`), total weight `0.3` split across `U_sub` (`w_i = 0.3 / |U_sub|`).
-     `G(r) = (sum_{i in U} w_i * g(i, r)) / (sum_{i in U} w_i)`.
-     When `U_main = empty` (user skips selecting main ingredients) or `U_sub = empty`, reduces cleanly to `(1 / |U|) * sum_{i in U} g(i, r)`.
-3. Criterion 3 — Time Score `T(r) in (0, 1]` (weight `0.15`):
-   - `t_r = max(1, prep_minutes + cook_minutes) / 60.0` (hours, `> 0`).
-   - `T(r) = min(1.0, desired_hours / t_r)`, default `desired_hours = 100.0` (`T(r) = 1.0`).
-4. Criterion 4 — Ingredient Preference Score `P(r) in [0, 1]` (weight `0.10`):
-   - Neutral convention when `|F_u| = 0` (`favorite_ingredient_ids = []` or Guest): `P(r) = 0.5`.
-   - Otherwise: `P(r) = |Ing(r) n F_u| / |F_u|`.
+   User confirmed ingredients `U = U_main U U_sub` (`0.7 / 0.3` group split; `dish_role`: `'main' -> 1.0`, `'sub' -> 0.5`).
+3. Criterion 3 — Time Score `T(r) = min(1.0, desired_hours / t_r) in (0, 1]` (weight `0.15`).
+4. Criterion 4 — Ingredient Preference Score `P(r) in [0, 1]` (weight `0.10`, neutral `0.5` when `F_u = empty`).
 5. Unified Score & Additive XAI Contributions (`MATH-05`):
-   - `contrib_C = round(50.0 * C, 2)`, `contrib_G = round(25.0 * G, 2)`,
-     `contrib_T = round(15.0 * T, 2)`, `contrib_P = round(10.0 * P, 2)`.
-   - `S(r) = round(contrib_C + contrib_G + contrib_T + contrib_P, 2) in [0, 100]`.
-6. Ranking Order:
-   - Group `"ready"` before `"missing"`, then `score DESC`, `len(missing_required_ingredient_ids) ASC`,
-     `total_minutes ASC`, `recipe.id ASC`.
+   `S(r) = round(50*C + 25*G + 15*T + 10*P, 2) in [0, 100]`.
+6. Component 08 Cold-Start Logistic Regression Personalization Blending (`MATH-05`, `DEF-08`):
+   `S_final(u, r) = round((1 - lambda_pers(N_u)) * S(r) + 100 * lambda_pers(N_u) * P(like | u, r), 2)`.
+   When `lambda_pers(N_u) == 0` (Guest or cold-start user), `S_final(u, r) == S(r)`.
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping
+from uuid import UUID
 
 from app.core.database import IngredientRecord, RecipeRecord
+from app.intelligence.personalization import (
+    PersonalizationConfig,
+    PersonalizationEngine,
+    UserModelState,
+)
 from app.schemas.reasoning import AvailabilityV1, RecipeReasoningEvaluation
 from app.schemas.recommendations import (
     RecommendationItem,
@@ -37,8 +32,15 @@ from app.schemas.recommendations import (
     ScoreContributions,
 )
 from app.services.coverage import compute_recipe_weighted_coverage
+from app.services.personalization import (
+    PreparedPersonalizationContext,
+    blend_personalized_score,
+    prepare_user_personalization_context,
+    resolve_recipe_personalization,
+)
 
 
+# THUẬT TOÁN: Chấm Điểm Vai trò Nguyên liệu Chính Tiêu chí 2 (`G(r) ∈ [0, 1]`, trọng số 0.25)
 def compute_main_role_score_g(
     recipe: RecipeRecord,
     ingredient_ids: list[str],
@@ -70,6 +72,7 @@ def compute_main_role_score_g(
     return weighted_sum / total_w
 
 
+# THUẬT TOÁN: Chấm Điểm Thời gian Chế biến Tiêu chí 3 (`T(r) = min(1, t* / t_r)`, trọng số 0.15)
 def compute_time_score_t(
     total_minutes: int,
     desired_hours: float = 100.0,
@@ -81,6 +84,7 @@ def compute_time_score_t(
     return min(1.0, float(desired_hours) / t_r_hours)
 
 
+# THUẬT TOÁN: Chấm Điểm Sở thích Nguyên liệu Tường minh Tiêu chí 4 (`P(r) ∈ [0, 1]`, trọng số 0.10)
 def compute_preference_score_p(
     recipe: RecipeRecord,
     favorite_ingredient_ids: list[str] | None = None,
@@ -93,13 +97,21 @@ def compute_preference_score_p(
     return float(len(recipe_ing_ids & fav_set)) / float(len(fav_set))
 
 
+# CONFLICT-RESOLVED: Connect TP 08 Cold-Start Logistic Regression score blending (`S_final`)
+# onto TP 07 Unified 4-Criteria MCDA base score (`S(r)` per ADR-013) without altering linear XAI contributions.
+# THUẬT TOÁN: Chấm Điểm MCDA 4 Tiêu chí Hợp nhất (`C, G, T, P`) & Trộn Cá nhân hóa `S_final(u, r)`
 def compute_unified_mcda_score(
     c_val: float,
     g_val: float,
     t_val: float,
     p_val: float = 0.5,
+    *,
+    preference_prob: float | None = None,
+    feedback_count: int = 0,
+    lambda_pers: float | None = None,
+    personalization_config: PersonalizationConfig | None = None,
 ) -> tuple[float, ScoreBreakdown, ScoreContributions]:
-    """Compute unified 4-criteria MCDA score `S(r)` and additive XAI breakdown (`ADR-013`, `MATH-05`)."""
+    """Compute unified 4-criteria MCDA score `S(r)` (or blended `S_final(u, r)`) and XAI breakdown (`ADR-013`, `MATH-05`)."""
     breakdown = ScoreBreakdown(
         C=round(c_val, 6),
         G=round(g_val, 6),
@@ -117,10 +129,18 @@ def compute_unified_mcda_score(
         T=contrib_t,
         P=contrib_p,
     )
-    total_score = round(contrib_c + contrib_g + contrib_t + contrib_p, 2)
-    return total_score, breakdown, contributions
+    base_score = round(contrib_c + contrib_g + contrib_t + contrib_p, 2)
+    final_score = blend_personalized_score(
+        base_score=base_score,
+        preference_prob=preference_prob,
+        feedback_count=feedback_count,
+        lambda_pers=lambda_pers,
+        config=personalization_config,
+    )
+    return final_score, breakdown, contributions
 
 
+# THUẬT TOÁN: Sinh Lời giải thích Tiếng Việt Tường minh Không Hộp đen (`TP 14` XAI)
 def build_explanation_vi(
     recipe: RecipeRecord,
     availability: AvailabilityV1,
@@ -156,6 +176,7 @@ def build_explanation_vi(
     )
 
 
+# THUẬT TOÁN: Chấm Điểm Công thức Đầu-Cuối Hợp nhất MCDA 4 Tiêu chí + Trộn Điểm `S_final(u, r)` (`TP 07` + `TP 08`)
 def score_recipe_unified(
     recipe: RecipeRecord,
     evaluation: RecipeReasoningEvaluation,
@@ -164,19 +185,42 @@ def score_recipe_unified(
     desired_hours: float = 100.0,
     favorite_ingredient_ids: list[str] | None = None,
     ingredient_map: Mapping[str, IngredientRecord] | None = None,
+    *,
+    user_id: str | UUID | None = None,
+    personalization_engine: PersonalizationEngine | None = None,
+    user_model_state: UserModelState | None = None,
+    prepared_personalization: PreparedPersonalizationContext | None = None,
+    preference_prob: float | None = None,
+    feedback_count: int = 0,
+    lambda_pers: float | None = None,
 ) -> RecommendationItem:
-    """Score a feasible recipe using Unified 4-Criteria MCDA (`ADR-013`) and return a `RecommendationItem`."""
+    """Score a feasible recipe using Unified 4-Criteria MCDA (`ADR-013`) and blend TP 08 LR score `S_final(u, r)`."""
     confirmed_available_set = set(evaluation.confirmed_available_ids)
     c_val = compute_recipe_weighted_coverage(recipe, confirmed_available_set)
     g_val = compute_main_role_score_g(recipe, ingredient_ids, main_ingredient_ids)
     t_val = compute_time_score_t(recipe.total_minutes, desired_hours=desired_hours)
     p_val = compute_preference_score_p(recipe, favorite_ingredient_ids=favorite_ingredient_ids)
 
-    score, breakdown, contributions = compute_unified_mcda_score(
+    base_score, breakdown, contributions = compute_unified_mcda_score(
         c_val=c_val,
         g_val=g_val,
         t_val=t_val,
         p_val=p_val,
+    )
+    # Connect S_final(u, r) = (1 - lambda_pers(N_u)) * S(r) + 100 * lambda_pers(N_u) * P(like | u, r)
+    score = resolve_recipe_personalization(
+        recipe=recipe,
+        evaluation=evaluation,
+        c_val=c_val,
+        g_val=g_val,
+        base_score=base_score,
+        user_id=user_id,
+        personalization_engine=personalization_engine,
+        user_model_state=user_model_state,
+        prepared_context=prepared_personalization,
+        preference_prob=preference_prob,
+        feedback_count=feedback_count,
+        lambda_pers=lambda_pers,
     )
 
     availability: AvailabilityV1 = (
@@ -204,10 +248,9 @@ def score_recipe_unified(
     )
 
 
+# THUẬT TOÁN: Khóa Phân định Hòa điểm Tất định (`-score, missing_count, total_minutes, recipe_id`)
 def recommendation_tiebreak_key(item: RecommendationItem) -> tuple[float, int, int, str]:
-    """Deterministic tie-breaker key shared across standard ranking and MMR selection:
-    (-score, len(missing_required_ingredient_ids), total_minutes, recipe_id).
-    """
+    """Deterministic tie-breaker key shared across standard ranking and MMR selection."""
     return (
         -item.score,
         len(item.missing_required_ingredient_ids),
@@ -216,14 +259,9 @@ def recommendation_tiebreak_key(item: RecommendationItem) -> tuple[float, int, i
     )
 
 
+# THUẬT TOÁN: Sắp xếp Danh sách Gợi ý Món ăn (`ready` trước `missing`, sau đó theo `recommendation_tiebreak_key`)
 def rank_recommendations(items: list[RecommendationItem]) -> list[RecommendationItem]:
-    """Sort recommendations per `docs/05-recommendation/recommendation-design.md`:
-    1. Group "ready" before "missing"
-    2. score DESC
-    3. len(missing_required_ingredient_ids) ASC
-    4. total_minutes ASC
-    5. recipe.id ASC
-    """
+    """Sort recommendations: group 'ready' before 'missing', then score DESC, missing ASC, time ASC, id ASC."""
     return sorted(
         items,
         key=lambda item: (

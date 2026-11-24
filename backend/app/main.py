@@ -7,8 +7,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1 import (
     admin,
+    ai_detect,
     health,
     ingredients,
+    personalization,
     preferences,
     recipes,
     recommendations,
@@ -46,13 +48,15 @@ def create_app() -> FastAPI:
     # Standardized Error Handlers (`docs/03-api/api-conventions.md`)
     register_exception_handlers(app)
 
-    # API v1 Routers (Stage 1 & Stage 2: TP 03, TP 04, TP 05, TP 06, TP 07, TP 09, TP 13, ADR-013)
+    # API v1 Routers (Stage 1..5: TP 01..14, ADR-013)
     api_v1_prefix = "/api/v1"
     app.include_router(health.router, prefix=api_v1_prefix)
     app.include_router(ingredients.router, prefix=api_v1_prefix)
     app.include_router(recipes.router, prefix=api_v1_prefix)
+    app.include_router(ai_detect.router, prefix=api_v1_prefix)
     app.include_router(recommendations.router, prefix=api_v1_prefix)
     app.include_router(preferences.router, prefix=api_v1_prefix)
+    app.include_router(personalization.router, prefix=api_v1_prefix)
     app.include_router(user_features.router, prefix=api_v1_prefix)
     app.include_router(admin.router, prefix=api_v1_prefix)
 

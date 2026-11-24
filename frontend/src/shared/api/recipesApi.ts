@@ -1,6 +1,6 @@
-import { apiGetWithFallback } from './client';
-import { MOCK_RECIPES } from './mockData';
-import { PagedRecipes, RecipeListParams } from './types';
+import { ApiClientError, apiGetWithFallback } from './client';
+import { MOCK_RECIPES, MOCK_RECIPE_DETAILS } from './mockData';
+import { PagedRecipes, RecipeDetail, RecipeListParams } from './types';
 import { normalizeVietnamese } from '../utils/vietnamese';
 
 /**
@@ -60,5 +60,27 @@ export async function listRecipes(
       offset,
     },
     () => filterMockRecipes(params)
+  );
+}
+
+/**
+ * Gọi GET /api/v1/recipes/{recipe_id} để lấy chi tiết công thức, nguyên liệu tách pantry,
+ * các bước nấu và nhãn dinh dưỡng tham khảo (`FR-02`, `FR-08`, `TC-03`, `TC-15`).
+ */
+export async function getRecipeById(recipeId: string): Promise<RecipeDetail> {
+  return apiGetWithFallback<RecipeDetail>(
+    `/recipes/${encodeURIComponent(recipeId)}`,
+    {},
+    () => {
+      const detail = MOCK_RECIPE_DETAILS[recipeId];
+      if (!detail) {
+        throw new ApiClientError(
+          404,
+          'RECIPE_NOT_FOUND',
+          'Không tìm thấy công thức món ăn hoặc công thức chưa được xuất bản.'
+        );
+      }
+      return detail;
+    }
   );
 }
