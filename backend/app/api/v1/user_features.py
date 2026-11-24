@@ -18,6 +18,7 @@ from app.schemas.user_features import (
     PagedScanSessions,
     ScanSessionDetail,
 )
+from app.services.personalization import record_user_signal_to_personalization_engine
 
 router = APIRouter()
 
@@ -54,6 +55,14 @@ def add_favorite(
     repo: Any = Depends(get_catalog_repo),
 ) -> FavoriteView:
     fav, is_created = repo.add_user_favorite(user_id=user_id, recipe_id=payload.recipe_id)
+    if is_created:
+        record_user_signal_to_personalization_engine(
+            repo,
+            user_id=user_id,
+            recipe_id=payload.recipe_id,
+            signal_type="favorite_added",
+            updated_at=fav.created_at,
+        )
     response.status_code = status.HTTP_201_CREATED if is_created else status.HTTP_200_OK
     return fav
 
@@ -96,6 +105,13 @@ def submit_feedback(
     repo: Any = Depends(get_catalog_repo),
 ) -> FeedbackView:
     fb, is_created = repo.upsert_user_feedback(user_id=user_id, payload=payload)
+    record_user_signal_to_personalization_engine(
+        repo,
+        user_id=user_id,
+        recipe_id=payload.recipe_id,
+        signal_type="explicit_rating",
+        rating=payload.rating,
+    )
     response.status_code = status.HTTP_201_CREATED if is_created else status.HTTP_200_OK
     return fb
 

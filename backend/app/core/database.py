@@ -40,7 +40,6 @@ from app.schemas.recipes import (
     RecipeStepView,
     RecipeSummary,
 )
-from app.schemas.user_features import Detection
 from app.services.nutrition import (
     IngredientNutrient100g,
     PortionIngredientInput,
@@ -64,6 +63,22 @@ def is_db_configured() -> bool:
         return False
     url = settings.database_url or settings.direct_url
     return bool(url and "[YOUR-PASSWORD]" not in url)
+
+
+_VALID_SCAN_PROVENANCES = frozenset({"ai", "clip_assisted", "manual", "corrected"})
+
+
+def _resolve_cover_image_url(path: str | None) -> str | None:
+    """Normalize a relative Supabase Storage object path or external URL into a full cover_image_url."""
+    if not path:
+        return None
+    cleaned = path.strip()
+    if not cleaned:
+        return None
+    if cleaned.startswith(("http://", "https://", "/")):
+        return cleaned
+    base = settings.supabase_url.rstrip("/")
+    return f"{base}/storage/v1/object/public/{cleaned.lstrip('/')}"
 
 
 @dataclass
@@ -394,6 +409,8 @@ class InMemoryCatalogRepository(InMemoryAdminMixin, InMemoryUserMixin):
             if active_ai_model is ...
             else active_ai_model
         )
+        if self._active_ai_model is not None:
+            self._sync_active_ai_model_to_admin(self._active_ai_model)
         self._personalization_engine: Any = None
 
     @property
@@ -437,6 +454,12 @@ class InMemoryCatalogRepository(InMemoryAdminMixin, InMemoryUserMixin):
 
     def set_active_ai_model(self, model: AIModelRecord | None) -> None:
         self._active_ai_model = model
+        if model is None:
+            for m in self._ai_models.values():
+                if m.status == "active":
+                    m.status = "archived"
+        else:
+            self._sync_active_ai_model_to_admin(model)
 
     def register_scan_session(self, scan_session: ScanSessionRecord) -> None:
         self._scan_sessions[scan_session.id] = scan_session
@@ -720,8 +743,10 @@ class _PostgresPersonalizationRepository:
 class PostgresCatalogRepository(PostgresAdminMixin, PostgresUserMixin):
     """PostgreSQL repository executing queries against Supabase PostgreSQL >= 15."""
 
-    def __init__(self, dsn: str) -> None:
+    def __init__(self, dsn: str, *, use_pool: bool = True) -> None:
         self._dsn = sanitize_psycopg_dsn(dsn)
+        self._use_pool = use_pool
+        self._pool: Any = None
         self._personalization_engine: Any = None
 
     @property
@@ -737,7 +762,42 @@ class PostgresCatalogRepository(PostgresAdminMixin, PostgresUserMixin):
     def set_personalization_engine(self, engine: Any) -> None:
         self._personalization_engine = engine
 
+    def _get_or_create_pool(self) -> Any:
+        if not self._use_pool or not self._dsn:
+            return None
+        if self._pool is not None:
+            return self._pool
+        try:
+            from psycopg.rows import dict_row
+            from psycopg_pool import ConnectionPool
+
+            # prepare_threshold=None ensures full compatibility with Supabase PgBouncer transaction pooler (port 6543)
+            self._pool = ConnectionPool(
+                conninfo=self._dsn,
+                min_size=1,
+                max_size=10,
+                open=True,
+                kwargs={"row_factory": dict_row, "prepare_threshold": None},
+            )
+            return self._pool
+        except Exception:
+            self._pool = None
+            return None
+
+    def close(self) -> None:
+        """Close the underlying connection pool cleanly if active."""
+        if self._pool is not None:
+            try:
+                self._pool.close()
+            except Exception:
+                pass
+            self._pool = None
+
     def _connect(self):
+        pool = self._get_or_create_pool()
+        if pool is not None:
+            return pool.connection()
+
         import psycopg
         from psycopg.rows import dict_row
 
@@ -930,7 +990,7 @@ class PostgresCatalogRepository(PostgresAdminMixin, PostgresUserMixin):
                 cuisine_code=r["cuisine_code"],
                 prep_minutes=int(r["prep_minutes"]),
                 cook_minutes=int(r["cook_minutes"]),
-                cover_image_url=r.get("cover_image_path"),
+                cover_image_url=_resolve_cover_image_url(r.get("cover_image_path")),
             )
             for r in rows
         ]
@@ -1045,7 +1105,7 @@ class PostgresCatalogRepository(PostgresAdminMixin, PostgresUserMixin):
             prep_minutes=int(r["prep_minutes"]),
             cook_minutes=int(r["cook_minutes"]),
             quality_score=float(r.get("quality_score") or 1.0),
-            cover_image_url=r.get("cover_image_path"),
+            cover_image_url=_resolve_cover_image_url(r.get("cover_image_path")),
             source_name=r.get("source_name"),
             source_url=r.get("source_url"),
             content_license=r.get("content_license"),
@@ -1192,7 +1252,7 @@ class PostgresCatalogRepository(PostgresAdminMixin, PostgresUserMixin):
                 prep_minutes=int(r["prep_minutes"]),
                 cook_minutes=int(r["cook_minutes"]),
                 quality_score=float(r.get("quality_score") or 1.0),
-                cover_image_url=r.get("cover_image_path"),
+                cover_image_url=_resolve_cover_image_url(r.get("cover_image_path")),
                 source_name=r.get("source_name"),
                 source_url=r.get("source_url"),
                 content_license=r.get("content_license"),
@@ -1354,7 +1414,9 @@ class PostgresCatalogRepository(PostgresAdminMixin, PostgresUserMixin):
         model_id: str,
         detections: list[dict[str, Any]] | None = None,
         ingredient_ids: list[str] | None = None,
+        provenance: str = "ai",
     ) -> ScanSessionRecord:
+        safe_provenance = provenance if provenance in _VALID_SCAN_PROVENANCES else "ai"
         scan_id = str(uuid4())
         with self._connect() as conn, conn.cursor() as cur:
             cur.execute(
@@ -1391,10 +1453,10 @@ class PostgresCatalogRepository(PostgresAdminMixin, PostgresUserMixin):
                 cur.executemany(
                     """
                     INSERT INTO public.scan_ingredients (scan_session_id, ingredient_id, provenance)
-                    VALUES (%s::uuid, %s::uuid, 'detected')
+                    VALUES (%s::uuid, %s::uuid, %s)
                     ON CONFLICT (scan_session_id, ingredient_id) DO NOTHING
                     """,
-                    [(scan_id, iid) for iid in ingredient_ids],
+                    [(scan_id, iid, safe_provenance) for iid in ingredient_ids],
                 )
             conn.commit()
         return ScanSessionRecord(
@@ -1463,4 +1525,8 @@ def get_catalog_repo() -> CatalogRepository:
 
 def set_catalog_repo(repo: CatalogRepository | None) -> None:
     global _default_repo
+    if _default_repo is not None and _default_repo is not repo:
+        close_fn = getattr(_default_repo, "close", None)
+        if callable(close_fn):
+            close_fn()
     _default_repo = repo

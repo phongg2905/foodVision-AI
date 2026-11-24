@@ -35,7 +35,6 @@ from app.services.coverage import compute_recipe_weighted_coverage
 from app.services.personalization import (
     PreparedPersonalizationContext,
     blend_personalized_score,
-    prepare_user_personalization_context,
     resolve_recipe_personalization,
 )
 

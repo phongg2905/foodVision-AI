@@ -3,21 +3,89 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
+import logging
 import math
+from typing import Any
 from uuid import UUID
 
 from app.core.database import RecipeRecord
 from app.intelligence.personalization import (
     PersonalizationConfig,
     PersonalizationEngine,
+    PersonalizationFeedback,
     RecipeFeatureInput,
     UserModelState,
     blend_cold_start_score,
     compute_cold_start_lambda,
     extract_recipe_feature_vector,
-    predict_preference_prob,
 )
 from app.schemas.reasoning import RecipeReasoningEvaluation
+
+logger = logging.getLogger("foodvision.api")
+
+
+def build_recipe_feature_input(
+    recipe: RecipeRecord,
+    *,
+    c_val: float = 1.0,
+    matched_req_ratio: float = 1.0,
+    g_val: float = 1.0,
+) -> RecipeFeatureInput:
+    """Build the canonical 18-dim `RecipeFeatureInput` for a `RecipeRecord` (`TP 08`, `A3`)."""
+    req_count = sum(1 for ri in recipe.ingredients if ri.is_required)
+    return RecipeFeatureInput(
+        cuisine_code=recipe.cuisine_code,
+        cooking_method=recipe.cooking_method,
+        total_minutes=recipe.total_minutes,
+        ingredient_coverage=c_val,
+        ingredient_required_ratio=matched_req_ratio,
+        ingredient_primary_match=g_val,
+        required_ingredient_count=max(1, req_count),
+        equipment_count=len(recipe.required_equipment),
+        step_count=max(1, len(recipe.steps)),
+    )
+
+
+def record_user_signal_to_personalization_engine(
+    repo: Any,
+    *,
+    user_id: str,
+    recipe_id: str,
+    signal_type: str,
+    rating: int | None = None,
+    updated_at: datetime | None = None,
+) -> None:
+    """Propagate an explicit feedback or favorite signal from `/feedback` or `/favorites` into `PersonalizationEngine` (`A3`)."""
+    try:
+        engine = getattr(repo, "personalization_engine", None)
+        if engine is None:
+            return
+        uid = _try_parse_uuid(user_id)
+        rid = _try_parse_uuid(recipe_id)
+        if uid is None or rid is None:
+            return
+        recipe = repo.get_published_recipe_by_id(str(rid))
+        if recipe is None:
+            return
+        feat_input = build_recipe_feature_input(recipe)
+        feat_vec = extract_recipe_feature_vector(feat_input, config=engine.config)
+        norm_signal = "favorite_added" if signal_type == "favorite" else signal_type
+        fb = PersonalizationFeedback(
+            user_id=uid,
+            recipe_id=rid,
+            signal_type=norm_signal,  # type: ignore[arg-type]
+            rating=rating,
+            updated_at=updated_at or datetime.now(timezone.utc),
+        )
+        engine.update_from_feedback(uid, feat_vec, fb)
+    except Exception as exc:
+        logger.warning(
+            "Failed to propagate user personalization signal (%s) for recipe %s: %s",
+            signal_type,
+            recipe_id,
+            exc,
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -154,16 +222,11 @@ def resolve_recipe_personalization(
             else 0.0
         )
         feat_vec = extract_recipe_feature_vector(
-            RecipeFeatureInput(
-                cuisine_code=recipe.cuisine_code,
-                cooking_method=recipe.cooking_method,
-                total_minutes=recipe.total_minutes,
-                ingredient_coverage=c_val,
-                ingredient_required_ratio=matched_req_ratio,
-                ingredient_primary_match=g_val,
-                required_ingredient_count=max(1, req_count),
-                equipment_count=len(recipe.required_equipment),
-                step_count=max(1, len(recipe.steps)),
+            build_recipe_feature_input(
+                recipe,
+                c_val=c_val,
+                matched_req_ratio=matched_req_ratio,
+                g_val=g_val,
             ),
             config=prepared_context.config,
         )
