@@ -33,39 +33,30 @@ export class ApiClientError extends Error {
   }
 }
 
-/**
- * Thực thi GET request tới Backend API.
- * Nếu đang ở chế độ mock hoặc Backend của TV2 chưa khởi chạy (network error / 502 / 504),
- * tự động gọi hàm fallback để UI của TV3 hoạt động độc lập chuẩn hợp đồng OpenAPI.
- */
-export async function apiGetWithFallback<T>(
-  path: string,
-  queryParams: Record<string, string | number | boolean | undefined | null>,
+function parseErrorEnvelope(
+  status: number,
+  body: Partial<ErrorResponse> | null
+): ApiClientError {
+  const code = body?.code ?? body?.error?.code ?? 'HTTP_ERROR';
+  const message =
+    body?.message ?? body?.error?.message ?? `Lỗi HTTP ${status}`;
+  const traceId = body?.request_id ?? body?.error?.trace_id;
+  return new ApiClientError(status, code, message, traceId);
+}
+
+async function executeJsonRequestWithFallback<T>(
+  url: string,
+  init: RequestInit,
   fallbackFn: () => T
 ): Promise<T> {
   if (isForceMockMode()) {
     return fallbackFn();
   }
 
-  const searchParams = new URLSearchParams();
-  Object.entries(queryParams).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== '') {
-      searchParams.set(key, String(value));
-    }
-  });
-
-  const queryString = searchParams.toString();
-  const url = `${getApiBaseUrl()}${path}${queryString ? `?${queryString}` : ''}`;
-
   try {
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        Accept: 'application/json',
-      },
-    });
-
+    const response = await fetch(url, init);
     const contentType = response.headers.get('content-type') ?? '';
+
     if (!contentType.includes('application/json')) {
       if (isFallbackAllowed()) {
         return fallbackFn();
@@ -82,12 +73,7 @@ export async function apiGetWithFallback<T>(
       if (response.status >= 500 && isFallbackAllowed()) {
         return fallbackFn();
       }
-      throw new ApiClientError(
-        response.status,
-        errorBody.error?.code ?? 'HTTP_ERROR',
-        errorBody.error?.message ?? `Lỗi HTTP ${response.status}`,
-        errorBody.error?.trace_id
-      );
+      throw parseErrorEnvelope(response.status, errorBody);
     }
 
     return (await response.json()) as T;
@@ -100,4 +86,61 @@ export async function apiGetWithFallback<T>(
     }
     throw err;
   }
+}
+
+/**
+ * Thực thi GET request tới Backend API.
+ * Nếu đang ở chế độ mock hoặc Backend chưa khởi chạy (network error / 5xx),
+ * tự động gọi hàm fallback để UI của TV3 hoạt động độc lập chuẩn OpenAPI.
+ */
+export async function apiGetWithFallback<T>(
+  path: string,
+  queryParams: Record<string, string | number | boolean | undefined | null>,
+  fallbackFn: () => T
+): Promise<T> {
+  const searchParams = new URLSearchParams();
+  Object.entries(queryParams).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      searchParams.set(key, String(value));
+    }
+  });
+
+  const queryString = searchParams.toString();
+  const url = `${getApiBaseUrl()}${path}${queryString ? `?${queryString}` : ''}`;
+
+  return executeJsonRequestWithFallback<T>(
+    url,
+    {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+      },
+    },
+    fallbackFn
+  );
+}
+
+/**
+ * Thực thi POST request JSON tới Backend API kèm fallback chuẩn OpenAPI khi Backend offline.
+ * Giữ nguyên các lỗi nghiệp vụ/hợp đồng 4xx (VD: 422 INVALID_INGREDIENTS) thay vì nuốt lỗi.
+ */
+export async function apiPostWithFallback<TBody, TRes>(
+  path: string,
+  body: TBody,
+  fallbackFn: () => TRes
+): Promise<TRes> {
+  const url = `${getApiBaseUrl()}${path}`;
+
+  return executeJsonRequestWithFallback<TRes>(
+    url,
+    {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    },
+    fallbackFn
+  );
 }

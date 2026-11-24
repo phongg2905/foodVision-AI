@@ -135,4 +135,37 @@ describe('IngredientKitchenView (FR-18, FR-05, AC-07, AC-08)', () => {
       ],
     });
   });
+
+  it('Điều hướng bàn phím (ArrowDown + Enter chọn và tự đóng dropdown; Escape đóng dropdown)', async () => {
+    const user = userEvent.setup();
+    render(<StatefulKitchenHarness />);
+
+    const input = screen.getByLabelText('Nhập tên nguyên liệu chính');
+    await user.type(input, 'đậu phụ');
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('suggestion-item-dau-hu')
+      ).toBeInTheDocument();
+    });
+
+    await user.keyboard('{ArrowDown}{Enter}');
+
+    expect(screen.getByTestId('selected-chip-dau-hu')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ingredient-search-dropdown')
+    ).not.toBeInTheDocument();
+    expect(input).toHaveValue('');
+
+    // Gõ từ khóa mới rồi bấm Escape -> đóng khung gợi ý ngay
+    await user.type(input, 'bắp');
+    await waitFor(() => {
+      expect(screen.getByTestId('suggestion-item-bap')).toBeInTheDocument();
+    });
+
+    await user.keyboard('{Escape}');
+    expect(
+      screen.queryByTestId('ingredient-search-dropdown')
+    ).not.toBeInTheDocument();
+  });
 });

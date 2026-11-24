@@ -8,10 +8,12 @@ Supports:
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Protocol
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+from uuid import uuid4
 
 from app.core.admin_repo import (
     DEFAULT_ADMIN_ID,
@@ -20,6 +22,8 @@ from app.core.admin_repo import (
 )
 from app.core.config import settings
 from app.core.seed_fixtures import (
+    MODEL_YOLO_V1_SHA256,
+    build_default_seed_ai_model,
     build_default_seed_ingredients,
     build_default_seed_recipes,
 )
@@ -56,6 +60,8 @@ def sanitize_psycopg_dsn(url: str) -> str:
 
 
 def is_db_configured() -> bool:
+    if os.getenv("USE_IN_MEMORY_CATALOG", "").strip().lower() in {"1", "true", "yes", "on"}:
+        return False
     url = settings.database_url or settings.direct_url
     return bool(url and "[YOUR-PASSWORD]" not in url)
 
@@ -254,8 +260,35 @@ class ScanSessionRecord:
     user_id: str
     model_id: str
     ingredient_ids: list[str] = field(default_factory=list)
-    detections: list[Detection] = field(default_factory=list)
+    detections: list[Any] = field(default_factory=list)
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+@dataclass
+class AILabelRecord:
+    id: str
+    model_id: str
+    class_index: int
+    class_name: str
+    ingredient_id: str
+    ingredient_name_vi: str
+    category: IngredientCategory
+    is_active: bool = True
+
+
+@dataclass
+class AIModelRecord:
+    id: str
+    version: str
+    family: str
+    dataset_version: str
+    artifact_ref: str
+    weights_sha256: str = MODEL_YOLO_V1_SHA256
+    class_count: int = 20
+    confidence_threshold: float = 0.25
+    review_threshold: float = 0.80
+    status: str = "active"
+    labels_by_index: dict[int, AILabelRecord] = field(default_factory=dict)
 
 
 @dataclass
@@ -270,7 +303,8 @@ class UserPreferencesRecord:
 
 
 class CatalogRepository(Protocol):
-    """Repository interface for Stage 1 & Stage 2 Catalog, Recipes, Reasoning, Preferences, and Scan Sessions."""
+    # CONFLICT-RESOLVED: Unify Stage 1..3 repository protocol (PR #12 preferences + Stage 3 AI models/scan sessions).
+    """Repository interface for Stage 1..3 Catalog, Recipes, Reasoning, Preferences, AI Models, and Scan Sessions."""
 
     def check_health(self) -> bool: ...
 
@@ -300,9 +334,20 @@ class CatalogRepository(Protocol):
 
     def get_all_published_recipes(self) -> list[RecipeRecord]: ...
 
+    # CONFLICT-RESOLVED: Retain both PR #12 user_preferences methods and Stage 3 AI model/scan session methods.
     def get_user_preferences(self, user_id: str) -> UserPreferencesRecord | None: ...
 
     def upsert_user_preferences(self, prefs: UserPreferencesRecord) -> UserPreferencesRecord: ...
+
+    def get_active_ai_model(self) -> AIModelRecord | None: ...
+
+    def create_scan_session(
+        self,
+        user_id: str,
+        model_id: str,
+        detections: list[dict[str, Any]] | None = None,
+        ingredient_ids: list[str] | None = None,
+    ) -> ScanSessionRecord: ...
 
     def verify_and_sync_scan_ingredients(
         self,
@@ -328,7 +373,9 @@ class InMemoryCatalogRepository(InMemoryAdminMixin, InMemoryUserMixin):
         ingredients: list[IngredientRecord] | None = None,
         recipes: list[RecipeRecord] | None = None,
         scan_sessions: list[ScanSessionRecord] | None = None,
+        # CONFLICT-RESOLVED: Support both user_preferences (PR #12) and active_ai_model (Stage 3) in InMemoryCatalogRepository.
         user_preferences: list[UserPreferencesRecord] | None = None,
+        active_ai_model: AIModelRecord | None = ...,  # type: ignore[assignment]
     ) -> None:
         seed_ings = build_default_seed_ingredients() if ingredients is None else ingredients
         seed_recs = build_default_seed_recipes() if recipes is None else recipes
@@ -342,6 +389,28 @@ class InMemoryCatalogRepository(InMemoryAdminMixin, InMemoryUserMixin):
         }
         self._init_admin_state()
         self._init_user_state()
+        self._active_ai_model: AIModelRecord | None = (
+            build_default_seed_ai_model()
+            if active_ai_model is ...
+            else active_ai_model
+        )
+        self._personalization_engine: Any = None
+
+    @property
+    def personalization_engine(self) -> Any:
+        if self._personalization_engine is None:
+            from app.intelligence.personalization import (
+                InMemoryPersonalizationRepository,
+                PersonalizationEngine,
+            )
+
+            self._personalization_engine = PersonalizationEngine(
+                repository=InMemoryPersonalizationRepository()
+            )
+        return self._personalization_engine
+
+    def set_personalization_engine(self, engine: Any) -> None:
+        self._personalization_engine = engine
 
     def get_user_preferences(self, user_id: str) -> UserPreferencesRecord | None:
         return self._user_preferences.get(user_id)
@@ -361,8 +430,33 @@ class InMemoryCatalogRepository(InMemoryAdminMixin, InMemoryUserMixin):
         self._user_preferences[prefs.user_id] = stored
         return stored
 
+    def get_active_ai_model(self) -> AIModelRecord | None:
+        if self._active_ai_model is None or self._active_ai_model.status != "active":
+            return None
+        return self._active_ai_model
+
+    def set_active_ai_model(self, model: AIModelRecord | None) -> None:
+        self._active_ai_model = model
+
     def register_scan_session(self, scan_session: ScanSessionRecord) -> None:
         self._scan_sessions[scan_session.id] = scan_session
+
+    def create_scan_session(
+        self,
+        user_id: str,
+        model_id: str,
+        detections: list[dict[str, Any]] | None = None,
+        ingredient_ids: list[str] | None = None,
+    ) -> ScanSessionRecord:
+        record = ScanSessionRecord(
+            id=str(uuid4()),
+            user_id=user_id,
+            model_id=model_id,
+            ingredient_ids=list(ingredient_ids or []),
+            detections=list(detections or []),
+        )
+        self._scan_sessions[record.id] = record
+        return record
 
     def get_scan_session(self, scan_id: str) -> ScanSessionRecord | None:
         return self._scan_sessions.get(scan_id)
@@ -471,11 +565,177 @@ def _row_to_ingredient(row: dict[str, Any]) -> IngredientRecord:
     )
 
 
+class _PostgresPersonalizationRepository:
+    """PostgreSQL-backed `UserPersonalizationRepository` reading/writing `public.user_preferences`."""
+
+    # THUẬT TOÁN: Kho Lưu trữ Trọng số Hồi quy Logistic (`TP 08`) trên PostgreSQL (`user_preferences`)
+    # Cơ chế: Đồng bộ cột `lr_weights`, `feedback_count`, `lr_model_version` theo từng `user_id` UUID
+    #         với cơ chế UPSERT idempotent và giữ cache `recipe_feedback_timestamps` chống phát lại `ADR-012`.
+    # Complexity: Time O(1) mỗi truy vấn khóa chính `user_id`, Space O(U * R_feedback) cho bộ nhớ đệm mốc thời gian.
+    def __init__(self, connect_fn: Any) -> None:
+        self._connect = connect_fn
+        self._timestamps_by_user: dict[Any, dict[str, str]] = {}
+
+    def get_user_model_state(self, user_id: Any) -> Any:
+        from app.intelligence.personalization.config import _ensure_uuid
+        from app.intelligence.personalization.constants import (
+            FEATURE_SCHEMA_VERSION,
+            _DISABLED_MODEL_SENTINEL,
+        )
+        from app.intelligence.personalization.models import UserModelState
+
+        uid = _ensure_uuid(user_id, field_name="user_id")
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT lr_weights, feedback_count, lr_model_version, updated_at
+                FROM public.user_preferences
+                WHERE user_id = %s::uuid
+                """,
+                (str(uid),),
+            )
+            row = cur.fetchone()
+        if not row:
+            return None
+
+        raw_version: str | None = row.get("lr_model_version")
+        raw_weights = row.get("lr_weights")
+        is_enabled = raw_version != _DISABLED_MODEL_SENTINEL
+        theta_tuple: tuple[float, ...] | None = None
+        schema_ver: str | None = None
+        if isinstance(raw_weights, list) and len(raw_weights) > 0:
+            theta_tuple = tuple(float(v) for v in raw_weights)
+            schema_ver = FEATURE_SCHEMA_VERSION
+
+        return UserModelState(
+            user_id=uid,
+            theta_user=theta_tuple,
+            feedback_count=int(row.get("feedback_count") or 0),
+            model_version=None if raw_version == _DISABLED_MODEL_SENTINEL else raw_version,
+            schema_version=schema_ver,
+            personalization_enabled=is_enabled,
+            recipe_feedback_timestamps=dict(self._timestamps_by_user.get(uid, {})),
+            updated_at=row.get("updated_at"),
+        )
+
+    def save_user_model_state(self, state: Any) -> Any:
+        from psycopg.types.json import Jsonb
+
+        from app.intelligence.personalization.config import _ensure_uuid
+        from app.intelligence.personalization.constants import (
+            DEFAULT_PERSONALIZATION_MODEL_VERSION,
+            _DISABLED_MODEL_SENTINEL,
+        )
+        from app.intelligence.personalization.models import UserModelState
+
+        uid = _ensure_uuid(state.user_id, field_name="state.user_id")
+        version_tag = (
+            _DISABLED_MODEL_SENTINEL
+            if not state.personalization_enabled
+            else (state.model_version or DEFAULT_PERSONALIZATION_MODEL_VERSION)
+        )
+        weights_payload = list(state.theta_user) if state.theta_user is not None else []
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO public.user_preferences (
+                    user_id, lr_weights, feedback_count, lr_model_version
+                )
+                VALUES (%s::uuid, %s, %s, %s)
+                ON CONFLICT (user_id) DO UPDATE
+                SET lr_weights = EXCLUDED.lr_weights,
+                    feedback_count = EXCLUDED.feedback_count,
+                    lr_model_version = EXCLUDED.lr_model_version,
+                    updated_at = now()
+                RETURNING updated_at
+                """,
+                (str(uid), Jsonb(weights_payload), int(state.feedback_count), version_tag),
+            )
+            ret = cur.fetchone()
+            conn.commit()
+        self._timestamps_by_user[uid] = dict(state.recipe_feedback_timestamps)
+        return UserModelState(
+            user_id=uid,
+            theta_user=tuple(weights_payload) if weights_payload else None,
+            feedback_count=int(state.feedback_count),
+            model_version=None if not state.personalization_enabled else version_tag,
+            schema_version=state.schema_version if weights_payload else None,
+            personalization_enabled=state.personalization_enabled,
+            recipe_feedback_timestamps=dict(state.recipe_feedback_timestamps),
+            updated_at=ret["updated_at"] if ret else datetime.now(timezone.utc),
+        )
+
+    def reset_user_model_state(
+        self,
+        user_id: Any,
+        *,
+        disable_personalization: bool = False,
+    ) -> Any:
+        from psycopg.types.json import Jsonb
+
+        from app.intelligence.personalization.config import _ensure_uuid
+        from app.intelligence.personalization.constants import (
+            DEFAULT_PERSONALIZATION_MODEL_VERSION,
+            _DISABLED_MODEL_SENTINEL,
+        )
+        from app.intelligence.personalization.models import UserModelState
+
+        uid = _ensure_uuid(user_id, field_name="user_id")
+        version_tag = (
+            _DISABLED_MODEL_SENTINEL
+            if disable_personalization
+            else DEFAULT_PERSONALIZATION_MODEL_VERSION
+        )
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO public.user_preferences (
+                    user_id, lr_weights, feedback_count, lr_model_version
+                )
+                VALUES (%s::uuid, %s, 0, %s)
+                ON CONFLICT (user_id) DO UPDATE
+                SET lr_weights = EXCLUDED.lr_weights,
+                    feedback_count = 0,
+                    lr_model_version = EXCLUDED.lr_model_version,
+                    updated_at = now()
+                RETURNING updated_at
+                """,
+                (str(uid), Jsonb([]), version_tag),
+            )
+            ret = cur.fetchone()
+            conn.commit()
+        self._timestamps_by_user[uid] = {}
+        return UserModelState(
+            user_id=uid,
+            theta_user=None,
+            feedback_count=0,
+            model_version=None,
+            schema_version=None,
+            personalization_enabled=not disable_personalization,
+            recipe_feedback_timestamps={},
+            updated_at=ret["updated_at"] if ret else datetime.now(timezone.utc),
+        )
+
+
 class PostgresCatalogRepository(PostgresAdminMixin, PostgresUserMixin):
     """PostgreSQL repository executing queries against Supabase PostgreSQL >= 15."""
 
     def __init__(self, dsn: str) -> None:
         self._dsn = sanitize_psycopg_dsn(dsn)
+        self._personalization_engine: Any = None
+
+    @property
+    def personalization_engine(self) -> Any:
+        if self._personalization_engine is None:
+            from app.intelligence.personalization import PersonalizationEngine
+
+            self._personalization_engine = PersonalizationEngine(
+                repository=_PostgresPersonalizationRepository(self._connect)
+            )
+        return self._personalization_engine
+
+    def set_personalization_engine(self, engine: Any) -> None:
+        self._personalization_engine = engine
 
     def _connect(self):
         import psycopg
@@ -1019,6 +1279,132 @@ class PostgresCatalogRepository(PostgresAdminMixin, PostgresUserMixin):
         prefs.updated_at = ret["updated_at"] if ret else datetime.now(timezone.utc)
         return prefs
 
+    def get_active_ai_model(self) -> AIModelRecord | None:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    id::text AS id,
+                    version,
+                    family,
+                    dataset_version,
+                    artifact_ref,
+                    class_count,
+                    confidence_threshold::float AS confidence_threshold,
+                    review_threshold::float AS review_threshold,
+                    status
+                FROM public.ai_models
+                WHERE status = 'active'
+                LIMIT 1
+                """
+            )
+            m = cur.fetchone()
+            if not m:
+                return None
+
+            cur.execute(
+                """
+                SELECT
+                    l.id::text AS id,
+                    l.model_id::text AS model_id,
+                    l.class_index,
+                    l.class_name,
+                    l.ingredient_id::text AS ingredient_id,
+                    i.name_vi AS ingredient_name_vi,
+                    i.category,
+                    i.is_active
+                FROM public.ai_labels l
+                JOIN public.ingredients i ON i.id = l.ingredient_id
+                WHERE l.model_id::text = %s
+                ORDER BY l.class_index ASC
+                """,
+                (m["id"],),
+            )
+            lbl_rows = cur.fetchall()
+
+        labels_by_idx = {
+            int(r["class_index"]): AILabelRecord(
+                id=r["id"],
+                model_id=r["model_id"],
+                class_index=int(r["class_index"]),
+                class_name=r["class_name"],
+                ingredient_id=r["ingredient_id"],
+                ingredient_name_vi=r["ingredient_name_vi"],
+                category=r["category"],
+                is_active=bool(r["is_active"]),
+            )
+            for r in lbl_rows
+        }
+        return AIModelRecord(
+            id=m["id"],
+            version=m["version"],
+            family=m["family"],
+            dataset_version=m["dataset_version"],
+            artifact_ref=m["artifact_ref"],
+            class_count=int(m["class_count"]),
+            confidence_threshold=float(m["confidence_threshold"]),
+            review_threshold=float(m["review_threshold"]),
+            status=m["status"],
+            labels_by_index=labels_by_idx,
+        )
+
+    def create_scan_session(
+        self,
+        user_id: str,
+        model_id: str,
+        detections: list[dict[str, Any]] | None = None,
+        ingredient_ids: list[str] | None = None,
+    ) -> ScanSessionRecord:
+        scan_id = str(uuid4())
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO public.scan_sessions (id, user_id, model_id)
+                VALUES (%s::uuid, %s::uuid, %s::uuid)
+                """,
+                (scan_id, user_id, model_id),
+            )
+            if detections:
+                cur.executemany(
+                    """
+                    INSERT INTO public.scan_detections (
+                        scan_session_id, ai_label_id, confidence,
+                        x1, y1, x2, y2, needs_confirmation
+                    )
+                    VALUES (%s::uuid, %s::uuid, %s, %s, %s, %s, %s, %s)
+                    """,
+                    [
+                        (
+                            scan_id,
+                            det["ai_label_id"],
+                            det["confidence"],
+                            det["x1"],
+                            det["y1"],
+                            det["x2"],
+                            det["y2"],
+                            det.get("needs_confirmation", False),
+                        )
+                        for det in detections
+                    ],
+                )
+            if ingredient_ids:
+                cur.executemany(
+                    """
+                    INSERT INTO public.scan_ingredients (scan_session_id, ingredient_id, provenance)
+                    VALUES (%s::uuid, %s::uuid, 'detected')
+                    ON CONFLICT (scan_session_id, ingredient_id) DO NOTHING
+                    """,
+                    [(scan_id, iid) for iid in ingredient_ids],
+                )
+            conn.commit()
+        return ScanSessionRecord(
+            id=scan_id,
+            user_id=user_id,
+            model_id=model_id,
+            ingredient_ids=list(ingredient_ids or []),
+            detections=list(detections or []),
+        )
+
     def verify_and_sync_scan_ingredients(
         self,
         scan_id: str,
@@ -1044,14 +1430,14 @@ class PostgresCatalogRepository(PostgresAdminMixin, PostgresUserMixin):
                 "DELETE FROM public.scan_ingredients WHERE scan_session_id::text = %s",
                 (scan_id,),
             )
-            for iid in ingredient_ids:
-                cur.execute(
+            if ingredient_ids:
+                cur.executemany(
                     """
                     INSERT INTO public.scan_ingredients (scan_session_id, ingredient_id, provenance)
                     VALUES (%s::uuid, %s::uuid, 'corrected')
                     ON CONFLICT (scan_session_id, ingredient_id) DO NOTHING
                     """,
-                    (scan_id, iid),
+                    [(scan_id, iid) for iid in ingredient_ids],
                 )
             conn.commit()
         return True

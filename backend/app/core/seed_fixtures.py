@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from app.core.database import IngredientRecord, RecipeRecord
+    from app.core.database import AIModelRecord, IngredientRecord, RecipeRecord
 
 ING_CA_CHUA = "11111111-1111-4111-8111-111111111101"
 ING_TRUNG_GA = "11111111-1111-4111-8111-111111111102"
@@ -17,12 +17,59 @@ ING_NUOC_MAM = "11111111-1111-4111-8111-111111111107"
 ING_DAU_AN = "11111111-1111-4111-8111-111111111108"
 ING_DUONG = "11111111-1111-4111-8111-111111111109"
 ING_TIEU_XAY = "11111111-1111-4111-8111-111111111110"
+ING_KHOAI_TAY = "11111111-1111-4111-8111-111111111202"
+ING_CA_ROT = "11111111-1111-4111-8111-111111111203"
+ING_HANH_TAY = "11111111-1111-4111-8111-111111111204"
+ING_TOI = "11111111-1111-4111-8111-111111111205"
+ING_OT = "11111111-1111-4111-8111-111111111206"
+ING_DUA_LEO = "11111111-1111-4111-8111-111111111207"
+ING_BAP_CAI = "11111111-1111-4111-8111-111111111208"
+ING_BONG_CAI_XANH = "11111111-1111-4111-8111-111111111209"
+ING_NAM = "11111111-1111-4111-8111-111111111210"
+ING_THIT_GA_SONG = "11111111-1111-4111-8111-111111111212"
+ING_THIT_HEO_SONG = "11111111-1111-4111-8111-111111111213"
+ING_TOM = "11111111-1111-4111-8111-111111111214"
+ING_CA_NGUYEN_CON = "11111111-1111-4111-8111-111111111215"
+ING_GUNG = "11111111-1111-4111-8111-111111111216"
+ING_OT_CHUONG = "11111111-1111-4111-8111-111111111218"
+ING_BAP_NGOT = "11111111-1111-4111-8111-111111111219"
+ING_THIT_BO = "11111111-1111-4111-8111-111111111301"
+ING_MI_Y = "11111111-1111-4111-8111-111111111302"
+ING_BO_LAT = "11111111-1111-4111-8111-111111111303"
+ING_PHO_MAI_CHEDDAR = "11111111-1111-4111-8111-111111111304"
+ING_BANH_MI_BURGER = "11111111-1111-4111-8111-111111111305"
+ING_XA_LACH = "11111111-1111-4111-8111-111111111306"
+ING_SA = "11111111-1111-4111-8111-111111111307"
+ING_NGHE = "11111111-1111-4111-8111-111111111308"
+ING_LA_CHANH = "11111111-1111-4111-8111-111111111309"
+ING_HANH_TIM = "11111111-1111-4111-8111-111111111310"
+ING_CHANH = "11111111-1111-4111-8111-111111111311"
+ING_RAU_MUONG = "11111111-1111-4111-8111-111111111312"
+ING_CAI_THIA = "11111111-1111-4111-8111-111111111313"
+ING_BI_DO = "11111111-1111-4111-8111-111111111314"
+ING_MUC_TUOI = "11111111-1111-4111-8111-111111111315"
 ING_INACTIVE = "11111111-1111-4111-8111-111111111199"
+
+MODEL_YOLO_V1 = "55555555-5555-4555-8555-555555555501"
+MODEL_YOLO_V1_VERSION = "yolo11n-foodvision-v1.0"
+MODEL_YOLO_V1_SHA256 = "f72e4c58607722028f247002d6cc7afe63c6c5a4b6519118a045f14f761e03e5"
 
 REC_DAU_HU_SOT_CA = "22222222-2222-4222-8222-222222222201"
 REC_CANH_CA_CHUA_TRUNG = "22222222-2222-4222-8222-222222222202"
 REC_THIT_KHO_TRUNG = "22222222-2222-4222-8222-222222222203"
 REC_TRUNG_XAO_CA_CHUA = "22222222-2222-4222-8222-222222222204"
+REC_GA_HAP_SA = "22222222-2222-4222-8222-222222222209"
+REC_GA_KHO_SA_NGHE = "22222222-2222-4222-8222-222222222210"
+REC_GA_XAO_SA_OT = "22222222-2222-4222-8222-222222222211"
+REC_TOM_RANG_HANH_TOI = "22222222-2222-4222-8222-222222222212"
+REC_CA_KHO_GUNG = "22222222-2222-4222-8222-222222222213"
+REC_THIT_HEO_HAM_KHOAI_CA_ROT = "22222222-2222-4222-8222-222222222214"
+REC_BO_XAO_BONG_CAI_NAM = "22222222-2222-4222-8222-222222222215"
+REC_BAP_CAI_XAO_NAM_TOI = "22222222-2222-4222-8222-222222222216"
+REC_DUA_LEO_TRON_TOI_OT = "22222222-2222-4222-8222-222222222217"
+REC_BO_XAO_OT_CHUONG_EU = "22222222-2222-4222-8222-222222222218"
+REC_BAP_NGOT_BO_TOI_US = "22222222-2222-4222-8222-222222222219"
+REC_RAU_MUONG_XAO_TOI = "22222222-2222-4222-8222-222222222220"
 REC_DRAFT = "22222222-2222-4222-8222-222222222299"
 
 
@@ -112,6 +159,261 @@ def build_default_seed_ingredients() -> list[IngredientRecord]:
             category="pantry",
             is_active=True,
             aliases=["hạt tiêu", "tiêu đen"],
+        ),
+        IngredientRecord(
+            id="11111111-1111-4111-8111-111111111202",
+            slug="khoai-tay",
+            name_vi="Khoai tây",
+            category="vegetable",
+            is_active=True,
+            aliases=["potato"],
+        ),
+        IngredientRecord(
+            id="11111111-1111-4111-8111-111111111203",
+            slug="ca-rot",
+            name_vi="Cà rốt",
+            category="vegetable",
+            is_active=True,
+            aliases=["củ cải đỏ", "carrot"],
+        ),
+        IngredientRecord(
+            id="11111111-1111-4111-8111-111111111204",
+            slug="hanh-tay",
+            name_vi="Hành tây",
+            category="vegetable",
+            is_active=True,
+            aliases=["onion"],
+        ),
+        IngredientRecord(
+            id="11111111-1111-4111-8111-111111111205",
+            slug="toi",
+            name_vi="Tỏi",
+            category="spice",
+            is_active=True,
+            aliases=["tỏi ta", "garlic"],
+        ),
+        IngredientRecord(
+            id="11111111-1111-4111-8111-111111111206",
+            slug="ot",
+            name_vi="Ớt",
+            category="spice",
+            is_active=True,
+            aliases=["ớt hiểm", "chili pepper"],
+        ),
+        IngredientRecord(
+            id="11111111-1111-4111-8111-111111111207",
+            slug="dua-leo",
+            name_vi="Dưa leo",
+            category="vegetable",
+            is_active=True,
+            aliases=["dưa chuột", "cucumber"],
+        ),
+        IngredientRecord(
+            id="11111111-1111-4111-8111-111111111208",
+            slug="bap-cai",
+            name_vi="Bắp cải",
+            category="vegetable",
+            is_active=True,
+            aliases=["cải bắp", "cabbage"],
+        ),
+        IngredientRecord(
+            id="11111111-1111-4111-8111-111111111209",
+            slug="bong-cai-xanh",
+            name_vi="Bông cải xanh",
+            category="vegetable",
+            is_active=True,
+            aliases=["súp lơ xanh", "broccoli"],
+        ),
+        IngredientRecord(
+            id="11111111-1111-4111-8111-111111111210",
+            slug="nam",
+            name_vi="Nấm",
+            category="vegetable",
+            is_active=True,
+            aliases=["nấm mỡ", "mushroom"],
+        ),
+        IngredientRecord(
+            id="11111111-1111-4111-8111-111111111212",
+            slug="thit-ga-song",
+            name_vi="Thịt gà sống",
+            category="protein",
+            is_active=True,
+            aliases=["thịt gà", "ức gà", "chicken"],
+        ),
+        IngredientRecord(
+            id="11111111-1111-4111-8111-111111111213",
+            slug="thit-heo-song",
+            name_vi="Thịt heo sống",
+            category="protein",
+            is_active=True,
+            aliases=["thịt lợn", "thịt heo", "pork"],
+        ),
+        IngredientRecord(
+            id="11111111-1111-4111-8111-111111111214",
+            slug="tom",
+            name_vi="Tôm tươi",
+            category="seafood",
+            is_active=True,
+            aliases=["tôm", "shrimp"],
+            allergen_ids=["shellfish"],
+        ),
+        IngredientRecord(
+            id="11111111-1111-4111-8111-111111111215",
+            slug="ca-nguyen-con",
+            name_vi="Cá nguyên con",
+            category="seafood",
+            is_active=True,
+            aliases=["cá tươi", "fish"],
+            allergen_ids=["fish"],
+        ),
+        IngredientRecord(
+            id="11111111-1111-4111-8111-111111111216",
+            slug="gung",
+            name_vi="Gừng",
+            category="spice",
+            is_active=True,
+            aliases=["gừng tươi", "ginger"],
+        ),
+        IngredientRecord(
+            id="11111111-1111-4111-8111-111111111218",
+            slug="ot-chuong",
+            name_vi="Ớt chuông",
+            category="vegetable",
+            is_active=True,
+            aliases=["ớt ngọt", "ớt đà lạt", "bell pepper"],
+        ),
+        IngredientRecord(
+            id="11111111-1111-4111-8111-111111111219",
+            slug="bap-ngot",
+            name_vi="Bắp ngọt",
+            category="vegetable",
+            is_active=True,
+            aliases=["ngô ngọt", "ngô", "bắp", "sweet corn"],
+        ),
+        IngredientRecord(
+            id=ING_THIT_BO,
+            slug="thit-bo",
+            name_vi="Thịt bò",
+            category="protein",
+            is_active=True,
+            aliases=["thịt bò tươi", "bò thăn", "beef"],
+        ),
+        IngredientRecord(
+            id=ING_MI_Y,
+            slug="mi-y",
+            name_vi="Mì Ý",
+            category="other",
+            is_active=True,
+            aliases=["mì spaghetti", "spaghetti", "pasta"],
+            allergen_ids=["gluten"],
+        ),
+        IngredientRecord(
+            id=ING_BO_LAT,
+            slug="bo-lat",
+            name_vi="Bơ lạt",
+            category="other",
+            is_active=True,
+            aliases=["bơ nhạt", "unsalted butter", "butter"],
+            allergen_ids=["milk"],
+        ),
+        IngredientRecord(
+            id=ING_PHO_MAI_CHEDDAR,
+            slug="pho-mai-cheddar",
+            name_vi="Phô mai Cheddar",
+            category="other",
+            is_active=True,
+            aliases=["phô mai lát", "cheddar cheese", "cheese"],
+            allergen_ids=["milk"],
+        ),
+        IngredientRecord(
+            id=ING_BANH_MI_BURGER,
+            slug="banh-mi-burger",
+            name_vi="Vỏ bánh Burger",
+            category="other",
+            is_active=True,
+            aliases=["bánh mì burger", "burger bun"],
+            allergen_ids=["gluten"],
+        ),
+        IngredientRecord(
+            id=ING_XA_LACH,
+            slug="xa-lach",
+            name_vi="Rau xà lách",
+            category="vegetable",
+            is_active=True,
+            aliases=["xà lách", "lettuce"],
+        ),
+        IngredientRecord(
+            id=ING_SA,
+            slug="sa",
+            name_vi="Sả",
+            category="spice",
+            is_active=True,
+            aliases=["củ sả", "sả cây", "sả băm", "lemongrass"],
+        ),
+        IngredientRecord(
+            id=ING_NGHE,
+            slug="nghe",
+            name_vi="Nghệ tươi",
+            category="spice",
+            is_active=True,
+            aliases=["nghệ", "củ nghệ", "bột nghệ", "turmeric"],
+        ),
+        IngredientRecord(
+            id=ING_LA_CHANH,
+            slug="la-chanh",
+            name_vi="Lá chanh",
+            category="spice",
+            is_active=True,
+            aliases=["lá chanh tươi", "lime leaf", "kaffir lime leaf"],
+        ),
+        IngredientRecord(
+            id=ING_HANH_TIM,
+            slug="hanh-tim",
+            name_vi="Hành tím",
+            category="spice",
+            is_active=True,
+            aliases=["củ hành tím", "hành khô", "shallot"],
+        ),
+        IngredientRecord(
+            id=ING_CHANH,
+            slug="chanh",
+            name_vi="Chanh tươi",
+            category="vegetable",
+            is_active=True,
+            aliases=["chanh", "quả chanh", "lime"],
+        ),
+        IngredientRecord(
+            id=ING_RAU_MUONG,
+            slug="rau-muong",
+            name_vi="Rau muống",
+            category="vegetable",
+            is_active=True,
+            aliases=["rau muống nước", "water spinach"],
+        ),
+        IngredientRecord(
+            id=ING_CAI_THIA,
+            slug="cai-thia",
+            name_vi="Cải thìa",
+            category="vegetable",
+            is_active=True,
+            aliases=["cải chíp", "cải bẹ trắng", "bok choy"],
+        ),
+        IngredientRecord(
+            id=ING_BI_DO,
+            slug="bi-do",
+            name_vi="Bí đỏ",
+            category="vegetable",
+            is_active=True,
+            aliases=["bí ngô", "bí rợ", "pumpkin"],
+        ),
+        IngredientRecord(
+            id=ING_MUC_TUOI,
+            slug="muc-tuoi",
+            name_vi="Mực tươi",
+            category="seafood",
+            is_active=True,
+            aliases=["mực ống", "mực lá", "squid"],
+            allergen_ids=["shellfish"],
         ),
         IngredientRecord(
             id=ING_INACTIVE,
@@ -460,6 +762,382 @@ def build_default_seed_recipes() -> list[RecipeRecord]:
             ],
         ),
         RecipeRecord(
+            id=REC_GA_HAP_SA,
+            slug="ga-hap-sa",
+            name_vi="Gà hấp sả",
+            cuisine_code="VN",
+            prep_minutes=10,
+            cook_minutes=20,
+            status="published",
+            description="Thịt gà hấp cùng sả đập dập thơm thanh, giữ trọn vị ngọt tự nhiên.",
+            country_code="VN",
+            cooking_method="steam",
+            required_equipment=["pot", "stove"],
+            base_servings=2,
+            quality_score=0.97,
+            source_name="FoodVision Editorial",
+            source_url="https://foodvision.local/recipes/ga-hap-sa",
+            content_license="CC-BY-4.0",
+            allergen_ids=[],
+            ingredients=[
+                RecipeIngredientRecord(ING_THIT_GA_SONG, "Thịt gà sống", "protein", True, "core", "main", 4.0, 350.0, "350 g", 1),
+                RecipeIngredientRecord(ING_SA, "Sả", "spice", True, "core", "main", 4.0, 40.0, "2 củ đập dập", 2),
+                RecipeIngredientRecord(ING_LA_CHANH, "Lá chanh", "spice", False, "optional", "sub", 0.0, 5.0, "4 lá", 3),
+                RecipeIngredientRecord(ING_GUNG, "Gừng", "spice", False, "optional", "sub", 0.0, 10.0, "3 lát mỏng", 4),
+                RecipeIngredientRecord(ING_MUOI, "Muối", "pantry", True, "spice", "sub", 1.0, 4.0, "1/2 muỗng cà phê", 5),
+                RecipeIngredientRecord(ING_TIEU_XAY, "Tiêu xay", "pantry", True, "spice", "sub", 1.0, 2.0, "1/2 muỗng cà phê", 6),
+            ],
+            steps=[
+                RecipeStepRecord(1, "Xát muối rửa sạch thịt gà, ướp với chút muối và tiêu xay 10 phút; đập dập sả lót đáy nồi.", 10),
+                RecipeStepRecord(2, "Đặt gà lên lớp sả, rắc lá chanh và gừng nếu có rồi hấp cách thủy lửa vừa 20 phút cho chín kỹ.", 20),
+            ],
+        ),
+        RecipeRecord(
+            id=REC_GA_KHO_SA_NGHE,
+            slug="ga-kho-sa-nghe",
+            name_vi="Gà kho sả nghệ",
+            cuisine_code="VN",
+            prep_minutes=10,
+            cook_minutes=25,
+            status="published",
+            description="Thịt gà kho đậm đà với sả băm và nghệ tươi vàng ươm đưa cơm.",
+            country_code="VN",
+            cooking_method="braise",
+            required_equipment=["pot", "stove"],
+            base_servings=2,
+            quality_score=0.95,
+            source_name="FoodVision Editorial",
+            source_url="https://foodvision.local/recipes/ga-kho-sa-nghe",
+            content_license="CC-BY-4.0",
+            allergen_ids=["fish"],
+            ingredients=[
+                RecipeIngredientRecord(ING_THIT_GA_SONG, "Thịt gà sống", "protein", True, "core", "main", 4.0, 350.0, "350 g chặt miếng", 1),
+                RecipeIngredientRecord(ING_SA, "Sả", "spice", True, "secondary", "sub", 2.0, 30.0, "2 củ băm nhỏ", 2),
+                RecipeIngredientRecord(ING_NGHE, "Nghệ tươi", "spice", True, "secondary", "sub", 2.0, 15.0, "1 nhánh giã nhuyễn", 3),
+                RecipeIngredientRecord(ING_NUOC_MAM, "Nước mắm", "pantry", True, "spice", "sub", 1.0, 15.0, "1 muỗng canh", 4),
+                RecipeIngredientRecord(ING_DAU_AN, "Dầu ăn", "pantry", True, "spice", "sub", 1.0, 10.0, "2 muỗng cà phê", 5),
+                RecipeIngredientRecord(ING_DUONG, "Đường", "pantry", True, "spice", "sub", 1.0, 5.0, "1 muỗng cà phê", 6),
+            ],
+            steps=[
+                RecipeStepRecord(1, "Ướp thịt gà chặt miếng cùng nghệ tươi giã nhuyễn, nửa phần sả băm, nước mắm và đường 10 phút.", 10),
+                RecipeStepRecord(2, "Phi thơm phần sả còn lại với dầu ăn, cho gà vào đảo săn rồi rim lửa nhỏ 25 phút đến khi sánh vị.", 25),
+            ],
+        ),
+        RecipeRecord(
+            id=REC_GA_XAO_SA_OT,
+            slug="ga-xao-sa-ot",
+            name_vi="Gà xào sả ớt",
+            cuisine_code="VN",
+            prep_minutes=10,
+            cook_minutes=12,
+            status="published",
+            description="Thịt gà xào sả ớt thơm nồng, cay ấm chuẩn cơm gia đình Việt.",
+            country_code="VN",
+            cooking_method="stir_fry",
+            required_equipment=["pan", "stove"],
+            base_servings=2,
+            quality_score=0.96,
+            source_name="FoodVision Editorial",
+            source_url="https://foodvision.local/recipes/ga-xao-sa-ot",
+            content_license="CC-BY-4.0",
+            allergen_ids=["fish"],
+            ingredients=[
+                RecipeIngredientRecord(ING_THIT_GA_SONG, "Thịt gà sống", "protein", True, "core", "main", 4.0, 300.0, "300 g", 1),
+                RecipeIngredientRecord(ING_SA, "Sả", "spice", True, "secondary", "sub", 2.0, 30.0, "2 củ băm", 2),
+                RecipeIngredientRecord(ING_OT, "Ớt", "spice", True, "secondary", "sub", 2.0, 10.0, "1 quả cắt lát", 3),
+                RecipeIngredientRecord(ING_TOI, "Tỏi", "spice", True, "spice", "sub", 1.0, 10.0, "2 tép băm", 4),
+                RecipeIngredientRecord(ING_NUOC_MAM, "Nước mắm", "pantry", True, "spice", "sub", 1.0, 15.0, "1 muỗng canh", 5),
+                RecipeIngredientRecord(ING_DAU_AN, "Dầu ăn", "pantry", True, "spice", "sub", 1.0, 10.0, "2 muỗng cà phê", 6),
+            ],
+            steps=[
+                RecipeStepRecord(1, "Cắt thịt gà miếng vừa ăn, ướp nhanh với nước mắm; băm nhỏ sả, tỏi và cắt lát ớt.", 10),
+                RecipeStepRecord(2, "Phi thơm sả, tỏi và ớt trong dầu nóng rồi xào gà lửa lớn 12 phút cho săn vàng thơm.", 12),
+            ],
+        ),
+        RecipeRecord(
+            id=REC_TOM_RANG_HANH_TOI,
+            slug="tom-rang-hanh-toi",
+            name_vi="Tôm rang hành tỏi",
+            cuisine_code="VN",
+            prep_minutes=8,
+            cook_minutes=10,
+            status="published",
+            description="Tôm tươi rang mặn ngọt bóng đẹp cùng tỏi phi và hành lá thơm lừng.",
+            country_code="VN",
+            cooking_method="stir_fry",
+            required_equipment=["pan", "stove"],
+            base_servings=2,
+            quality_score=0.95,
+            source_name="FoodVision Editorial",
+            source_url="https://foodvision.local/recipes/tom-rang-hanh-toi",
+            content_license="CC-BY-4.0",
+            allergen_ids=["shellfish", "fish"],
+            ingredients=[
+                RecipeIngredientRecord(ING_TOM, "Tôm tươi", "seafood", True, "core", "main", 4.0, 250.0, "250 g", 1),
+                RecipeIngredientRecord(ING_TOI, "Tỏi", "spice", True, "secondary", "sub", 2.0, 12.0, "3 tép băm", 2),
+                RecipeIngredientRecord(ING_HANH_LA, "Hành lá", "spice", True, "spice", "sub", 1.0, 15.0, "2 nhánh", 3),
+                RecipeIngredientRecord(ING_NUOC_MAM, "Nước mắm", "pantry", True, "spice", "sub", 1.0, 12.0, "1 muỗng canh", 4),
+                RecipeIngredientRecord(ING_DUONG, "Đường", "pantry", True, "spice", "sub", 1.0, 8.0, "1.5 muỗng cà phê", 5),
+                RecipeIngredientRecord(ING_DAU_AN, "Dầu ăn", "pantry", True, "spice", "sub", 1.0, 10.0, "2 muỗng cà phê", 6),
+                RecipeIngredientRecord(ING_TIEU_XAY, "Tiêu xay", "pantry", True, "spice", "sub", 1.0, 2.0, "1/3 muỗng cà phê", 7),
+            ],
+            steps=[
+                RecipeStepRecord(1, "Cắt râu, rút chỉ lưng tôm tươi, rửa sạch để ráo; băm tỏi và cắt khúc hành lá.", 8),
+                RecipeStepRecord(2, "Phi thơm tỏi với dầu ăn, đảo tôm săn đỏ rồi nêm nước mắm, đường rim cạn sốt, rắc hành tiêu.", 10),
+            ],
+        ),
+        RecipeRecord(
+            id=REC_CA_KHO_GUNG,
+            slug="ca-kho-gung",
+            name_vi="Cá kho gừng",
+            cuisine_code="VN",
+            prep_minutes=10,
+            cook_minutes=30,
+            status="published",
+            description="Cá tươi kho gừng thái sợi ấm bụng, khử tanh và đậm đà vị mắm tiêu.",
+            country_code="VN",
+            cooking_method="braise",
+            required_equipment=["pot", "stove"],
+            base_servings=3,
+            quality_score=0.94,
+            source_name="FoodVision Editorial",
+            source_url="https://foodvision.local/recipes/ca-kho-gung",
+            content_license="CC-BY-4.0",
+            allergen_ids=["fish"],
+            ingredients=[
+                RecipeIngredientRecord(ING_CA_NGUYEN_CON, "Cá nguyên con", "seafood", True, "core", "main", 4.0, 400.0, "1 con làm sạch cắt khúc", 1),
+                RecipeIngredientRecord(ING_GUNG, "Gừng", "spice", True, "secondary", "sub", 2.0, 25.0, "1 củ thái sợi", 2),
+                RecipeIngredientRecord(ING_OT, "Ớt", "spice", False, "optional", "sub", 0.0, 8.0, "1 quả", 3),
+                RecipeIngredientRecord(ING_HANH_LA, "Hành lá", "spice", False, "optional", "sub", 0.0, 15.0, "2 nhánh", 4),
+                RecipeIngredientRecord(ING_NUOC_MAM, "Nước mắm", "pantry", True, "spice", "sub", 1.0, 25.0, "2 muỗng canh", 5),
+                RecipeIngredientRecord(ING_DUONG, "Đường", "pantry", True, "spice", "sub", 1.0, 10.0, "2 muỗng cà phê", 6),
+                RecipeIngredientRecord(ING_DAU_AN, "Dầu ăn", "pantry", True, "spice", "sub", 1.0, 10.0, "2 muỗng cà phê", 7),
+                RecipeIngredientRecord(ING_TIEU_XAY, "Tiêu xay", "pantry", True, "spice", "sub", 1.0, 2.0, "1/2 muỗng cà phê", 8),
+            ],
+            steps=[
+                RecipeStepRecord(1, "Làm sạch cá cắt khúc, ướp với nước mắm, tiêu và nửa phần gừng thái sợi trong 10 phút.", 10),
+                RecipeStepRecord(2, "Thắng nhẹ đường với dầu ăn tạo màu cánh gián, xếp cá và phần gừng còn lại kho lửa nhỏ 30 phút.", 30),
+            ],
+        ),
+        RecipeRecord(
+            id=REC_THIT_HEO_HAM_KHOAI_CA_ROT,
+            slug="thit-heo-ham-khoai-tay-ca-rot",
+            name_vi="Thịt heo hầm khoai tây cà rốt",
+            cuisine_code="VN",
+            prep_minutes=15,
+            cook_minutes=30,
+            status="published",
+            description="Canh hầm thịt heo mềm ngọt kết hợp khoai tây bùi béo và cà rốt thanh mát.",
+            country_code="VN",
+            cooking_method="simmer",
+            required_equipment=["pot", "stove"],
+            base_servings=3,
+            quality_score=0.94,
+            source_name="FoodVision Editorial",
+            source_url="https://foodvision.local/recipes/thit-heo-ham-khoai-tay-ca-rot",
+            content_license="CC-BY-4.0",
+            allergen_ids=["fish"],
+            ingredients=[
+                RecipeIngredientRecord(ING_THIT_HEO_SONG, "Thịt heo sống", "protein", True, "core", "main", 4.0, 300.0, "300 g cắt khối", 1),
+                RecipeIngredientRecord(ING_KHOAI_TAY, "Khoai tây", "vegetable", True, "secondary", "sub", 2.0, 200.0, "2 củ cắt khối", 2),
+                RecipeIngredientRecord(ING_CA_ROT, "Cà rốt", "vegetable", True, "secondary", "sub", 2.0, 120.0, "1 củ cắt khoanh", 3),
+                RecipeIngredientRecord(ING_HANH_TAY, "Hành tây", "vegetable", True, "spice", "sub", 1.0, 60.0, "1/2 củ bổ múi", 4),
+                RecipeIngredientRecord(ING_HANH_LA, "Hành lá", "spice", False, "optional", "sub", 0.0, 15.0, "2 nhánh", 5),
+                RecipeIngredientRecord(ING_MUOI, "Muối", "pantry", True, "spice", "sub", 1.0, 5.0, "1 muỗng cà phê", 6),
+                RecipeIngredientRecord(ING_NUOC_MAM, "Nước mắm", "pantry", True, "spice", "sub", 1.0, 10.0, "1 muỗng canh", 7),
+                RecipeIngredientRecord(ING_TIEU_XAY, "Tiêu xay", "pantry", True, "spice", "sub", 1.0, 2.0, "1/2 muỗng cà phê", 8),
+            ],
+            steps=[
+                RecipeStepRecord(1, "Sơ chế thịt heo, gọt vỏ cắt khối khoai tây, cà rốt và hành tây; chần sơ thịt cho trong nước.", 15),
+                RecipeStepRecord(2, "Hầm thịt heo 15 phút rồi thêm khoai tây, cà rốt, hành tây nấu mềm thêm 15 phút, nêm muối mắm tiêu.", 30),
+            ],
+        ),
+        RecipeRecord(
+            id=REC_BO_XAO_BONG_CAI_NAM,
+            slug="bo-xao-bong-cai-xanh-nam",
+            name_vi="Thịt bò xào bông cải xanh nấm",
+            cuisine_code="VN",
+            prep_minutes=8,
+            cook_minutes=10,
+            status="published",
+            description="Thịt bò xào mềm cùng bông cải xanh giòn ngọt và nấm tươi giàu dinh dưỡng.",
+            country_code="VN",
+            cooking_method="stir_fry",
+            required_equipment=["pan", "stove"],
+            base_servings=2,
+            quality_score=0.96,
+            source_name="FoodVision Editorial",
+            source_url="https://foodvision.local/recipes/bo-xao-bong-cai-xanh-nam",
+            content_license="CC-BY-4.0",
+            allergen_ids=[],
+            ingredients=[
+                RecipeIngredientRecord(ING_THIT_BO, "Thịt bò", "protein", True, "core", "main", 4.0, 200.0, "200 g thái mỏng", 1),
+                RecipeIngredientRecord(ING_BONG_CAI_XANH, "Bông cải xanh", "vegetable", True, "core", "main", 4.0, 200.0, "1 bông tách nhánh", 2),
+                RecipeIngredientRecord(ING_NAM, "Nấm", "vegetable", True, "secondary", "sub", 2.0, 100.0, "100 g thái lát", 3),
+                RecipeIngredientRecord(ING_TOI, "Tỏi", "spice", True, "spice", "sub", 1.0, 10.0, "2 tép băm", 4),
+                RecipeIngredientRecord(ING_DAU_AN, "Dầu ăn", "pantry", True, "spice", "sub", 1.0, 12.0, "1 muỗng canh", 5),
+                RecipeIngredientRecord(ING_MUOI, "Muối", "pantry", True, "spice", "sub", 1.0, 4.0, "1/2 muỗng cà phê", 6),
+                RecipeIngredientRecord(ING_TIEU_XAY, "Tiêu xay", "pantry", True, "spice", "sub", 1.0, 2.0, "1/3 muỗng cà phê", 7),
+            ],
+            steps=[
+                RecipeStepRecord(1, "Ướp thịt bò thái mỏng với chút tỏi băm, muối tiêu; chần nhanh bông cải xanh 2 phút giữ màu xanh.", 8),
+                RecipeStepRecord(2, "Xào nhanh thịt bò lửa lớn rồi trút riêng; xào nấm và bông cải xanh chín tới rồi đảo đều cùng bò.", 10),
+            ],
+        ),
+        RecipeRecord(
+            id=REC_BAP_CAI_XAO_NAM_TOI,
+            slug="bap-cai-xao-nam-toi",
+            name_vi="Bắp cải xào nấm tỏi",
+            cuisine_code="VN",
+            prep_minutes=6,
+            cook_minutes=8,
+            status="published",
+            description="Bắp cải xào giòn ngọt cùng nấm tươi và tỏi phi thanh đạm hoàn tất trong 14 phút.",
+            country_code="VN",
+            cooking_method="stir_fry",
+            required_equipment=["pan", "stove"],
+            base_servings=2,
+            quality_score=0.93,
+            source_name="FoodVision Editorial",
+            source_url="https://foodvision.local/recipes/bap-cai-xao-nam-toi",
+            content_license="CC-BY-4.0",
+            allergen_ids=[],
+            ingredients=[
+                RecipeIngredientRecord(ING_BAP_CAI, "Bắp cải", "vegetable", True, "core", "main", 4.0, 250.0, "1/4 bắp thái sợi", 1),
+                RecipeIngredientRecord(ING_NAM, "Nấm", "vegetable", True, "secondary", "sub", 2.0, 100.0, "100 g thái lát", 2),
+                RecipeIngredientRecord(ING_TOI, "Tỏi", "spice", True, "spice", "sub", 1.0, 10.0, "2 tép đập dập", 3),
+                RecipeIngredientRecord(ING_DAU_AN, "Dầu ăn", "pantry", True, "spice", "sub", 1.0, 10.0, "2 muỗng cà phê", 4),
+                RecipeIngredientRecord(ING_MUOI, "Muối", "pantry", True, "spice", "sub", 1.0, 4.0, "1/2 muỗng cà phê", 5),
+            ],
+            steps=[
+                RecipeStepRecord(1, "Thái sợi bắp cải, rửa sạch nấm và đập dập tỏi.", 6),
+                RecipeStepRecord(2, "Phi thơm tỏi với dầu ăn, cho nấm và bắp cải vào xào nhanh lửa lớn 8 phút, nêm muối vừa ăn.", 8),
+            ],
+        ),
+        RecipeRecord(
+            id=REC_DUA_LEO_TRON_TOI_OT,
+            slug="dua-leo-tron-toi-ot",
+            name_vi="Dưa leo trộn tỏi ớt",
+            cuisine_code="VN",
+            prep_minutes=10,
+            cook_minutes=0,
+            status="published",
+            description="Dưa leo đập dập trộn tỏi ớt chua ngọt giòn rụm giải ngấy trong 10 phút.",
+            country_code="VN",
+            cooking_method="mix",
+            required_equipment=[],
+            base_servings=2,
+            quality_score=0.92,
+            source_name="FoodVision Editorial",
+            source_url="https://foodvision.local/recipes/dua-leo-tron-toi-ot",
+            content_license="CC-BY-4.0",
+            allergen_ids=[],
+            ingredients=[
+                RecipeIngredientRecord(ING_DUA_LEO, "Dưa leo", "vegetable", True, "core", "main", 4.0, 250.0, "2 quả đập dập", 1),
+                RecipeIngredientRecord(ING_TOI, "Tỏi", "spice", True, "spice", "sub", 1.0, 10.0, "2 tép băm", 2),
+                RecipeIngredientRecord(ING_OT, "Ớt", "spice", True, "spice", "sub", 1.0, 8.0, "1 quả băm", 3),
+                RecipeIngredientRecord(ING_CHANH, "Chanh tươi", "vegetable", False, "optional", "sub", 0.0, 20.0, "1/2 quả vắt nước", 4),
+                RecipeIngredientRecord(ING_MUOI, "Muối", "pantry", True, "spice", "sub", 1.0, 3.0, "1/2 muỗng cà phê", 5),
+                RecipeIngredientRecord(ING_DUONG, "Đường", "pantry", True, "spice", "sub", 1.0, 8.0, "1.5 muỗng cà phê", 6),
+            ],
+            steps=[
+                RecipeStepRecord(1, "Rửa sạch dưa leo, đập dập cắt khúc vừa ăn rồi trộn đều cùng tỏi ớt băm, muối, đường và nước cốt chanh.", 10),
+            ],
+        ),
+        RecipeRecord(
+            id=REC_BO_XAO_OT_CHUONG_EU,
+            slug="bo-xao-ot-chuong-hanh-tay",
+            name_vi="Thịt bò xào ớt chuông hành tây kiểu Âu",
+            cuisine_code="EU",
+            prep_minutes=8,
+            cook_minutes=12,
+            status="published",
+            description="Thịt bò áp chảo bơ tỏi cùng ớt chuông giòn ngọt và hành tây kiểu Âu.",
+            country_code="FR",
+            cooking_method="stir_fry",
+            required_equipment=["pan", "stove"],
+            base_servings=2,
+            quality_score=0.95,
+            source_name="FoodVision Editorial",
+            source_url="https://foodvision.local/recipes/bo-xao-ot-chuong-hanh-tay",
+            content_license="CC-BY-4.0",
+            allergen_ids=["milk"],
+            ingredients=[
+                RecipeIngredientRecord(ING_THIT_BO, "Thịt bò", "protein", True, "core", "main", 4.0, 220.0, "220 g cắt khối", 1),
+                RecipeIngredientRecord(ING_OT_CHUONG, "Ớt chuông", "vegetable", True, "core", "main", 4.0, 160.0, "1 quả cắt miếng vuông", 2),
+                RecipeIngredientRecord(ING_HANH_TAY, "Hành tây", "vegetable", True, "secondary", "sub", 2.0, 80.0, "1/2 củ cắt múi", 3),
+                RecipeIngredientRecord(ING_TOI, "Tỏi", "spice", True, "spice", "sub", 1.0, 10.0, "2 tép băm", 4),
+                RecipeIngredientRecord(ING_BO_LAT, "Bơ lạt", "other", True, "spice", "sub", 1.0, 15.0, "1 muỗng canh", 5),
+                RecipeIngredientRecord(ING_MUOI, "Muối", "pantry", True, "spice", "sub", 1.0, 4.0, "1/2 muỗng cà phê", 6),
+                RecipeIngredientRecord(ING_TIEU_XAY, "Tiêu xay", "pantry", True, "spice", "sub", 1.0, 2.0, "1/2 muỗng cà phê", 7),
+            ],
+            steps=[
+                RecipeStepRecord(1, "Cắt thịt bò, ớt chuông và hành tây thành miếng vuông đồng đều; ướp thịt bò với muối và tiêu xay.", 8),
+                RecipeStepRecord(2, "Đun chảy bơ lạt với tỏi băm, áp chảo thịt bò săn mặt rồi đảo nhanh cùng ớt chuông và hành tây.", 12),
+            ],
+        ),
+        RecipeRecord(
+            id=REC_BAP_NGOT_BO_TOI_US,
+            slug="bap-ngot-ap-chao-bo-toi-kieu-my",
+            name_vi="Bắp ngọt áp chảo bơ tỏi kiểu Mỹ",
+            cuisine_code="US",
+            prep_minutes=5,
+            cook_minutes=10,
+            status="published",
+            description="Bắp ngọt tách hạt áp chảo thơm ngậy bơ lạt và tỏi phi kiểu Mỹ trong 15 phút.",
+            country_code="US",
+            cooking_method="pan_sear",
+            required_equipment=["pan", "stove"],
+            base_servings=2,
+            quality_score=0.93,
+            source_name="FoodVision Editorial",
+            source_url="https://foodvision.local/recipes/bap-ngot-ap-chao-bo-toi-kieu-my",
+            content_license="CC-BY-4.0",
+            allergen_ids=["milk"],
+            ingredients=[
+                RecipeIngredientRecord(ING_BAP_NGOT, "Bắp ngọt", "vegetable", True, "core", "main", 4.0, 200.0, "1 trái tách hạt", 1),
+                RecipeIngredientRecord(ING_BO_LAT, "Bơ lạt", "other", True, "secondary", "sub", 2.0, 20.0, "1.5 muỗng canh", 2),
+                RecipeIngredientRecord(ING_TOI, "Tỏi", "spice", True, "spice", "sub", 1.0, 8.0, "2 tép băm", 3),
+                RecipeIngredientRecord(ING_HANH_LA, "Hành lá", "spice", False, "optional", "sub", 0.0, 10.0, "1 nhánh cắt nhỏ", 4),
+                RecipeIngredientRecord(ING_MUOI, "Muối", "pantry", True, "spice", "sub", 1.0, 3.0, "1/3 muỗng cà phê", 5),
+                RecipeIngredientRecord(ING_TIEU_XAY, "Tiêu xay", "pantry", True, "spice", "sub", 1.0, 2.0, "1/3 muỗng cà phê", 6),
+            ],
+            steps=[
+                RecipeStepRecord(1, "Tách hạt bắp ngọt, rửa sạch để ráo; băm nhỏ tỏi và cắt nhỏ hành lá.", 5),
+                RecipeStepRecord(2, "Đun chảy bơ lạt, phi thơm tỏi rồi áp chảo bắp ngọt lửa vừa 10 phút với muối tiêu, rắc hành lá.", 10),
+            ],
+        ),
+        RecipeRecord(
+            id=REC_RAU_MUONG_XAO_TOI,
+            slug="rau-muong-xao-toi",
+            name_vi="Rau muống xào tỏi",
+            cuisine_code="VN",
+            prep_minutes=5,
+            cook_minutes=7,
+            status="published",
+            description="Rau muống xào tỏi xanh giòn chuẩn bữa cơm gia đình Việt trong 12 phút.",
+            country_code="VN",
+            cooking_method="stir_fry",
+            required_equipment=["pan", "stove"],
+            base_servings=2,
+            quality_score=0.95,
+            source_name="FoodVision Editorial",
+            source_url="https://foodvision.local/recipes/rau-muong-xao-toi",
+            content_license="CC-BY-4.0",
+            allergen_ids=["fish"],
+            ingredients=[
+                RecipeIngredientRecord(ING_RAU_MUONG, "Rau muống", "vegetable", True, "core", "main", 4.0, 300.0, "1 bó nhặt sạch", 1),
+                RecipeIngredientRecord(ING_TOI, "Tỏi", "spice", True, "secondary", "sub", 2.0, 15.0, "4 tép đập dập", 2),
+                RecipeIngredientRecord(ING_DAU_AN, "Dầu ăn", "pantry", True, "spice", "sub", 1.0, 12.0, "1 muỗng canh", 3),
+                RecipeIngredientRecord(ING_MUOI, "Muối", "pantry", True, "spice", "sub", 1.0, 3.0, "1/2 muỗng cà phê", 4),
+                RecipeIngredientRecord(ING_NUOC_MAM, "Nước mắm", "pantry", True, "spice", "sub", 1.0, 8.0, "1.5 muỗng cà phê", 5),
+            ],
+            steps=[
+                RecipeStepRecord(1, "Nhặt sạch rau muống, rửa ráo và đập dập tỏi.", 5),
+                RecipeStepRecord(2, "Phi thơm nửa phần tỏi, xào rau muống trên lửa lớn 7 phút với muối, nước mắm rồi thêm phần tỏi còn lại.", 7),
+            ],
+        ),
+        RecipeRecord(
             id="22222222-2222-4222-8222-222222222299",
             slug="mon-nhap-chua-duyet",
             name_vi="Món nháp chưa duyệt",
@@ -471,3 +1149,59 @@ def build_default_seed_recipes() -> list[RecipeRecord]:
             steps=[],
         ),
     ]
+
+
+# THUẬT TOÁN: Khởi tạo cấu hình mô hình YOLO v1 active kèm 20 nhãn chuẩn (0..19) và mã băm SHA-256
+# - Ánh xạ toàn bộ 20 lớp `class_index (0..19)` sang các nguyên liệu chính (`category != 'pantry'`).
+def build_default_seed_ai_model() -> AIModelRecord:
+    from app.core.database import AILabelRecord, AIModelRecord
+
+    raw_labels: list[tuple[int, str, str, str, str]] = [
+        (0, "tomato", "11111111-1111-4111-8111-111111111101", "Cà chua", "vegetable"),
+        (1, "egg", "11111111-1111-4111-8111-111111111102", "Trứng gà", "protein"),
+        (2, "potato", "11111111-1111-4111-8111-111111111202", "Khoai tây", "vegetable"),
+        (3, "carrot", "11111111-1111-4111-8111-111111111203", "Cà rốt", "vegetable"),
+        (4, "onion", "11111111-1111-4111-8111-111111111204", "Hành tây", "vegetable"),
+        (5, "garlic", "11111111-1111-4111-8111-111111111205", "Tỏi", "spice"),
+        (6, "chili_pepper", "11111111-1111-4111-8111-111111111206", "Ớt", "spice"),
+        (7, "cucumber", "11111111-1111-4111-8111-111111111207", "Dưa leo", "vegetable"),
+        (8, "cabbage", "11111111-1111-4111-8111-111111111208", "Bắp cải", "vegetable"),
+        (9, "broccoli", "11111111-1111-4111-8111-111111111209", "Bông cải xanh", "vegetable"),
+        (10, "mushroom", "11111111-1111-4111-8111-111111111210", "Nấm", "vegetable"),
+        (11, "tofu", "11111111-1111-4111-8111-111111111103", "Đậu hũ", "protein"),
+        (12, "raw_chicken", "11111111-1111-4111-8111-111111111212", "Thịt gà sống", "protein"),
+        (13, "raw_pork", "11111111-1111-4111-8111-111111111213", "Thịt heo sống", "protein"),
+        (14, "raw_shrimp", "11111111-1111-4111-8111-111111111214", "Tôm tươi", "seafood"),
+        (15, "whole_fish", "11111111-1111-4111-8111-111111111215", "Cá nguyên con", "seafood"),
+        (16, "ginger", "11111111-1111-4111-8111-111111111216", "Gừng", "spice"),
+        (17, "scallion", "11111111-1111-4111-8111-111111111105", "Hành lá", "spice"),
+        (18, "bell_pepper", "11111111-1111-4111-8111-111111111218", "Ớt chuông", "vegetable"),
+        (19, "sweet_corn", "11111111-1111-4111-8111-111111111219", "Bắp ngọt", "vegetable"),
+    ]
+    labels_by_index = {
+        idx: AILabelRecord(
+            id=f"66666666-6666-4666-8666-6666666666{idx:02d}",
+            model_id=MODEL_YOLO_V1,
+            class_index=idx,
+            class_name=cls_name,
+            ingredient_id=ing_id,
+            ingredient_name_vi=name_vi,
+            category=cat,  # type: ignore[arg-type]
+            is_active=True,
+        )
+        for idx, cls_name, ing_id, name_vi, cat in raw_labels
+    }
+    return AIModelRecord(
+        id=MODEL_YOLO_V1,
+        version=MODEL_YOLO_V1_VERSION,
+        family="yolo11n",
+        dataset_version="food-ingredients-v1.0",
+        artifact_ref="weights/yolo/ingredients_best.pt",
+        weights_sha256=MODEL_YOLO_V1_SHA256,
+        class_count=20,
+        confidence_threshold=0.25,
+        review_threshold=0.80,
+        status="active",
+        labels_by_index=labels_by_index,
+    )
+

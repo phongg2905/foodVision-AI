@@ -10,6 +10,7 @@ from app.core.errors import AppError
 from app.schemas.reasoning import ReasoningInput
 from app.schemas.recommendations import RecommendRequest, RecommendResponse
 from app.services.mmr import rerank_with_mmr
+from app.services.personalization import prepare_user_personalization_context
 from app.services.reasoning import filter_candidate_recipes, validate_and_resolve_ingredients
 from app.services.scoring import rank_recommendations, score_recipe_unified
 
@@ -98,7 +99,11 @@ def recommend_recipes(
     )
     feasible_pairs = filter_candidate_recipes(repo=repo, params=reasoning_input)
 
-    # 4. Score each feasible recipe (`Unified MCDA C, G, T, P`) and rank (`ready` before `missing`, score DESC)
+    # 4. Pre-resolve TP 08 LR context once per request (PERF-02), then score and rank each feasible recipe
+    pers_engine = getattr(repo, "personalization_engine", None)
+    prepared_pers = prepare_user_personalization_context(
+        user_id, personalization_engine=pers_engine
+    )
     scored_items = [
         score_recipe_unified(
             recipe=rec,
@@ -108,6 +113,7 @@ def recommend_recipes(
             desired_hours=payload.desired_hours,
             favorite_ingredient_ids=effective_favorite_ids,
             ingredient_map=found_map,
+            prepared_personalization=prepared_pers,
         )
         for rec, ev in feasible_pairs
     ]

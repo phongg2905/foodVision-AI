@@ -6,19 +6,41 @@ import {
   RecipeSummary,
 } from '../../shared/api/types';
 import { listRecipes } from '../../shared/api/recipesApi';
+import { NewtasteHero } from './components/NewtasteHero';
 import { RecipeFilterBar } from './components/RecipeFilterBar';
 import { RecipeCard } from './components/RecipeCard';
 import { RecipePagination } from './components/RecipePagination';
 
 export interface RecipeCatalogViewProps {
   pageSize?: number;
+  externalSearchQuery?: string;
+  onExternalSearchQueryChange?: (query: string) => void;
+  onOpenKitchen?: () => void;
+  onApplyStarterSlugs?: (slugs: string[]) => void;
+  onSelectRecipe?: (recipeId: string) => void;
 }
 
 export const RecipeCatalogView: React.FC<RecipeCatalogViewProps> = ({
   pageSize = 8,
+  externalSearchQuery,
+  onExternalSearchQueryChange,
+  onOpenKitchen,
+  onApplyStarterSlugs,
+  onSelectRecipe,
 }) => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [internalQuery, setInternalQuery] = useState('');
+  const searchQuery =
+    externalSearchQuery !== undefined ? externalSearchQuery : internalQuery;
+
+  const setSearchQuery = (next: string) => {
+    if (onExternalSearchQueryChange) {
+      onExternalSearchQueryChange(next);
+    } else {
+      setInternalQuery(next);
+    }
+  };
+
+  const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
   const [selectedCuisine, setSelectedCuisine] = useState<CuisineCode | null>(
     null
   );
@@ -95,6 +117,13 @@ export const RecipeCatalogView: React.FC<RecipeCatalogViewProps> = ({
 
   return (
     <div className="space-y-6">
+      {onOpenKitchen && (
+        <NewtasteHero
+          onOpenKitchen={onOpenKitchen}
+          onApplyPreset={onApplyStarterSlugs}
+        />
+      )}
+
       <RecipeFilterBar
         searchQuery={searchQuery}
         onSearchQueryChange={setSearchQuery}
@@ -109,7 +138,7 @@ export const RecipeCatalogView: React.FC<RecipeCatalogViewProps> = ({
       {errorMessage && (
         <div
           role="alert"
-          className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+          className="rounded-[12px] border border-[#C65112]/40 bg-[#FFF8F0] p-4 text-sm text-[#8F2D0A]"
         >
           {errorMessage}
         </div>
@@ -122,44 +151,47 @@ export const RecipeCatalogView: React.FC<RecipeCatalogViewProps> = ({
         >
           {Array.from({ length: 4 }).map((_, index) => (
             <div key={index} className="flex flex-col items-center pt-14">
-              <div className="z-10 -mb-14 h-32 w-32 animate-pulse rounded-full bg-[#DFD3C3]" />
-              <div className="h-52 w-full animate-pulse rounded-bl-[12px] rounded-br-[30px] rounded-tl-[30px] rounded-tr-[12px] bg-white shadow-sm" />
+              <div className="z-10 -mb-14 h-32 w-32 animate-pulse rounded-full bg-[#D6C3AE]" />
+              <div className="h-52 w-full animate-pulse rounded-tl-[28px] rounded-br-[28px] rounded-tr-[6px] rounded-bl-[6px] bg-[#FFF8F0] shadow-sm" />
             </div>
           ))}
         </div>
       ) : recipes.length === 0 ? (
         <div
           data-testid="recipes-empty-state"
-          className="flex flex-col items-center justify-center rounded-2xl border border-[#DFD3C3] bg-white px-6 py-14 text-center shadow-[0_4px_20px_rgba(24,21,18,0.04)]"
+          className="mx-auto flex max-w-lg flex-col items-center justify-center py-12 text-center"
         >
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F7F2EA] text-[#E87838]">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#FFF8F0] text-[#9E3D08] shadow-sm">
             <SearchX className="h-6 w-6" aria-hidden="true" />
           </div>
-          <h3 className="mt-4 font-serif text-lg font-bold text-[#181512]">
+          <h3 className="mt-4 font-serif text-xl font-bold text-[#181512]">
             Không tìm thấy công thức phù hợp
           </h3>
-          <p className="mt-1 max-w-md text-sm text-[#6E655C]">
+          <p className="mt-1.5 max-w-md text-sm text-[#4A4037]">
             Thử tìm kiếm với từ khóa khác hoặc mở rộng bộ lọc nền ẩm thực và
             thời gian chế biến.
           </p>
           <button
             type="button"
             onClick={handleResetFilters}
-            className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#E87838] px-6 py-2.5 text-xs font-semibold text-white transition hover:bg-[#D16426]"
+            className="mt-5 inline-flex min-h-[40px] items-center gap-2 rounded-tl-[14px] rounded-br-[14px] rounded-tr-[4px] rounded-bl-[4px] bg-[#C65112] px-5 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#A8430D]"
           >
             <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
-            Xóa bộ lọc
+            <span>Xóa bộ lọc</span>
           </button>
         </div>
       ) : (
         <>
-          {/* Lưới 4 cột chuẩn "Our Special Recipes" của web-6-newtaste-recipe-website.jpg */}
           <div
             data-testid="recipe-catalog-grid"
             className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-4"
           >
             {recipes.map((recipe) => (
-              <RecipeCard key={recipe.id} recipe={recipe} />
+              <RecipeCard
+                key={recipe.id}
+                recipe={recipe}
+                onSelectRecipe={onSelectRecipe}
+              />
             ))}
           </div>
 
