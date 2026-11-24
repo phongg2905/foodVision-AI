@@ -182,6 +182,7 @@ export const App: React.FC = () => {
   const [desiredMinutes, setDesiredMinutes] = useState<number | null>(
     () => initialDraft.desiredMinutes ?? null
   );
+  const [activeScanId, setActiveScanId] = useState<string | null>(null);
   const [activeRecipeDetail, setActiveRecipeDetail] =
     useState<ActiveRecipeDetailState | null>(initialRoute.detail);
 
@@ -270,6 +271,7 @@ export const App: React.FC = () => {
 
     setSelectedIngredients(matched);
     setMainIngredientIds([matched[0].id]);
+    setActiveScanId(null);
     setActiveRecipeDetail(null);
     setActiveTab('kitchen');
     pushRouteHistory('kitchen', null);
@@ -357,6 +359,8 @@ export const App: React.FC = () => {
             onMainIngredientIdsChange={setMainIngredientIds}
             desiredMinutes={desiredMinutes}
             onDesiredMinutesChange={setDesiredMinutes}
+            scanId={activeScanId}
+            onScanIdChange={setActiveScanId}
             onTriggerRecommend={handleTriggerRecommend}
           />
 
@@ -369,6 +373,7 @@ export const App: React.FC = () => {
               onMainIngredientIdsChange={setMainIngredientIds}
               desiredMinutes={desiredMinutes}
               onDesiredMinutesChange={setDesiredMinutes}
+              scanId={activeScanId}
               onBackToKitchen={() => safeScrollToTop()}
               onApplyStarterSlugs={handleApplyStarterSlugs}
               onSelectRecipe={(recipeId, item) =>

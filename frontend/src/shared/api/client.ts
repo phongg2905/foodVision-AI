@@ -144,3 +144,65 @@ export async function apiPostWithFallback<TBody, TRes>(
     fallbackFn
   );
 }
+
+/**
+ * Thực thi POST multipart/form-data (VD: POST /api/v1/ai/detect).
+ * Bảo toàn 100% các mã lỗi nghiệp vụ có cấu trúc từ Backend (401, 413, 415, 422, 429, 503 MODEL_NOT_READY, 504 INFERENCE_TIMEOUT)
+ * để giao diện hiển thị đúng cảnh báo & lối tắt nhập tay FR-18 (TC-05, TC-06, TC-29, TC-30).
+ * Chỉ fallback sang mock khi chạy độc lập không có Backend (network error / non-JSON proxy response).
+ */
+export async function apiPostMultipartWithFallback<TRes>(
+  path: string,
+  formData: FormData,
+  fallbackFn: () => TRes | Promise<TRes>
+): Promise<TRes> {
+  if (isForceMockMode()) {
+    return await fallbackFn();
+  }
+
+  const url = `${getApiBaseUrl()}${path}`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+      },
+      body: formData,
+    });
+
+    const contentType = response.headers.get('content-type') ?? '';
+
+    if (!contentType.includes('application/json')) {
+      if (isFallbackAllowed()) {
+        return await fallbackFn();
+      }
+      throw new ApiClientError(
+        response.status,
+        'NON_JSON_RESPONSE',
+        'Phản hồi từ dịch vụ nhận diện ảnh không đúng định dạng JSON.'
+      );
+    }
+
+    if (!response.ok) {
+      const errorBody = (await response.json()) as Partial<ErrorResponse>;
+      const hasCanonicalCode = Boolean(
+        errorBody?.code || errorBody?.error?.code
+      );
+      if (!hasCanonicalCode && response.status >= 500 && isFallbackAllowed()) {
+        return await fallbackFn();
+      }
+      throw parseErrorEnvelope(response.status, errorBody);
+    }
+
+    return (await response.json()) as TRes;
+  } catch (err) {
+    if (err instanceof ApiClientError) {
+      throw err;
+    }
+    if (isFallbackAllowed()) {
+      return await fallbackFn();
+    }
+    throw err;
+  }
+}

@@ -130,6 +130,7 @@ export interface RecommendDraftPayload {
   desired_hours?: number;
   cuisine_codes?: CuisineCode[];
   max_total_minutes?: MaxDurationFilter;
+  scan_id?: string | null;
 }
 
 export type AvailabilityStatus = 'ready' | 'missing';
@@ -183,4 +184,44 @@ export interface RecommendResponse {
   items: RecommendationItem[];
   total: number;
   limit: number;
+}
+
+/* ============================================================================
+   GĐ3 - TP01, TP02, TP14: Vision AI Detection & HITL Schemas (ADR-010, ADR-013)
+   Khớp 100% với backend/app/schemas/ai.py & docs/03-api/openapi.yaml (v1.1.0)
+   ============================================================================ */
+
+export const REVIEW_CONFIDENCE_THRESHOLD = 0.8;
+export const MAX_IMAGE_UPLOAD_BYTES = 5 * 1024 * 1024; // 5 MiB (FR-03)
+
+export interface BBox {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+
+export interface Detection {
+  class_index: number;
+  class_name: string;
+  ingredient_id: string | null;
+  ingredient_name: string | null;
+  confidence: number;
+  needs_confirmation: boolean;
+  bbox: BBox;
+}
+
+export interface SuggestedIngredient {
+  ingredient_id: string;
+  name_vi: string;
+  max_confidence: number;
+}
+
+export interface DetectResponse {
+  scan_id: string | null;
+  model_version: string;
+  detections: Detection[];
+  suggested_ingredients: SuggestedIngredient[];
+  clear_ingredients: SuggestedIngredient[];
+  uncertain_ingredients: SuggestedIngredient[];
 }
