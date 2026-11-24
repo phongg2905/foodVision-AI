@@ -217,3 +217,41 @@ Xét công thức **"Đậu hũ sốt cà chua"** (`prep_minutes = 10`, `cook_mi
 
 1. **Đa dạng hóa Top-K bằng MMR (`TP 09`):** Sau khi tính điểm chuẩn $S(r)$, thuật toán Maximal Marginal Relevance tái sắp xếp trong từng bậc khả thi theo $\text{MMR}(r) = \lambda_{\text{mmr}}\frac{S(r)}{100} - (1 - \lambda_{\text{mmr}})\max_{s \in D}\text{Sim}(r, s)$ ($\lambda_{\text{mmr}} = 0.7$) để tránh trả về liên tiếp nhiều biến thể trùng phương pháp nấu. **Bất biến an toàn:** MMR tuyệt đối không bao giờ khôi phục các món đã bị `BLOCKED` do dị ứng.
 2. **Học tăng cường từ phản hồi lịch sử (`TP 08` — Tùy chọn Giai đoạn 4–5):** Bên cạnh điểm sở thích nguyên liệu tường minh $P(r)$, với người dùng có đủ lịch sử đánh giá (`recommendation_feedback`, lấy bản ghi `updated_at` mới nhất trên mỗi cặp `(user_id, recipe_id)` theo [`ADR-012`](../07-decisions/ADR-012-feedback-uniqueness-and-context.md)), hệ thống hỗ trợ kết hợp xác suất Logistic Regression $p_{u,r} = \sigma(\theta_u^T x_r)$ qua công thức trộn cold-start $S_{\text{final}}(u, r) = (1 - \lambda_{\text{pers}})S(r) + 100\,\lambda_{\text{pers}}p_{u,r}$ (mặc định $\lambda_{\text{pers}} = 0$ cho `Guest` và `User` mới) để phục vụ thực nghiệm đối chứng **4 phiên bản `A – B (Tversky) – C (3-State + MCDA C,G,T,P + MMR) – D (C + LR)`** bằng `Precision@5` và `nDCG@5` ở Thành phần 12.
+
+---
+
+## 7. Thực nghiệm Đối chứng 4 Biến thể (`A – B – C – D`) & Hiệu năng `PERF-02` (Giai đoạn 5 — `AI-04`, `DEF-07`)
+
+### 7.1. Thiết lập thực nghiệm tái lập (`Reproducible Setup`)
+
+- **Tập kịch bản kiểm chứng:** $N = 120$ kịch bản độc lập (`>= 100` theo `AI-04` / `DEF-07`), sinh tất định với `seed = 20261115` trên danh mục chuẩn 24 công thức đa dạng vùng miền (`VN`, `EU`, `US`) và phương pháp chế biến (`stir_fry`, `pan_fry`, `boil`, `braise`, `bake`), trải đều trên 4 nhóm hồ sơ người dùng (`UserPersona`) có dị ứng (`egg`, `soy`), quỹ thời gian và gu ẩm thực khác nhau.
+- **Chia tách theo thời gian nghiêm ngặt (`Temporal Split` cho Biến thể `D`):** Toàn bộ mẫu huấn luyện `recommendation_feedback` của từng người dùng nằm trong khoảng $[T_0 - 14\text{ ngày}, T_0 - 1\text{ ngày}]$ (chỉ đánh giá tập công thức chỉ số chẵn), trong khi 120 kịch bản đánh giá diễn ra tại $t_{\text{eval}} \ge T_0$ trên toàn bộ danh mục (50% công thức chưa từng xuất hiện trong lịch sử phản hồi), đảm bảo mô hình Logistic Regression (`10` đặc trưng giải thích được, $\lambda_{\text{pers,max}} = 0.12$ áp dụng khi $C(r, A) \ge 0.60$) tổng quát hóa theo đặc trưng thay vì học vẹt ID món.
+- **Thang điểm phù hợp khách quan (`rel` $\in \{0, 1, 2, 3\}$):** Gán trước khi chạy bất kỳ bộ xếp hạng nào; mọi công thức vi phạm ràng buộc cứng (dị ứng, vượt `max_total_minutes`, lệch `cuisine_codes`) hoặc $C(r, A) < 0.50$ bắt buộc nhận `rel = 0`.
+- **Lệnh tái lập một bước từ thư mục gốc `foodVision AI`:**
+  ```bash
+  python backend/scripts/run_ranker_ablation.py
+  ```
+
+### 7.2. Bảng kết quả đối chứng thực nghiệm (`Top-K = 5`, `N = 120`, `seed = 20261115`)
+
+| Biến thể | Mô tả cấu hình thuật toán | `Precision@5` ($\uparrow$) | `nDCG@5` ($\uparrow$) | `CVR@5` ($\downarrow$) | `ILD@5` ($\uparrow$) |
+| :--- | :--- | :---: | :---: | :---: | :---: |
+| **`A`** | Đếm giao nguyên liệu đồng nhất (không trọng số vai trò, không lọc cứng `TP 04`, không MMR) | `0.5200` | `0.6462` | `18.67%` | `0.7246` |
+| **`B`** | Tương đồng tập bất đối xứng Tversky ($\alpha = 0.3, \beta = 2.0$ — cơ sở `TP 06`) | `0.6450` | `0.7664` | `18.67%` | `0.6802` |
+| **`C`** | Suy diễn 3 trạng thái (`TP 04`) + Trọng số `4-2-1-0` + MCDA `(C, G, T, P)` + MMR (`TP 09`) | **`0.7817`** | `0.9162` | **`0.00%`** | `0.7066` |
+| **`D`** | Biến thể `C` + Học sở thích Logistic Regression (`TP 08`, `Temporal Split`, $\lambda_{\text{pers}} \le 0.12$) | `0.7750` | **`0.9417`** | **`0.00%`** | **`0.7149`** |
+
+**Nhận xét học thuật từ số liệu thực nghiệm:**
+1. **Hiệu quả phạt bất đối xứng (`A` $\to$ `B`):** Tversky ($\beta = 2.0 > \alpha = 0.3$) phạt nặng nguyên liệu bắt buộc bị thiếu thay vì cộng dồn gia vị phổ thông, nâng `Precision@5` từ `0.5200` lên `0.6450` (`+24.0%`) và `nDCG@5` từ `0.6462` lên `0.7664` (`+18.6%`). Tuy nhiên, nếu thiếu tầng suy diễn ràng buộc cứng `TP 04`, cả `A` và `B` đều để lọt `18.67%` kết quả vi phạm dị ứng/thời gian (`CVR@5`).
+2. **Đột phá an toàn & chất lượng của kiến trúc lai tri thức (`B` $\to$ `C`):** Tích hợp cổng suy diễn thế giới mở 3 trạng thái (`READY` / `UNKNOWN` / `MISSING_CONFIRMED` / `BLOCKED`), trọng số vai trò `4-2-1-0`, hàm mục tiêu tuyến tính `S = 100*(0.50C + 0.25G + 0.15T + 0.10P)` và tái xếp hạng đa dạng hóa MMR giúp triệt tiêu hoàn toàn vi phạm ràng buộc cứng (**`CVR@5 = 0.00%`**), đẩy `Precision@5` lên **`0.7817`** (`+50.3%` so với `A`) và khôi phục độ đa dạng nội danh sách `ILD@5` từ `0.6802` lên `0.7066`.
+3. **Giá trị gia tăng của cá nhân hóa học máy có kiểm soát (`C` $\to$ `D`):** Khi người dùng có lịch sử đánh giá ($\ge 3$ mẫu hợp lệ sau khử trùng lặp `ADR-012`), Logistic Regression đẩy các công thức khớp gu ẩm thực & phương pháp chế biến (`rel = 3`) lên đầu Top-5, nâng **`nDCG@5` đạt đỉnh `0.9417`** (`+0.0255` so với `C`) và **`ILD@5 = 0.7149`**, đồng thời bảo toàn tuyệt đối `CVR@5 = 0.00%`.
+
+### 7.3. Kết quả kiểm thử hiệu năng `PERF-02` (`520` công thức `published`, `40` truy vấn liên tiếp)
+
+Thực thi trên môi trường `Python 3.11.7` (`Windows 10`, kho `520` công thức `published` $\ge 500$ theo `NFR-02`):
+
+| Endpoint kiểm thử | Quy mô kho món | `mean` (`ms`) | `p50` (`ms`) | `p95` (`ms`) | Ngưỡng mục tiêu `p95` (`PERF-02`) | Kết luận |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| `POST /api/v1/recommendations` (`diversify=true`) | `520` | `25.35` | `22.58` | **`42.99`** | `<= 1000.0 ms` | **ĐẠT** (nhanh hơn ngưỡng 23 lần) |
+| `GET /api/v1/recipes?q=...&limit=20` | `520` | `7.49` | `6.90` | **`10.21`** | `<= 500.0 ms` | **ĐẠT** (nhanh hơn ngưỡng 48 lần) |
+
