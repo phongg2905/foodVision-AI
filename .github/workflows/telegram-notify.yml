@@ -1,0 +1,304 @@
+name: Telegram Team Notifier
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    types: [opened, reopened, closed, ready_for_review]
+  issues:
+    types: [opened, closed, reopened, assigned]
+  workflow_dispatch:
+    inputs:
+      category:
+        description: "Loại thông báo"
+        required: false
+        default: "update"
+        type: choice
+        options:
+          - update
+          - done
+          - todo
+          - alert
+      message:
+        description: "Nội dung báo cáo gửi vào nhóm Telegram (để trống để gửi tin kiểm thử)"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    name: Send Telegram Notification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Format and send Telegram message
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_THREAD_ID: ${{ secrets.TELEGRAM_THREAD_ID }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          DISPATCH_CATEGORY: ${{ inputs.category }}
+          DISPATCH_MESSAGE: ${{ inputs.message }}
+        run: |
+          python3 - <<'PY'
+          import html
+          import json
+          import os
+          import sys
+          import time
+          import urllib.error
+          import urllib.request
+
+
+          def esc(value) -> str:
+              return html.escape(str(value or ""), quote=True)
+
+
+          def short_line(text: str, limit: int = 120) -> str:
+              first = (text or "").strip().splitlines()[0] if (text or "").strip() else "(không có mô tả)"
+              return first if len(first) <= limit else first[: limit - 1] + "…"
+
+
+          def format_people(users) -> str:
+              logins = [f"@{u.get('login')}" for u in (users or []) if u.get("login")]
+              return ", ".join(esc(x) for x in logins)
+
+
+          def build_message(event_name: str, event: dict) -> str | None:
+              repo = os.environ.get("GITHUB_REPOSITORY", "")
+              actor = os.environ.get("GITHUB_ACTOR", "")
+              server = os.environ.get("GITHUB_SERVER_URL", "https://github.com")
+              run_id = os.environ.get("GITHUB_RUN_ID", "")
+              repo_url = f"{server}/{repo}"
+
+              if event_name == "push":
+                  ref = event.get("ref", "")
+                  branch = ref.removeprefix("refs/heads/") if ref.startswith("refs/heads/") else ref
+                  pusher = (event.get("pusher") or {}).get("name") or actor
+
+                  if event.get("deleted"):
+                      return (
+                          f"🗑️ <b>[Xóa nhánh]</b> <code>{esc(branch)}</code>\n"
+                          f"👤 <b>Thực hiện:</b> {esc(pusher)}\n"
+                          f"📦 <a href=\"{esc(repo_url)}\">{esc(repo)}</a>"
+                      )
+
+                  commits = event.get("commits") or []
+                  if not commits and event.get("created"):
+                      return (
+                          f"🌿 <b>[Tạo nhánh mới]</b> <code>{esc(branch)}</code>\n"
+                          f"👤 <b>Thực hiện:</b> {esc(pusher)}\n"
+                          f"📦 <a href=\"{esc(repo_url)}/tree/{esc(branch)}\">{esc(repo)}</a>"
+                      )
+
+                  if not commits:
+                      return None
+
+                  lines = [
+                      f"🚀 <b>[Push]</b> <code>{esc(branch)}</code> — <b>{len(commits)} commit</b>",
+                      f"👤 <b>Người push:</b> {esc(pusher)}",
+                      "",
+                  ]
+                  for c in commits[:5]:
+                      sha = (c.get("id") or "")[:7]
+                      url = c.get("url") or f"{repo_url}/commit/{c.get('id', '')}"
+                      msg = short_line(c.get("message", ""))
+                      author = (c.get("author") or {}).get("username") or (c.get("author") or {}).get("name") or pusher
+                      lines.append(f"• <a href=\"{esc(url)}\"><code>{esc(sha)}</code></a> {esc(msg)} <i>({esc(author)})</i>")
+
+                  if len(commits) > 5:
+                      lines.append(f"• <i>… và {len(commits) - 5} commit khác</i>")
+
+                  compare_url = event.get("compare") or f"{repo_url}/tree/{branch}"
+                  lines.append("")
+                  lines.append(f"🔗 <a href=\"{esc(compare_url)}\">Xem thay đổi trên GitHub</a>")
+                  return "\n".join(lines)
+
+              if event_name == "pull_request":
+                  action = event.get("action", "")
+                  pr = event.get("pull_request") or {}
+                  num = pr.get("number", "")
+                  title = pr.get("title", "")
+                  url = pr.get("html_url") or repo_url
+                  author = (pr.get("user") or {}).get("login") or actor
+                  head = ((pr.get("head") or {}).get("ref")) or ""
+                  base = ((pr.get("base") or {}).get("ref")) or ""
+                  merged = bool(pr.get("merged"))
+                  draft = bool(pr.get("draft"))
+
+                  if action == "opened":
+                      header = f"📝 <b>[Draft PR #{esc(num)}]</b>" if draft else f"🔀 <b>[PR Mới #{esc(num)}]</b>"
+                  elif action == "ready_for_review":
+                      header = f"👀 <b>[PR Sẵn Sàng Review #{esc(num)}]</b>"
+                  elif action == "reopened":
+                      header = f"🔄 <b>[Mở lại PR #{esc(num)}]</b>"
+                  elif action == "closed" and merged:
+                      header = f"✅ <b>[Đã Merge PR #{esc(num)}]</b>"
+                  elif action == "closed":
+                      header = f"❌ <b>[Đóng PR #{esc(num)}]</b>"
+                  else:
+                      return None
+
+                  lines = [
+                      f"{header} {esc(title)}",
+                      f"🌿 <code>{esc(head)}</code> → <code>{esc(base)}</code>",
+                  ]
+                  if action == "closed" and merged:
+                      merged_by = (pr.get("merged_by") or {}).get("login") or actor
+                      lines.append(f"👤 <b>Tác giả:</b> @{esc(author)} | <b>Merge bởi:</b> @{esc(merged_by)}")
+                  else:
+                      lines.append(f"👤 <b>Tác giả:</b> @{esc(author)}")
+
+                  reviewers = format_people(pr.get("requested_reviewers"))
+                  if reviewers and action in ("opened", "ready_for_review"):
+                      lines.append(f"🔍 <b>Reviewers:</b> {reviewers}")
+
+                  lines.append(f"🔗 <a href=\"{esc(url)}\">Mở Pull Request #{esc(num)}</a>")
+                  return "\n".join(lines)
+
+              if event_name == "issues":
+                  action = event.get("action", "")
+                  issue = event.get("issue") or {}
+                  num = issue.get("number", "")
+                  title = issue.get("title", "")
+                  url = issue.get("html_url") or repo_url
+                  assignees = format_people(issue.get("assignees"))
+                  labels = ", ".join(esc(lb.get("name")) for lb in (issue.get("labels") or []) if lb.get("name"))
+
+                  if action == "assigned":
+                      # Tránh gửi trùng ngay khi vừa tạo Issue kèm assignee
+                      if issue.get("created_at") and issue.get("created_at") == issue.get("updated_at"):
+                          return None
+                      assignee = (event.get("assignee") or {}).get("login")
+                      who = f"@{esc(assignee)}" if assignee else (assignees or "(chưa rõ)")
+                      lines = [
+                          f"👤 <b>[Giao việc - Issue #{esc(num)}]</b> {esc(title)}",
+                          f"🎯 <b>Phụ trách:</b> {who} (giao bởi @{esc(actor)})",
+                      ]
+                  elif action == "opened":
+                      lines = [
+                          f"📌 <b>[Cần làm - Issue #{esc(num)}]</b> {esc(title)}",
+                          f"✍️ <b>Tạo bởi:</b> @{esc(actor)}",
+                      ]
+                      if assignees:
+                          lines.append(f"🎯 <b>Phụ trách:</b> {assignees}")
+                  elif action == "closed":
+                      lines = [
+                          f"✅ <b>[Hoàn thành - Issue #{esc(num)}]</b> {esc(title)}",
+                          f"👤 <b>Đóng bởi:</b> @{esc(actor)}",
+                      ]
+                  elif action == "reopened":
+                      lines = [
+                          f"🔄 <b>[Mở lại - Issue #{esc(num)}]</b> {esc(title)}",
+                          f"👤 <b>Thực hiện:</b> @{esc(actor)}",
+                      ]
+                  else:
+                      return None
+
+                  if labels:
+                      lines.append(f"🏷️ <b>Nhãn:</b> {labels}")
+                  lines.append(f"🔗 <a href=\"{esc(url)}\">Xem Issue #{esc(num)}</a>")
+                  return "\n".join(lines)
+
+              if event_name == "workflow_dispatch":
+                  cat = (os.environ.get("DISPATCH_CATEGORY") or "update").strip()
+                  custom = (os.environ.get("DISPATCH_MESSAGE") or "").strip()
+                  badges = {
+                      "update": "📢 <b>[Cập nhật tiến độ]</b>",
+                      "done": "✅ <b>[Đã hoàn thành]</b>",
+                      "todo": "📌 <b>[Việc cần làm]</b>",
+                      "alert": "⚠️ <b>[Lưu ý quan trọng]</b>",
+                  }
+                  badge = badges.get(cat, badges["update"])
+                  body = custom or "Bot FoodVision AI đã kết nối thành công với GitHub Actions!"
+                  run_url = f"{repo_url}/actions/runs/{run_id}" if run_id else repo_url
+                  return (
+                      f"{badge}\n"
+                      f"{esc(body)}\n\n"
+                      f"👤 <b>Gửi bởi:</b> @{esc(actor)} | 📦 <a href=\"{esc(run_url)}\">{esc(repo)}</a>"
+                  )
+
+              return None
+
+
+          def send_telegram(token: str, chat_id: str, thread_id: str, text: str) -> None:
+              if len(text) > 3900:
+                  text = text[:3890] + "\n… <i>(đã rút gọn)</i>"
+
+              payload = {
+                  "chat_id": chat_id,
+                  "text": text,
+                  "parse_mode": "HTML",
+                  "disable_web_page_preview": True,
+              }
+              if thread_id:
+                  payload["message_thread_id"] = int(thread_id)
+
+              url = f"https://api.telegram.org/bot{token}/sendMessage"
+              data = json.dumps(payload).encode("utf-8")
+
+              for attempt in range(1, 4):
+                  req = urllib.request.Request(
+                      url,
+                      data=data,
+                      headers={"Content-Type": "application/json"},
+                      method="POST",
+                  )
+                  try:
+                      with urllib.request.urlopen(req, timeout=30) as resp:
+                          result = json.loads(resp.read().decode("utf-8"))
+                          if not result.get("ok"):
+                              raise RuntimeError(f"Telegram API error: {result}")
+                          print(f"Sent Telegram message successfully (message_id={result.get('result', {}).get('message_id')}).")
+                          return
+                  except urllib.error.HTTPError as err:
+                      raw = err.read().decode("utf-8", errors="replace")
+                      if err.code == 429 and attempt < 3:
+                          retry_after = 5
+                          try:
+                              retry_after = int(json.loads(raw).get("parameters", {}).get("retry_after", 5))
+                          except Exception:
+                              pass
+                          wait = min(max(retry_after, 1), 45)
+                          print(f"Rate limited (429), retrying after {wait}s (attempt {attempt}/3)...")
+                          time.sleep(wait)
+                          continue
+                      raise RuntimeError(f"Telegram HTTP {err.code}: {raw}") from err
+
+
+          def main() -> int:
+              token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+              chat_id = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
+              thread_id = os.environ.get("TELEGRAM_THREAD_ID", "").strip()
+
+              if not token or not chat_id:
+                  print(
+                      "ERROR: Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID in GitHub Actions Secrets.",
+                      file=sys.stderr,
+                  )
+                  return 1
+
+              event_path = os.environ.get("GITHUB_EVENT_PATH", "")
+              event_name = os.environ.get("GITHUB_EVENT_NAME", "")
+              with open(event_path, "r", encoding="utf-8") as f:
+                  event = json.load(f)
+
+              text = build_message(event_name, event)
+              if not text:
+                  print(f"Skipping notification for event={event_name} action={event.get('action')}.")
+                  return 0
+
+              send_telegram(token, chat_id, thread_id, text)
+              return 0
+
+
+          sys.exit(main())
+          PY
