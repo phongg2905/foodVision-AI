@@ -145,10 +145,10 @@ class OpenCLIPEmbeddingProvider:
 
     def encode_image(self, rgb_image: np.ndarray) -> np.ndarray:
         self._ensure_loaded()
-        pil_img = Image.fromarray(rgb_image, mode="RGB")
+        pil_img = Image.fromarray(rgb_image)
         try:
             tensor = self._preprocess(pil_img).unsqueeze(0).to(self._device)
-            with self._torch.no_grad():
+            with self._torch.inference_mode():
                 feat = self._model.encode_image(tensor)
             return np.asarray(feat[0].detach().cpu().numpy(), dtype=np.float64)
         except Exception as exc:
@@ -162,7 +162,7 @@ class OpenCLIPEmbeddingProvider:
             return np.empty((0, 0), dtype=np.float64)
         try:
             tokens = self._tokenizer(list(texts)).to(self._device)
-            with self._torch.no_grad():
+            with self._torch.inference_mode():
                 feats = self._model.encode_text(tokens)
             return np.asarray(feats.detach().cpu().numpy(), dtype=np.float64)
         except Exception as exc:

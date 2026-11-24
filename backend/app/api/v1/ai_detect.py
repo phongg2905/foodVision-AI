@@ -24,7 +24,11 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 
-from app.ai.clip_fallback import KBCandidateIngredient, get_clip_fallback_service
+from app.ai.clip_fallback import (
+    FallbackStatus,
+    KBCandidateIngredient,
+    get_clip_fallback_service,
+)
 from app.ai.image_processor import ProcessedImage, preprocess_uploaded_image
 from app.ai.yolo_detector import (
     IngredientDetectionResult,
@@ -35,7 +39,7 @@ from app.core.auth import get_optional_user_id
 from app.core.config import Settings, get_settings
 from app.core.database import AIModelRecord, CatalogRepository, get_catalog_repo
 from app.core.errors import AppError, ErrorCode
-from app.schemas.ai import DetectResponse
+from app.schemas.ai import DetectResponse, SuggestedIngredient
 
 router = APIRouter(tags=["AI"])
 
@@ -153,36 +157,91 @@ def get_clip_service() -> Any:
     return get_clip_fallback_service()
 
 
-# THUẬT TOÁN: Kích hoạt có kiểm soát nhánh phụ CLIP Cosine Similarity cho vùng ảnh khó (`TP 02`, `MATH-01`)
+def _build_kb_candidates(repo: CatalogRepository) -> list[KBCandidateIngredient]:
+    active_ings, _ = repo.list_active_ingredients(
+        exclude_pantry=True, limit=200, offset=0
+    )
+    en_by_ing_id: dict[str, str] = {}
+    active_model = repo.get_active_ai_model()
+    if active_model is not None:
+        for lbl in active_model.labels_by_index.values():
+            en_by_ing_id[str(lbl.ingredient_id)] = lbl.class_name.replace("_", " ")
+
+    candidates: list[KBCandidateIngredient] = []
+    for ing in active_ings:
+        en_name = en_by_ing_id.get(str(ing.id))
+        prompts: tuple[str, ...] = ()
+        if en_name:
+            prompts = (
+                f"a photo of fresh {en_name} food ingredient",
+                f"raw {en_name} in kitchen",
+                en_name,
+                ing.name_vi,
+            )
+        candidates.append(
+            KBCandidateIngredient(
+                ingredient_id=UUID(ing.id),
+                name_vi=ing.name_vi,
+                slug=ing.slug,
+                name_en=en_name,
+                category=ing.category,
+                is_active=ing.is_active,
+                aliases=tuple(ing.aliases),
+                prompts=prompts,
+            )
+        )
+    return candidates
+
+
+# THUẬT TOÁN: Kích hoạt có kiểm soát nhánh phụ CLIP/VLM cho vùng ảnh khó (`TP 02`, `MATH-01`)
 # - Chỉ đánh giá trên tập ứng viên nguyên liệu chính đang hoạt động (`category != 'pantry'`, `is_active = True`).
-# - Không tự ý ghi đè quyết định xác nhận của người dùng (`needs_confirmation = True`).
+# - Khi YOLO không có nguyên liệu chắc chắn (`clear_ingredients` rỗng) hoặc phát hiện rỗng, gọi 1 lượt đánh giá
+#   toàn ảnh và hợp nhất ứng viên gợi ý vào `suggested_ingredients` với độ tin cậy kẹp `< review_threshold`
+#   để luôn rơi vào `uncertain_ingredients` (`needs_confirmation = True`, bảo toàn `ADR-013`).
 def run_clip_fallback_if_enabled(
     clip_service: Any,
     processed: ProcessedImage,
     result: IngredientDetectionResult,
     repo: CatalogRepository,
+    *,
+    review_threshold: float = 0.80,
 ) -> list[Any]:
-    active_ings, _ = repo.list_active_ingredients(
-        exclude_pantry=True, limit=200, offset=0
-    )
-    candidates = [
-        KBCandidateIngredient(
-            ingredient_id=UUID(ing.id),
-            name_vi=ing.name_vi,
-            slug=ing.slug,
-            category=ing.category,
-            is_active=ing.is_active,
-            aliases=tuple(ing.aliases),
-        )
-        for ing in active_ings
-    ]
+    candidates = _build_kb_candidates(repo)
     if not candidates:
         return []
-    return list(
-        clip_service.assist_detections(
-            processed, result.detections, candidates=candidates
-        )
+
+    has_confident_yolo = any(
+        s.max_confidence >= review_threshold for s in result.suggested_ingredients
     )
+    if has_confident_yolo and not any(d.needs_confirmation for d in result.detections):
+        return []
+
+    fb_res = clip_service.suggest(
+        processed,
+        candidates=candidates,
+        requested_by_backend=True,
+        review_threshold=review_threshold,
+    )
+    if fb_res.status == FallbackStatus.SUGGESTED and fb_res.candidates:
+        merged_by_id: dict[UUID, SuggestedIngredient] = {
+            item.ingredient_id: item for item in result.suggested_ingredients
+        }
+        capped_ceiling = round(max(0.01, review_threshold - 0.01), 4)
+        for cand in fb_res.candidates:
+            safe_score = min(round(max(0.01, float(cand.similarity)), 4), capped_ceiling)
+            existing = merged_by_id.get(cand.ingredient_id)
+            if existing is None or safe_score > existing.max_confidence:
+                merged_by_id[cand.ingredient_id] = SuggestedIngredient(
+                    ingredient_id=cand.ingredient_id,
+                    name_vi=cand.name_vi,
+                    max_confidence=safe_score,
+                )
+        result.suggested_ingredients = sorted(
+            merged_by_id.values(),
+            key=lambda s: (-s.max_confidence, s.name_vi, str(s.ingredient_id)),
+        )
+        result.requires_user_confirmation = True
+    return [fb_res]
 
 
 # THUẬT TOÁN: Quy trình Nhận diện Ảnh Đa Nguyên liệu, Xoay EXIF & Phân tách HITL (`FR-03`, `FR-04`, `ADR-013`)
@@ -272,7 +331,14 @@ async def detect_ingredients(
                 ) from exc
 
         if cfg.enable_clip_fallback and clip_service is not None:
-            run_clip_fallback_if_enabled(clip_service, processed, result, repo)
+            await asyncio.to_thread(
+                run_clip_fallback_if_enabled,
+                clip_service,
+                processed,
+                result,
+                repo,
+                review_threshold=active_model.review_threshold,
+            )
 
         scan_uuid: UUID | None = None
         if save_history and user_id is not None:
@@ -305,6 +371,62 @@ async def detect_ingredients(
             scan_id=scan_uuid,
             review_threshold=active_model.review_threshold,
         )
+    finally:
+        del processed
+        del raw_bytes
+        await file.close()
+
+
+# THUẬT TOÁN: Endpoint Kiểm thử Trực tiếp Nhánh phụ Đa phương thức CLIP/VLM (`TP 02` Diagnostics)
+# - Cho phép tải ảnh lên từ Swagger UI `/docs` để kiểm chứng độc lập `CLIPFallbackService`
+#   (Ollama Cloud / OpenAI-compatible VLM / OpenCLIP) trên tập đóng nguyên liệu KB (`category != 'pantry'`).
+@router.post("/ai/vlm-suggest")
+async def suggest_ingredients_vlm(
+    file: Annotated[UploadFile, File(...)],
+    top_k: Annotated[int, Form()] = 5,
+    min_similarity: Annotated[float, Form()] = 0.25,
+    cfg: Annotated[Settings, Depends(get_settings)] = None,  # type: ignore[assignment]
+    repo: Annotated[CatalogRepository, Depends(get_catalog_repo)] = None,  # type: ignore[assignment]
+    clip_service: Annotated[Any, Depends(get_clip_service)] = None,
+) -> dict[str, Any]:
+    """Run standalone CLIP/VLM closed-set KB candidate assessment on an uploaded image."""
+    raw_bytes = b""
+    processed: ProcessedImage | None = None
+    try:
+        raw_bytes = await file.read(cfg.max_upload_bytes + 1)
+        processed = preprocess_uploaded_image(
+            raw_bytes,
+            max_upload_bytes=cfg.max_upload_bytes,
+            max_image_pixels=cfg.max_image_pixels,
+        )
+        if (
+            processed.width < cfg.min_image_dimension
+            or processed.height < cfg.min_image_dimension
+        ):
+            raise AppError(
+                status_code=422,
+                code=ErrorCode.INVALID_IMAGE,
+                message=(
+                    f"Kích thước ảnh sau khi xoay EXIF ({processed.width}x{processed.height}) "
+                    f"nhỏ hơn ngưỡng tối thiểu {cfg.min_image_dimension}x{cfg.min_image_dimension}px."
+                ),
+                details={
+                    "reason": "image_dimensions_too_small",
+                    "width": processed.width,
+                    "height": processed.height,
+                },
+            )
+
+        candidates = _build_kb_candidates(repo)
+        fb_result = await asyncio.to_thread(
+            clip_service.suggest,
+            processed,
+            candidates=candidates,
+            requested_by_backend=True,
+            top_k=max(1, min(20, int(top_k))),
+            min_similarity=float(min_similarity),
+        )
+        return fb_result.to_dict()
     finally:
         del processed
         del raw_bytes

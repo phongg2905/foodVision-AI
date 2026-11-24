@@ -144,6 +144,7 @@ def evaluate_detections_nfr11(
     pred_by_image: list[tuple[np.ndarray, np.ndarray, np.ndarray]],
     confusion_iou_threshold: float = 0.50,
     review_threshold: float = 0.80,
+    op_conf_threshold: float = 0.0,
 ) -> DetectionEvalSummary:
     """Evaluate predictions over frozen test split without post-hoc class dropping (`NFR-11`)."""
     if not locked_eval_classes:
@@ -185,16 +186,20 @@ def evaluate_detections_nfr11(
         p_conf = pr_conf[pr_mask]
         p_box = pr_boxes[pr_mask]
 
-        if is_ood and p_cls.size > 0:
-            ood_fp_images += 1
-
+        op_thr = np.float32(op_conf_threshold)
         if p_conf.size > 0:
             order = np.argsort(-p_conf, kind="mergesort")
             p_cls = p_cls[order]
             p_conf = p_conf[order]
             p_box = p_box[order]
-            total_preds += int(p_conf.size)
-            uncertain_preds += int(np.count_nonzero(p_conf < np.float32(review_threshold)))
+            op_sel = p_conf >= op_thr
+            op_conf = p_conf[op_sel]
+            if is_ood and op_conf.size > 0:
+                ood_fp_images += 1
+            total_preds += int(op_conf.size)
+            uncertain_preds += int(np.count_nonzero(op_conf < np.float32(review_threshold)))
+        else:
+            op_sel = np.zeros(0, dtype=bool)
 
         for cid in g_cls.tolist():
             gt_counts_per_cid[int(cid)] += 1
@@ -206,7 +211,7 @@ def evaluate_detections_nfr11(
                 conf_mat[cid_to_pos[int(cid)], bg_pos] += 1
             continue
         if g_cls.size == 0:
-            for cid in p_cls.tolist():
+            for cid in p_cls[op_sel].tolist():
                 conf_mat[bg_pos, cid_to_pos[int(cid)]] += 1
             for cid in sorted_locked_ids:
                 c_sel = p_cls == cid
@@ -240,9 +245,9 @@ def evaluate_detections_nfr11(
                 pred_tp_records[cid].append(tp_matrix[c_sel])
                 pred_conf_records[cid].append(p_conf[c_sel])
 
-        # 2. Cross-class Confusion Matrix at IoU = 0.50 (rows = ground truth, cols = prediction)
+        # 2. Cross-class Confusion Matrix at IoU = 0.50 (rows = ground truth, cols = prediction >= op_conf_threshold)
         gt_matched_cm = np.zeros(g_cls.size, dtype=bool)
-        for p_idx in range(p_cls.size):
+        for p_idx in np.flatnonzero(op_sel).tolist():
             avail_iou = np.where(~gt_matched_cm, iou_mat[p_idx], np.float32(-1.0))
             best_g = int(np.argmax(avail_iou))
             p_pos = cid_to_pos[int(p_cls[p_idx])]
@@ -257,13 +262,15 @@ def evaluate_detections_nfr11(
             conf_mat[cid_to_pos[int(g_cls[g_idx])], bg_pos] += 1
 
     per_class_results: list[ClassEvalMetrics] = []
+    op_thr_f = np.float32(op_conf_threshold)
     for cid in sorted_locked_ids:
         n_gt = gt_counts_per_cid[cid]
         if pred_conf_records[cid]:
             all_tp = np.concatenate(pred_tp_records[cid], axis=0)
             all_cf = np.concatenate(pred_conf_records[cid], axis=0)
-            n_pr = int(all_cf.size)
-            tp50 = int(np.sum(all_tp[:, 0]))
+            op_mask = all_cf >= op_thr_f
+            n_pr = int(np.count_nonzero(op_mask))
+            tp50 = int(np.sum(all_tp[op_mask, 0]))
             fp50 = n_pr - tp50
             fn50 = max(0, n_gt - tp50)
             prec = tp50 / float(n_pr) if n_pr > 0 else 0.0
