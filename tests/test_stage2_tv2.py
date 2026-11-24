@@ -332,10 +332,13 @@ def test_post_recommendations_endpoint_contract_and_filters(client: TestClient) 
     )
     assert res.status_code == 200
     data = res.json()
-    assert data["total"] == 4
+    # CONFLICT-RESOLVED: Synced seed_fixtures with all 20 seed.sql recipes (added EU/US 2205..2208);
+    # both READY tomato-egg recipes remain strictly ranked ahead of all missing recipes.
+    assert data["total"] >= 4
     items = data["items"]
     availabilities = [it["availability"] for it in items]
-    assert availabilities == ["ready", "ready", "missing", "missing"]
+    assert availabilities[:2] == ["ready", "ready"]
+    assert all(av == "missing" for av in availabilities[2:])
 
     by_id = {it["recipe"]["id"]: it for it in items}
     assert by_id[REC_TRUNG_XAO_CA_CHUA]["score"] == 95.0
@@ -388,7 +391,9 @@ def test_post_recommendations_endpoint_contract_and_filters(client: TestClient) 
     assert all(it["availability"] == "ready" for it in ready_items)
     assert [it["recipe"]["id"] for it in ready_items] == [REC_CANH_CA_CHUA_TRUNG]
 
-    # TC-13: Hard filter `cuisine_codes=["US"]` excludes VN recipes (`items=[]`)
+    # TC-13: Hard filter `cuisine_codes=["US"]` strictly excludes VN/EU recipes
+    # CONFLICT-RESOLVED: Synced US Burger (2207, contains tomato) into seed_fixtures; verify only US
+    # recipes can pass `cuisine_codes=["US"]` and tofu-only US query returns `total == 0`.
     res_cuisine_hard = client.post(
         "/api/v1/recommendations",
         json={
@@ -397,7 +402,18 @@ def test_post_recommendations_endpoint_contract_and_filters(client: TestClient) 
         },
     )
     assert res_cuisine_hard.status_code == 200
-    assert res_cuisine_hard.json()["total"] == 0
+    us_items = res_cuisine_hard.json()["items"]
+    assert all(it["recipe"]["cuisine_code"] == "US" for it in us_items)
+
+    res_cuisine_empty = client.post(
+        "/api/v1/recommendations",
+        json={
+            "ingredient_ids": [ING_DAU_HU],
+            "cuisine_codes": ["US"],
+        },
+    )
+    assert res_cuisine_empty.status_code == 200
+    assert res_cuisine_empty.json()["total"] == 0
 
     # TC-35: Personalization fields (`main_ingredient_ids`, `desired_hours`, `favorite_ingredient_ids`) -> S = 83.75
     res_pers = client.post(
@@ -412,8 +428,12 @@ def test_post_recommendations_endpoint_contract_and_filters(client: TestClient) 
     )
     assert res_pers.status_code == 200
     pers_items = res_pers.json()["items"]
-    # Egg recipes are hard-blocked by allergic_ingredient_ids=[ING_TRUNG_GA], leaving only Đậu hũ sốt cà chua!
-    assert len(pers_items) == 1
+    # Egg recipes are hard-blocked by allergic_ingredient_ids=[ING_TRUNG_GA]; Đậu hũ sốt cà chua ranks #1 (READY, S=83.75)
+    assert len(pers_items) >= 1
+    pers_ids = {it["recipe"]["id"] for it in pers_items}
+    assert REC_CANH_CA_CHUA_TRUNG not in pers_ids
+    assert REC_THIT_KHO_TRUNG not in pers_ids
+    assert REC_TRUNG_XAO_CA_CHUA not in pers_ids
     assert pers_items[0]["recipe"]["id"] == REC_DAU_HU_SOT_CA
     assert pers_items[0]["score"] == 83.75
     assert pers_items[0]["score_contributions"] == {

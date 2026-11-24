@@ -22,7 +22,7 @@ from .constants import (
 
 # CONFLICT-RESOLVED: Unify legacy CandidateRecipeContext / RankedCandidateRecord / MMRCandidate DTOs
 # with v1.1.0 RecipeRecord (`app.core.database`) and RecipeReasoningStatus (`app.schemas.reasoning`) per ADR-013.
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class CandidateRecipeContext:
     """Recipe context for feature extraction and post-hard-filter ranking."""
 
@@ -53,7 +53,7 @@ class CandidateRecipeContext:
         return self.required_main_ids | self.required_pantry_ids
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class RankedCandidateRecord:
     """Compact ranked candidate tuple for deterministic tie-breaking."""
 
@@ -64,7 +64,7 @@ class RankedCandidateRecord:
     total_minutes: int
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class MMRCandidate:
     """MMR candidate adapter bridging personalized score into TP 09 diversification."""
 
@@ -76,7 +76,7 @@ class MMRCandidate:
     is_blocked: bool = False
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class RankedRecipeCandidate:
     """Component 07 MCDA candidate record enriched with Component 08 personalization."""
 
@@ -110,7 +110,7 @@ class RankedRecipeCandidate:
             lambda_pers=round(float(lambda_pers), 4),
         )
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class PersonalizationFeedback:
     """Validated user interaction payload; sensitive fields are redacted from `repr`."""
 
@@ -126,7 +126,7 @@ class PersonalizationFeedback:
     note: str | None = field(default=None, repr=False)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class UserModelState:
     """Isolated per-user Logistic Regression parameter state (`theta_user`); PII-redacted `repr`."""
 
@@ -167,7 +167,7 @@ class UserModelState:
         object.__setattr__(self, "recipe_feedback_timestamps", copied_ts)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ModelStateUpdate:
     """Audit-safe outcome of a personalization model update, skip, reset, or toggle."""
 
@@ -182,7 +182,7 @@ class ModelStateUpdate:
     schema_version: str
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class PersonalizationResult:
     """Standard Component 08 output contract (`personalization_probability`, `model_state_update`, `model_version`)."""
 
@@ -196,7 +196,7 @@ class PersonalizationResult:
     blended_score: float | None = None
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class PostFilterCandidateInput:
     """Candidate passed from hard-constraint filtering (`Component 04`) to Terminal 14 ranking."""
 
@@ -211,7 +211,7 @@ class PostFilterCandidateInput:
     step_count: int = 1
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class PersonalizedRankedCandidate:
     """Post-hard-filter personalized score container ready for Terminal 14 & MMR."""
 

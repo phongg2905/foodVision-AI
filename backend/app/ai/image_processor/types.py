@@ -11,23 +11,20 @@ Aligned with `docs/04-ai-model/ai-model-design.md` (Sections 2 & 3) and `ADR-010
 
 from __future__ import annotations
 
-import math
 from collections.abc import Mapping
 from dataclasses import dataclass
-from io import BytesIO
 from typing import Any, TypeAlias
 
 import numpy as np
-from PIL import Image, ImageOps, UnidentifiedImageError
+from PIL import Image
 
 from app.core.config import get_settings
-from app.core.errors import AppError, ErrorCode
 from app.schemas.ai import BBox
 
 ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ProcessedImage:
     """Clean upright RGB image array stripped of all EXIF/GPS metadata."""
 
@@ -37,7 +34,7 @@ class ProcessedImage:
     mime_type: str
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class CroppedRegion:
     """Validated RGB region prepared for multimodal CLIP/VLM candidate ranking."""
 

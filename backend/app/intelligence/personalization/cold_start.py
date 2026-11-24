@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-import math
 from uuid import UUID
 import numpy as np
 from .config import (
     PersonalizationConfig,
-    _ensure_uuid,
     _validate_1d_numeric_array,
 )
 from .constants import (

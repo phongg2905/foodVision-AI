@@ -17,8 +17,10 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
+import logging
 from pathlib import Path
 import threading
+import time
 from typing import Annotated, Any
 from uuid import UUID
 
@@ -35,13 +37,14 @@ from app.ai.yolo_detector import (
     LabelMappingEntry,
     YOLODetector,
 )
-from app.core.auth import get_optional_user_id
+from app.core.auth import get_optional_user_id, get_required_admin_id
 from app.core.config import Settings, get_settings
 from app.core.database import AIModelRecord, CatalogRepository, get_catalog_repo
 from app.core.errors import AppError, ErrorCode
 from app.schemas.ai import DetectResponse, SuggestedIngredient
 
 router = APIRouter(tags=["AI"])
+logger = logging.getLogger(__name__)
 
 _inference_semaphore: asyncio.Semaphore | None = None
 _semaphore_limit: int | None = None
@@ -205,6 +208,7 @@ def run_clip_fallback_if_enabled(
     repo: CatalogRepository,
     *,
     review_threshold: float = 0.80,
+    cancel_event: threading.Event | None = None,
 ) -> list[Any]:
     candidates = _build_kb_candidates(repo)
     if not candidates:
@@ -222,6 +226,8 @@ def run_clip_fallback_if_enabled(
         requested_by_backend=True,
         review_threshold=review_threshold,
     )
+    if cancel_event is not None and cancel_event.is_set():
+        return []
     if fb_res.status == FallbackStatus.SUGGESTED and fb_res.candidates:
         merged_by_id: dict[UUID, SuggestedIngredient] = {
             item.ingredient_id: item for item in result.suggested_ingredients
@@ -317,6 +323,7 @@ async def detect_ingredients(
                 return detector.detect(rgb_array)
 
         async with semaphore:
+            infer_started = time.perf_counter()
             try:
                 result = await asyncio.wait_for(
                     asyncio.to_thread(_sync_infer),
@@ -330,15 +337,43 @@ async def detect_ingredients(
                     details={"timeout_seconds": cfg.inference_timeout_seconds},
                 ) from exc
 
-        if cfg.enable_clip_fallback and clip_service is not None:
-            await asyncio.to_thread(
-                run_clip_fallback_if_enabled,
-                clip_service,
-                processed,
-                result,
-                repo,
-                review_threshold=active_model.review_threshold,
-            )
+            if cfg.enable_clip_fallback and clip_service is not None:
+                elapsed = time.perf_counter() - infer_started
+                remaining_timeout = cfg.inference_timeout_seconds - elapsed
+                if remaining_timeout <= 0.05:
+                    logger.warning(
+                        "Skipping CLIP/VLM fallback because remaining SLA budget is exhausted "
+                        "(elapsed=%.3fs, limit=%.3fs).",
+                        elapsed,
+                        cfg.inference_timeout_seconds,
+                    )
+                else:
+                    cancel_event = threading.Event()
+                    try:
+                        await asyncio.wait_for(
+                            asyncio.to_thread(
+                                run_clip_fallback_if_enabled,
+                                clip_service,
+                                processed,
+                                result,
+                                repo,
+                                review_threshold=active_model.review_threshold,
+                                cancel_event=cancel_event,
+                            ),
+                            timeout=remaining_timeout,
+                        )
+                    except TimeoutError:
+                        cancel_event.set()
+                        logger.warning(
+                            "CLIP/VLM fallback timed out after %.3fs; degrading gracefully to YOLO detections.",
+                            remaining_timeout,
+                        )
+                    except Exception as fb_exc:
+                        cancel_event.set()
+                        logger.warning(
+                            "CLIP/VLM fallback failed (%s); degrading gracefully to YOLO detections.",
+                            type(fb_exc).__name__,
+                        )
 
         scan_uuid: UUID | None = None
         if save_history and user_id is not None:
@@ -377,19 +412,37 @@ async def detect_ingredients(
         await file.close()
 
 
+# THUẬT TOÁN: Cổng Bảo vệ Môi trường Non-Production cho Endpoint Chẩn đoán VLM (`SEC-01`, `SEC-03`, `OPS-03`)
+# Cơ chế: Chặn cứng truy cập vào `/ai/vlm-suggest` trên production nhằm bảo vệ hạn mức khóa API VLM.
+# Độ phức tạp: Time O(1), Space O(1).
+def _require_non_production_vlm(
+    cfg: Annotated[Settings, Depends(get_settings)],
+) -> None:
+    if cfg.app_env.strip().lower() == "production":
+        raise AppError(
+            status_code=403,
+            code="FORBIDDEN",
+            message="Endpoint chẩn đoán vlm-suggest bị vô hiệu hóa trong môi trường production.",
+            details={"app_env": "production"},
+        )
+
+
 # THUẬT TOÁN: Endpoint Kiểm thử Trực tiếp Nhánh phụ Đa phương thức CLIP/VLM (`TP 02` Diagnostics)
-# - Cho phép tải ảnh lên từ Swagger UI `/docs` để kiểm chứng độc lập `CLIPFallbackService`
-#   (Ollama Cloud / OpenAI-compatible VLM / OpenCLIP) trên tập đóng nguyên liệu KB (`category != 'pantry'`).
-@router.post("/ai/vlm-suggest")
+# - Chỉ cho phép Quản trị viên (Admin) sử dụng trong môi trường phi-production (`SEC-01`, `SEC-03`).
+# - Bọc toàn bộ suy luận đa phương thức trong `asyncio.Semaphore` + `asyncio.wait_for` (`504 INFERENCE_TIMEOUT`)
+#   nhằm bảo vệ SLA `PERF-01`/`OPS-03` và giải phóng bộ đệm ảnh trong khối `finally`.
+# - Độ phức tạp: Time O(W * H + C_kb) cho giải mã ảnh & đánh giá ứng viên KB; Space O(W * H).
+@router.post("/ai/vlm-suggest", dependencies=[Depends(_require_non_production_vlm)])
 async def suggest_ingredients_vlm(
     file: Annotated[UploadFile, File(...)],
     top_k: Annotated[int, Form()] = 5,
     min_similarity: Annotated[float, Form()] = 0.25,
+    _admin_id: Annotated[str, Depends(get_required_admin_id)] = None,  # type: ignore[assignment]
     cfg: Annotated[Settings, Depends(get_settings)] = None,  # type: ignore[assignment]
     repo: Annotated[CatalogRepository, Depends(get_catalog_repo)] = None,  # type: ignore[assignment]
     clip_service: Annotated[Any, Depends(get_clip_service)] = None,
 ) -> dict[str, Any]:
-    """Run standalone CLIP/VLM closed-set KB candidate assessment on an uploaded image."""
+    """Run standalone Admin-only CLIP/VLM closed-set KB candidate assessment on an uploaded image."""
     raw_bytes = b""
     processed: ProcessedImage | None = None
     try:
@@ -418,14 +471,27 @@ async def suggest_ingredients_vlm(
             )
 
         candidates = _build_kb_candidates(repo)
-        fb_result = await asyncio.to_thread(
-            clip_service.suggest,
-            processed,
-            candidates=candidates,
-            requested_by_backend=True,
-            top_k=max(1, min(20, int(top_k))),
-            min_similarity=float(min_similarity),
-        )
+        semaphore = _get_inference_semaphore(cfg.max_concurrent_inferences)
+        async with semaphore:
+            try:
+                fb_result = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        clip_service.suggest,
+                        processed,
+                        candidates=candidates,
+                        requested_by_backend=True,
+                        top_k=max(1, min(20, int(top_k))),
+                        min_similarity=float(min_similarity),
+                    ),
+                    timeout=cfg.inference_timeout_seconds,
+                )
+            except TimeoutError as exc:
+                raise AppError(
+                    status_code=504,
+                    code=ErrorCode.INFERENCE_TIMEOUT,
+                    message="Quá thời gian chờ suy luận từ dịch vụ CLIP/VLM.",
+                    details={"timeout_seconds": cfg.inference_timeout_seconds},
+                ) from exc
         return fb_result.to_dict()
     finally:
         del processed

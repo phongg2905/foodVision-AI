@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
+from contextlib import nullcontext
 import logging
 from pathlib import Path
 import pickle
@@ -107,6 +108,7 @@ class UltralyticsYOLOBackend:
     def __init__(self, artifact_path: Path | None) -> None:
         self._artifact_path = artifact_path
         self._model: Any = None
+        self._torch: Any = None
         self._pt_adapter: _PyTorchCheckpointAdapter | None = None
         self._load_lock = threading.Lock()
         self._predict_lock = threading.Lock()
@@ -180,6 +182,7 @@ class UltralyticsYOLOBackend:
                     )
 
             try:
+                import torch
                 from ultralytics import YOLO
             except ImportError as exc:
                 raise DetectorConfigurationError(
@@ -189,6 +192,7 @@ class UltralyticsYOLOBackend:
 
             try:
                 self._model = YOLO(str(self._artifact_path))
+                self._torch = torch
             except Exception as exc:
                 raise DetectorConfigurationError(
                     "Không thể khởi tạo mô hình nhận diện AI từ tệp trọng số đã cấu hình.",
@@ -222,11 +226,17 @@ class UltralyticsYOLOBackend:
                 if rgb_image.ndim == 3 and rgb_image.shape[2] == 3
                 else rgb_image
             )
-            results = self._model.predict(
-                source=bgr_image,
-                conf=confidence_threshold,
-                verbose=False,
+            inference_ctx = (
+                self._torch.inference_mode()
+                if self._torch is not None
+                else nullcontext()
             )
+            with inference_ctx:
+                results = self._model.predict(
+                    source=bgr_image,
+                    conf=confidence_threshold,
+                    verbose=False,
+                )
 
         if not results or results[0].boxes is None:
             return []

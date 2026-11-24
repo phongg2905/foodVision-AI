@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from .cosine_provider import CLIPCosineProvider
-from .openclip_provider import OpenCLIPEmbeddingProvider
-
 from collections.abc import Sequence
 import os
 import threading
@@ -15,29 +12,26 @@ import numpy as np
 from app.ai.image_processor import BBoxInput, ImageInput
 from .candidates import (
     _resolve_min_similarity,
-    _resolve_review_threshold,
-    _resolve_top_k,
-    compute_cosine_similarities,
     compute_cosine_similarity,
     filter_kb_candidates,
     should_trigger_fallback,
 )
-from .vlm_provider import OpenAICompatibleVLMProvider
+from .cosine_provider import CLIPCosineProvider
 from .models import (
     CandidateEmbedding,
     ConfirmationReason,
-    FallbackModelError,
     FallbackProvider,
     FallbackResult,
     FallbackStatus,
-    FallbackTriggerReason,
     InitialYOLOPrediction,
     KBCandidateIngredient,
     ProviderAssessment,
     RankedCandidate,
     ScoreMetricType,
 )
+from .openclip_provider import OpenCLIPEmbeddingProvider
 from .service import CLIPFallbackService
+from .vlm_provider import OpenAICompatibleVLMProvider
 
 class CLIPFallbackRanker:
     """Precomputed-embedding candidate ranker preserved for direct vector workflows."""

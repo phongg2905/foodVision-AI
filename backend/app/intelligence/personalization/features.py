@@ -22,7 +22,7 @@ from .constants import (
 )
 from .models import CandidateRecipeContext
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class RecipeFeatureInput:
     """Structured domain attributes for deterministic recipe feature encoding."""
 
@@ -38,7 +38,7 @@ class RecipeFeatureInput:
     step_count: int = 1
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class RecipeFeatureVector:
     """Immutable, ordered, schema-versioned feature vector `x_r`."""
 

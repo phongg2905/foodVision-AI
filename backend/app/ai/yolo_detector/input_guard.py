@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 
 from app.ai.image_processor import ProcessedImage, preprocess_uploaded_image
-from app.core.errors import AppError, ErrorCode
+from app.core.errors import AppError
 from .config import DetectorConfig
 from .exceptions import (
     DetectorConfigurationError,

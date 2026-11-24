@@ -68,8 +68,14 @@ def is_db_configured() -> bool:
 _VALID_SCAN_PROVENANCES = frozenset({"ai", "clip_assisted", "manual", "corrected"})
 
 
-def _resolve_cover_image_url(path: str | None) -> str | None:
-    """Normalize a relative Supabase Storage object path or external URL into a full cover_image_url."""
+# CONFLICT-RESOLVED: Unify TV1 `resolve_cover_image_url` and PR #25 `_resolve_cover_image_url`
+# into one canonical helper with backward-compatible `_resolve_cover_image_url` alias.
+# THUẬT TOÁN: Chuẩn hóa Đường dẫn Ảnh bìa Công thức sang URL Công khai (Cover Image URL Resolver)
+# Cơ chế: Giữ nguyên URL tuyệt đối `http://`/`https://` hoặc đường dẫn gốc `/`; chuyển đổi đường dẫn
+#         tương đối trên Supabase Storage (`bucket/path.jpg`) thành `<SUPABASE_URL>/storage/v1/object/public/<path>`.
+# Độ phức tạp: Time O(1), Space O(1).
+def resolve_cover_image_url(path: str | None) -> str | None:
+    """Resolve absolute image URLs or relative Supabase Storage object paths to public URLs."""
     if not path:
         return None
     cleaned = path.strip()
@@ -77,8 +83,13 @@ def _resolve_cover_image_url(path: str | None) -> str | None:
         return None
     if cleaned.startswith(("http://", "https://", "/")):
         return cleaned
-    base = settings.supabase_url.rstrip("/")
-    return f"{base}/storage/v1/object/public/{cleaned.lstrip('/')}"
+    base_url = settings.supabase_url.strip().rstrip("/")
+    if not base_url:
+        return cleaned
+    return f"{base_url}/storage/v1/object/public/{cleaned.lstrip('/')}"
+
+
+_resolve_cover_image_url = resolve_cover_image_url
 
 
 @dataclass
@@ -990,7 +1001,7 @@ class PostgresCatalogRepository(PostgresAdminMixin, PostgresUserMixin):
                 cuisine_code=r["cuisine_code"],
                 prep_minutes=int(r["prep_minutes"]),
                 cook_minutes=int(r["cook_minutes"]),
-                cover_image_url=_resolve_cover_image_url(r.get("cover_image_path")),
+                cover_image_url=resolve_cover_image_url(r.get("cover_image_path")),
             )
             for r in rows
         ]
@@ -1105,7 +1116,7 @@ class PostgresCatalogRepository(PostgresAdminMixin, PostgresUserMixin):
             prep_minutes=int(r["prep_minutes"]),
             cook_minutes=int(r["cook_minutes"]),
             quality_score=float(r.get("quality_score") or 1.0),
-            cover_image_url=_resolve_cover_image_url(r.get("cover_image_path")),
+            cover_image_url=resolve_cover_image_url(r.get("cover_image_path")),
             source_name=r.get("source_name"),
             source_url=r.get("source_url"),
             content_license=r.get("content_license"),
@@ -1252,7 +1263,7 @@ class PostgresCatalogRepository(PostgresAdminMixin, PostgresUserMixin):
                 prep_minutes=int(r["prep_minutes"]),
                 cook_minutes=int(r["cook_minutes"]),
                 quality_score=float(r.get("quality_score") or 1.0),
-                cover_image_url=_resolve_cover_image_url(r.get("cover_image_path")),
+                cover_image_url=resolve_cover_image_url(r.get("cover_image_path")),
                 source_name=r.get("source_name"),
                 source_url=r.get("source_url"),
                 content_license=r.get("content_license"),

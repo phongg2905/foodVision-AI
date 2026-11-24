@@ -90,6 +90,8 @@ def read_dataset_manifest_meta() -> tuple[str, int]:
 
 # THUẬT TOÁN: Xuất tệp đặc tả quản trị mô hình yolo_model_artifact.json chứa đầy đủ
 # siêu dữ liệu huấn luyện, khóa lớp NFR-11, ánh xạ 20 nhãn chuẩn và mã băm SHA-256.
+# Mặc định chỉ lưu một bản trọng số chuẩn duy nhất tại `weights_path` (tránh nhân bản 19 MB).
+# Độ phức tạp: Time O(S_file) băm luồng SHA-256, Space O(1).
 def write_yolo_artifact_manifest(
     *,
     weights_path: Path,
@@ -98,8 +100,9 @@ def write_yolo_artifact_manifest(
     training_metrics: dict[str, Any],
     training_backend: str,
     sync_repo_seeds: bool = True,
+    mirror_legacy_path: bool = False,
 ) -> dict[str, Any]:
-    if weights_path.resolve() != LEGACY_WEIGHTS_PATH.resolve():
+    if mirror_legacy_path and weights_path.resolve() != LEGACY_WEIGHTS_PATH.resolve():
         LEGACY_WEIGHTS_PATH.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(weights_path, LEGACY_WEIGHTS_PATH)
 
