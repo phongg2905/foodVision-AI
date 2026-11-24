@@ -15,12 +15,21 @@ from typing import Any, Protocol
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 from uuid import uuid4
 
+from app.core.admin_repo import (
+    DEFAULT_ADMIN_ID,
+    InMemoryAdminMixin,
+    PostgresAdminMixin,
+)
 from app.core.config import settings
 from app.core.seed_fixtures import (
     MODEL_YOLO_V1_SHA256,
     build_default_seed_ai_model,
     build_default_seed_ingredients,
     build_default_seed_recipes,
+)
+from app.core.user_repo import (
+    InMemoryUserMixin,
+    PostgresUserMixin,
 )
 from app.schemas.catalog import Ingredient, IngredientCategory, NutritionTag
 from app.schemas.recipes import (
@@ -30,6 +39,13 @@ from app.schemas.recipes import (
     RecipeIngredientView,
     RecipeStepView,
     RecipeSummary,
+)
+from app.schemas.user_features import Detection
+from app.services.nutrition import (
+    IngredientNutrient100g,
+    PortionIngredientInput,
+    estimate_usda_nutrition,
+    scale_portion_grams,
 )
 from app.services.vietnamese_search import norm_vi, rank_ingredient_candidates
 
@@ -84,12 +100,23 @@ class RecipeIngredientRecord:
     display_quantity: str | None = None
     sort_order: int = 0
 
-    def to_view(self) -> RecipeIngredientView:
+    def to_view(
+        self,
+        base_servings: int = 2,
+        target_servings: int | None = None,
+    ) -> RecipeIngredientView:
+        eff_servings = base_servings if target_servings is None else target_servings
+        scaled_grams = (
+            scale_portion_grams(self.grams, base_servings, eff_servings)
+            if self.grams is not None and self.grams > 0 and base_servings > 0 and eff_servings > 0
+            else None
+        )
         return RecipeIngredientView(
             ingredient_id=self.ingredient_id,
             name_vi=self.name_vi,
             category=self.category,
             is_required=self.is_required,
+            grams=scaled_grams,
             display_quantity=self.display_quantity,
             sort_order=self.sort_order,
         )
@@ -156,6 +183,8 @@ class RecipeRecord:
     steps: list[RecipeStepRecord] = field(default_factory=list)
     nutrition_evidence: list[NutritionEvidenceRecord] = field(default_factory=list)
     allergen_ids: list[str] = field(default_factory=list)
+    author_id: str = DEFAULT_ADMIN_ID
+    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     @property
     def total_minutes(self) -> int:
@@ -177,7 +206,28 @@ class RecipeRecord:
             cover_image_url=self.cover_image_url,
         )
 
-    def to_detail(self) -> RecipeDetail:
+    def to_detail(
+        self,
+        servings: int | None = None,
+        nutrient_map: dict[str, IngredientNutrient100g] | None = None,
+    ) -> RecipeDetail:
+        base_srv = max(1, int(self.base_servings or 2))
+        eff_srv = base_srv if servings is None else int(servings)
+        usda_est = None
+        if nutrient_map is not None:
+            usda_est = estimate_usda_nutrition(
+                ingredients=[
+                    PortionIngredientInput(
+                        ingredient_id=ing.ingredient_id,
+                        is_required=ing.is_required,
+                        base_grams=ing.grams,
+                    )
+                    for ing in self.ingredients
+                ],
+                nutrient_map=nutrient_map,
+                base_servings=base_srv,
+                target_servings=eff_srv,
+            )
         return RecipeDetail(
             id=self.id,
             slug=self.slug,
@@ -189,9 +239,15 @@ class RecipeRecord:
             cover_image_url=self.cover_image_url,
             description=self.description,
             country_code=self.country_code,
-            ingredients=[ing.to_view() for ing in self.ingredients],
+            base_servings=base_srv,
+            servings=eff_srv,
+            ingredients=[
+                ing.to_view(base_servings=base_srv, target_servings=eff_srv)
+                for ing in self.ingredients
+            ],
             steps=[st.to_view() for st in self.steps],
             nutrition_evidence=[ne.to_view() for ne in self.nutrition_evidence],
+            usda_nutrition=usda_est,
             source_name=self.source_name,
             source_url=self.source_url,
             content_license=self.content_license,
@@ -204,7 +260,8 @@ class ScanSessionRecord:
     user_id: str
     model_id: str
     ingredient_ids: list[str] = field(default_factory=list)
-    detections: list[dict[str, Any]] = field(default_factory=list)
+    detections: list[Any] = field(default_factory=list)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 @dataclass
@@ -299,8 +356,16 @@ class CatalogRepository(Protocol):
         ingredient_ids: list[str],
     ) -> bool: ...
 
+    def get_profile_role(self, user_id: str) -> str | None: ...
 
-class InMemoryCatalogRepository:
+    def list_active_nutrition_tags(self) -> list[NutritionTag]: ...
+
+    def get_ingredient_nutrients_by_ids(
+        self, ingredient_ids: list[str]
+    ) -> dict[str, IngredientNutrient100g]: ...
+
+
+class InMemoryCatalogRepository(InMemoryAdminMixin, InMemoryUserMixin):
     """In-memory store pre-populated with canonical baseline fixtures for testing & dev fallback."""
 
     def __init__(
@@ -322,6 +387,8 @@ class InMemoryCatalogRepository:
         self._user_preferences: dict[str, UserPreferencesRecord] = {
             up.user_id: up for up in (user_preferences or [])
         }
+        self._init_admin_state()
+        self._init_user_state()
         self._active_ai_model: AIModelRecord | None = (
             build_default_seed_ai_model()
             if active_ai_model is ...
@@ -650,7 +717,7 @@ class _PostgresPersonalizationRepository:
         )
 
 
-class PostgresCatalogRepository:
+class PostgresCatalogRepository(PostgresAdminMixin, PostgresUserMixin):
     """PostgreSQL repository executing queries against Supabase PostgreSQL >= 15."""
 
     def __init__(self, dsn: str) -> None:

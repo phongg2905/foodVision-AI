@@ -5,8 +5,8 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# CONFLICT-RESOLVED: Combine PR #12 preferences router with Stage 3 ai_detect router.
 from app.api.v1 import (
+    admin,
     ai_detect,
     health,
     ingredients,
@@ -14,6 +14,7 @@ from app.api.v1 import (
     preferences,
     recipes,
     recommendations,
+    user_features,
 )
 from app.core.config import settings
 from app.core.errors import register_exception_handlers
@@ -47,8 +48,7 @@ def create_app() -> FastAPI:
     # Standardized Error Handlers (`docs/03-api/api-conventions.md`)
     register_exception_handlers(app)
 
-    # CONFLICT-RESOLVED: Register Stage 1..3 routers including ai_detect and PR #12 preferences.
-    # API v1 Routers (Stage 1, Stage 2 & Stage 3: TP 01..07, TP 09, TP 13, TP 14, ADR-013)
+    # API v1 Routers (Stage 1..5: TP 01..14, ADR-013)
     api_v1_prefix = "/api/v1"
     app.include_router(health.router, prefix=api_v1_prefix)
     app.include_router(ingredients.router, prefix=api_v1_prefix)
@@ -57,6 +57,8 @@ def create_app() -> FastAPI:
     app.include_router(recommendations.router, prefix=api_v1_prefix)
     app.include_router(preferences.router, prefix=api_v1_prefix)
     app.include_router(personalization.router, prefix=api_v1_prefix)
+    app.include_router(user_features.router, prefix=api_v1_prefix)
+    app.include_router(admin.router, prefix=api_v1_prefix)
 
     return app
 

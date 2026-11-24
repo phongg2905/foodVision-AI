@@ -1,4 +1,4 @@
-"""Recipe Catalog Endpoints (`GET /api/v1/recipes`, `GET /api/v1/recipes/{recipe_id}`)."""
+"""Recipe Catalog & Two-Tier USDA Nutrition Endpoints (`GET /api/v1/recipes`, `GET /api/v1/recipes/{recipe_id}`)."""
 
 from __future__ import annotations
 
@@ -39,9 +39,15 @@ def list_recipes(
 @router.get("/recipes/{recipe_id}", response_model=RecipeDetail)
 def get_recipe_detail(
     recipe_id: UUID = Path(..., description="UUID công thức món ăn"),
+    servings: int | None = Query(
+        default=None,
+        ge=1,
+        le=50,
+        description="Số khẩu phần muốn quy đổi (mặc định giữ khẩu phần gốc base_servings của món)",
+    ),
     repo: CatalogRepository = Depends(get_catalog_repo),
 ) -> RecipeDetail:
-    """Retrieve full details of a published recipe (`TC-03`)."""
+    """Retrieve full details of a published recipe with Tier-1 tags & Tier-2 USDA estimate (`TC-03`, `TC-15`, `DEF-09`)."""
     rec = repo.get_published_recipe_by_id(str(recipe_id))
     if rec is None:
         raise AppError(
@@ -50,4 +56,6 @@ def get_recipe_detail(
             message="Không tìm thấy công thức món ăn hoặc công thức chưa được xuất bản.",
             details={"recipe_id": str(recipe_id)},
         )
-    return rec.to_detail()
+    ing_ids = [ri.ingredient_id for ri in rec.ingredients]
+    nutrient_map = repo.get_ingredient_nutrients_by_ids(ing_ids)
+    return rec.to_detail(servings=servings, nutrient_map=nutrient_map)

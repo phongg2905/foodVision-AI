@@ -190,6 +190,14 @@ paths:
         schema: &id002
           type: string
           format: uuid
+      - name: servings
+        in: query
+        required: false
+        description: Số khẩu phần cần quy đổi (mặc định giữ khẩu phần gốc base_servings của món).
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
       operationId: getRecipe
   /ai/detect:
     post:
@@ -1624,6 +1632,41 @@ components:
       - tag
       - source_urls
       - note
+    USDANutritionEstimate:
+      type: object
+      properties:
+        kcal:
+          type: number
+          minimum: 0
+        protein_g:
+          type: number
+          minimum: 0
+        fat_g:
+          type: number
+          minimum: 0
+        carb_g:
+          type: number
+          minimum: 0
+        source_urls:
+          type: array
+          items:
+            type: string
+            format: uri
+        scaling_factor:
+          type: number
+          exclusiveMinimum: 0
+        scaling_warning_vi:
+          anyOf:
+          - *id001
+          - type: 'null'
+      additionalProperties: false
+      required:
+      - kcal
+      - protein_g
+      - fat_g
+      - carb_g
+      - source_urls
+      - scaling_factor
     RecipeIngredientView:
       type: object
       properties:
@@ -1631,6 +1674,11 @@ components:
         name_vi: *id001
         category: *id010
         is_required: *id003
+        grams:
+          anyOf:
+          - type: number
+            exclusiveMinimum: 0
+          - type: 'null'
         display_quantity:
           anyOf:
           - *id001
@@ -1719,6 +1767,14 @@ components:
           anyOf:
           - *id001
           - type: 'null'
+        base_servings:
+          type: integer
+          minimum: 1
+          default: 2
+        servings:
+          type: integer
+          minimum: 1
+          default: 2
         ingredients:
           type: array
           items:
@@ -1731,6 +1787,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/NutritionEvidence'
+        usda_nutrition:
+          anyOf:
+          - $ref: '#/components/schemas/USDANutritionEstimate'
+          - type: 'null'
+        nutrition_disclaimer_vi: *id001
         source_name:
           anyOf:
           - *id001
@@ -2419,6 +2480,11 @@ components:
           type: number
           minimum: 0
           maximum: 1
+        class_count:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 20
       additionalProperties: false
       required:
       - version
