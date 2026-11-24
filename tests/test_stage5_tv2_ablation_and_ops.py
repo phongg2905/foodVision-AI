@@ -26,7 +26,7 @@ from app.core.config import settings
 from app.core.database import InMemoryCatalogRepository, get_catalog_repo
 from app.main import create_app
 from app.services.evaluation_ablation import evaluate_all_variants
-from scripts.run_ranker_ablation import run_perf02_benchmark
+from backend.scripts.run_ranker_ablation import run_perf02_benchmark
 
 
 def test_ranker_ablation_4_variants_ai04_def07() -> None:
@@ -151,7 +151,7 @@ def test_crosstest_tv1_ai_detect_security_and_contract_tc05_tc06_tc43() -> None:
     # TC-05: Unsupported MIME (`text/plain`) -> 415 UNSUPPORTED_IMAGE_TYPE
     r_mime = client.post(
         "/api/v1/ai/detect",
-        files={"image": ("notes.txt", b"not-an-image", "text/plain")},
+        files={"file": ("notes.txt", b"not-an-image", "text/plain")},
     )
     assert r_mime.status_code == 415
     assert r_mime.json()["code"] == "UNSUPPORTED_IMAGE_TYPE"
@@ -159,16 +159,16 @@ def test_crosstest_tv1_ai_detect_security_and_contract_tc05_tc06_tc43() -> None:
     # TC-06: Corrupt image bytes claiming image/jpeg -> 422 INVALID_IMAGE
     r_corrupt = client.post(
         "/api/v1/ai/detect",
-        files={"image": ("broken.jpg", b"\xff\xd8\xff\x00corrupt-stream", "image/jpeg")},
+        files={"file": ("broken.jpg", b"\xff\xd8\xff\x00corrupt-stream", "image/jpeg")},
     )
     assert r_corrupt.status_code == 422
     assert r_corrupt.json()["code"] == "INVALID_IMAGE"
 
-    # TC-43 / BR-09: Payload > 10 MB -> 413 IMAGE_TOO_LARGE
+    # TC-05 / BR-09: Payload > 5 MiB -> 413 IMAGE_TOO_LARGE
     oversized = b"\x00" * (10 * 1024 * 1024 + 1024)
     r_large = client.post(
         "/api/v1/ai/detect",
-        files={"image": ("huge.jpg", oversized, "image/jpeg")},
+        files={"file": ("huge.jpg", oversized, "image/jpeg")},
     )
     assert r_large.status_code == 413
     assert r_large.json()["code"] == "IMAGE_TOO_LARGE"
