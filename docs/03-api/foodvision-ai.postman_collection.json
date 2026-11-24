@@ -924,7 +924,7 @@
         },
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"version\": \"food-yolo-v1\",\n  \"family\": \"YOLO detect (candidate)\",\n  \"dataset_version\": \"foodvision-dataset-v1\",\n  \"artifact_ref\": \"private://model/weights\",\n  \"confidence_threshold\": 0.25\n}",
+          "raw": "{\n  \"version\": \"food-yolo-v1\",\n  \"family\": \"YOLO detect (candidate)\",\n  \"dataset_version\": \"foodvision-dataset-v1\",\n  \"artifact_ref\": \"private://model/weights\",\n  \"confidence_threshold\": 0.25,\n  \"class_count\": 20\n}",
           "options": {
             "raw": {
               "language": "json"

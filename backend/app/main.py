@@ -5,7 +5,15 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1 import health, ingredients, preferences, recipes, recommendations
+from app.api.v1 import (
+    admin,
+    health,
+    ingredients,
+    preferences,
+    recipes,
+    recommendations,
+    user_features,
+)
 from app.core.config import settings
 from app.core.errors import register_exception_handlers
 from app.core.middleware import RequestContextMiddleware
@@ -45,6 +53,8 @@ def create_app() -> FastAPI:
     app.include_router(recipes.router, prefix=api_v1_prefix)
     app.include_router(recommendations.router, prefix=api_v1_prefix)
     app.include_router(preferences.router, prefix=api_v1_prefix)
+    app.include_router(user_features.router, prefix=api_v1_prefix)
+    app.include_router(admin.router, prefix=api_v1_prefix)
 
     return app
 
