@@ -33,13 +33,44 @@ def _now_utc() -> datetime:
 
 
 def build_default_seed_nutrients() -> dict[str, IngredientNutrient100g]:
-    """Canonical USDA FoodData Central per-100g fixtures matching `supabase/seed.sql` (`MATH-07`)."""
+    """Canonical USDA FoodData Central per-100g fixtures matching all 41 rows in `supabase/seed.sql` (`MATH-07`, `A4`)."""
     rows = [
         ("11111111-1111-4111-8111-111111111101", 18.00, 0.88, 0.20, 3.89, "https://fdc.nal.usda.gov/food-details/170457/nutrients"),  # Cà chua
         ("11111111-1111-4111-8111-111111111102", 144.00, 12.56, 9.51, 0.72, "https://fdc.nal.usda.gov/food-details/171287/nutrients"),  # Trứng gà
+        ("11111111-1111-4111-8111-111111111202", 77.00, 2.05, 0.09, 17.49, "https://fdc.nal.usda.gov/food-details/170026/nutrients"),  # Khoai tây
+        ("11111111-1111-4111-8111-111111111203", 41.00, 0.93, 0.24, 9.58, "https://fdc.nal.usda.gov/food-details/170393/nutrients"),  # Cà rốt
+        ("11111111-1111-4111-8111-111111111204", 40.00, 1.10, 0.10, 9.34, "https://fdc.nal.usda.gov/food-details/170000/nutrients"),  # Hành tây
+        ("11111111-1111-4111-8111-111111111205", 149.00, 6.36, 0.50, 33.06, "https://fdc.nal.usda.gov/food-details/169230/nutrients"),  # Tỏi
+        ("11111111-1111-4111-8111-111111111206", 40.00, 1.87, 0.44, 8.81, "https://fdc.nal.usda.gov/food-details/170106/nutrients"),  # Ớt
+        ("11111111-1111-4111-8111-111111111207", 15.00, 0.65, 0.11, 3.63, "https://fdc.nal.usda.gov/food-details/168409/nutrients"),  # Dưa leo
+        ("11111111-1111-4111-8111-111111111208", 25.00, 1.28, 0.10, 5.80, "https://fdc.nal.usda.gov/food-details/169975/nutrients"),  # Bắp cải
+        ("11111111-1111-4111-8111-111111111209", 34.00, 2.82, 0.37, 6.64, "https://fdc.nal.usda.gov/food-details/170379/nutrients"),  # Bông cải xanh
+        ("11111111-1111-4111-8111-111111111210", 22.00, 3.09, 0.34, 3.26, "https://fdc.nal.usda.gov/food-details/169251/nutrients"),  # Nấm
         ("11111111-1111-4111-8111-111111111103", 76.00, 8.08, 4.78, 1.87, "https://fdc.nal.usda.gov/food-details/172475/nutrients"),  # Đậu hũ
-        ("11111111-1111-4111-8111-111111111104", 518.00, 9.34, 53.01, 0.00, "https://fdc.nal.usda.gov/food-details/167814/nutrients"),  # Thịt ba chỉ
+        ("11111111-1111-4111-8111-111111111212", 120.00, 22.50, 2.62, 0.00, "https://fdc.nal.usda.gov/food-details/171077/nutrients"),  # Thịt gà sống
+        ("11111111-1111-4111-8111-111111111213", 143.00, 21.40, 5.66, 0.00, "https://fdc.nal.usda.gov/food-details/167820/nutrients"),  # Thịt heo sống
+        ("11111111-1111-4111-8111-111111111214", 85.00, 20.10, 0.51, 0.00, "https://fdc.nal.usda.gov/food-details/175180/nutrients"),  # Tôm
+        ("11111111-1111-4111-8111-111111111215", 96.00, 20.08, 1.70, 0.00, "https://fdc.nal.usda.gov/food-details/175159/nutrients"),  # Cá nguyên con
+        ("11111111-1111-4111-8111-111111111216", 80.00, 1.82, 0.75, 17.77, "https://fdc.nal.usda.gov/food-details/169231/nutrients"),  # Gừng
         ("11111111-1111-4111-8111-111111111105", 32.00, 1.83, 0.19, 7.34, "https://fdc.nal.usda.gov/food-details/170005/nutrients"),  # Hành lá
+        ("11111111-1111-4111-8111-111111111218", 26.00, 0.99, 0.30, 6.03, "https://fdc.nal.usda.gov/food-details/170427/nutrients"),  # Ớt chuông
+        ("11111111-1111-4111-8111-111111111219", 86.00, 3.27, 1.35, 18.70, "https://fdc.nal.usda.gov/food-details/169998/nutrients"),  # Bắp ngọt
+        ("11111111-1111-4111-8111-111111111104", 518.00, 9.34, 53.01, 0.00, "https://fdc.nal.usda.gov/food-details/167814/nutrients"),  # Thịt ba chỉ
+        ("11111111-1111-4111-8111-111111111301", 217.00, 19.00, 15.00, 0.00, "https://fdc.nal.usda.gov/food-details/174032/nutrients"),  # Thịt bò
+        ("11111111-1111-4111-8111-111111111302", 371.00, 13.04, 1.51, 74.67, "https://fdc.nal.usda.gov/food-details/169736/nutrients"),  # Mì Ý
+        ("11111111-1111-4111-8111-111111111303", 717.00, 0.85, 81.11, 0.06, "https://fdc.nal.usda.gov/food-details/173430/nutrients"),  # Bơ lạt
+        ("11111111-1111-4111-8111-111111111304", 403.00, 24.90, 33.14, 1.28, "https://fdc.nal.usda.gov/food-details/173414/nutrients"),  # Phô mai Cheddar
+        ("11111111-1111-4111-8111-111111111305", 279.00, 9.40, 4.30, 50.20, "https://fdc.nal.usda.gov/food-details/172684/nutrients"),  # Vỏ bánh Burger
+        ("11111111-1111-4111-8111-111111111306", 15.00, 1.36, 0.15, 2.87, "https://fdc.nal.usda.gov/food-details/169248/nutrients"),  # Xà lách
+        ("11111111-1111-4111-8111-111111111307", 99.00, 1.82, 0.49, 25.31, "https://fdc.nal.usda.gov/food-details/168573/nutrients"),  # Sả tươi
+        ("11111111-1111-4111-8111-111111111308", 312.00, 9.68, 3.25, 67.14, "https://fdc.nal.usda.gov/food-details/172231/nutrients"),  # Nghệ tươi
+        ("11111111-1111-4111-8111-111111111309", 30.00, 0.70, 0.20, 10.54, "https://fdc.nal.usda.gov/food-details/172232/nutrients"),  # Lá chanh
+        ("11111111-1111-4111-8111-111111111310", 72.00, 2.50, 0.10, 16.80, "https://fdc.nal.usda.gov/food-details/170499/nutrients"),  # Hành tím
+        ("11111111-1111-4111-8111-111111111311", 30.00, 0.70, 0.20, 10.54, "https://fdc.nal.usda.gov/food-details/168155/nutrients"),  # Chanh tươi
+        ("11111111-1111-4111-8111-111111111312", 19.00, 2.60, 0.20, 3.14, "https://fdc.nal.usda.gov/food-details/169297/nutrients"),  # Rau muống
+        ("11111111-1111-4111-8111-111111111313", 13.00, 1.50, 0.20, 2.18, "https://fdc.nal.usda.gov/food-details/170390/nutrients"),  # Cải thìa
+        ("11111111-1111-4111-8111-111111111314", 26.00, 1.00, 0.10, 6.50, "https://fdc.nal.usda.gov/food-details/168448/nutrients"),  # Bí đỏ
+        ("11111111-1111-4111-8111-111111111315", 92.00, 15.58, 1.38, 3.08, "https://fdc.nal.usda.gov/food-details/174222/nutrients"),  # Mực tươi
         ("11111111-1111-4111-8111-111111111106", 0.00, 0.00, 0.00, 0.00, "https://fdc.nal.usda.gov/food-details/173468/nutrients"),  # Muối
         ("11111111-1111-4111-8111-111111111107", 35.00, 5.07, 0.01, 3.64, "https://fdc.nal.usda.gov/food-details/172235/nutrients"),  # Nước mắm
         ("11111111-1111-4111-8111-111111111108", 884.00, 0.00, 100.00, 0.00, "https://fdc.nal.usda.gov/food-details/171028/nutrients"),  # Dầu ăn
@@ -235,7 +266,64 @@ class InMemoryUserMixin:
         mdl = getattr(self, "_ai_models", {}).get(model_id)
         if mdl is not None:
             return str(mdl.version)
-        return "yolov8-seed-v1"
+        active_mdl = getattr(self, "_active_ai_model", None)
+        if active_mdl is not None and getattr(active_mdl, "id", None) == model_id:
+            return str(active_mdl.version)
+        return "yolo11n-foodvision-v1.0"
+
+    def _hydrate_in_memory_detection(
+        self, raw_det: Any, model_id: str
+    ) -> Detection | None:
+        """Hydrate a flat SQL dict row (`ai_label_id, confidence, x1..y2`) or Detection into a validated Detection (`A1`)."""
+        if isinstance(raw_det, Detection):
+            return raw_det
+        if not isinstance(raw_det, dict):
+            return None
+        if "bbox" in raw_det and "class_index" in raw_det:
+            return Detection(**raw_det)
+
+        lbl_id = str(raw_det.get("ai_label_id") or "")
+        lbl: Any = getattr(self, "_ai_labels", {}).get(lbl_id)
+        if lbl is None:
+            active_mdl = getattr(self, "_active_ai_model", None)
+            if active_mdl is not None:
+                for cand_lbl in getattr(active_mdl, "labels_by_index", {}).values():
+                    if getattr(cand_lbl, "id", None) == lbl_id:
+                        lbl = cand_lbl
+                        break
+        if lbl is None:
+            return None
+
+        try:
+            x1 = round(float(raw_det["x1"]), 4)
+            y1 = round(float(raw_det["y1"]), 4)
+            x2 = round(float(raw_det["x2"]), 4)
+            y2 = round(float(raw_det["y2"]), 4)
+            conf = round(float(raw_det["confidence"]), 4)
+        except (KeyError, TypeError, ValueError):
+            return None
+
+        if not (0.0 <= x1 < x2 <= 1.0 and 0.0 <= y1 < y2 <= 1.0):
+            return None
+
+        ing_id = getattr(lbl, "ingredient_id", None)
+        ing = self._ingredients.get(ing_id) if ing_id else None
+        ing_name = (
+            ing.name_vi
+            if ing is not None
+            else getattr(lbl, "ingredient_name_vi", None)
+        )
+        needs_conf = bool(raw_det.get("needs_confirmation", conf < 0.80))
+
+        return Detection(
+            class_index=int(lbl.class_index),
+            class_name=str(lbl.class_name),
+            ingredient_id=ing_id,
+            ingredient_name=ing_name,
+            confidence=conf,
+            needs_confirmation=needs_conf,
+            bbox=BBox(x1=x1, y1=y1, x2=x2, y2=y2),
+        )
 
     def create_scan_session_with_detections(
         self,
@@ -296,11 +384,17 @@ class InMemoryUserMixin:
                 message="Không tìm thấy phiên quét hoặc phiên quét không thuộc chủ sở hữu.",
                 details={"scan_id": scan_id},
             )
+        hydrated_dets = [
+            det
+            for raw in ss.detections
+            if (det := self._hydrate_in_memory_detection(raw, ss.model_id)) is not None
+        ]
+        hydrated_dets.sort(key=lambda d: (-d.confidence, d.class_index))
         return ScanSessionDetail(
             id=ss.id,
             model_version=self._resolve_model_version(ss.model_id),
             created_at=ss.created_at,
-            detections=list(ss.detections),
+            detections=hydrated_dets,
             confirmed_ingredient_ids=list(ss.ingredient_ids),
         )
 

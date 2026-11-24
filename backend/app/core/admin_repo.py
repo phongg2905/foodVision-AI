@@ -76,7 +76,7 @@ class IngredientTagLinkRecord:
 
 
 @dataclass
-class AIModelRecord:
+class AdminAIModelRecord:
     id: str
     version: str
     family: str
@@ -99,7 +99,7 @@ class AIModelRecord:
 
 
 @dataclass
-class AILabelRecord:
+class AdminAILabelRecord:
     id: str
     model_id: str
     class_index: int
@@ -114,6 +114,11 @@ class AILabelRecord:
             class_name=self.class_name,
             ingredient_id=self.ingredient_id,
         )
+
+
+# Backward-compatible aliases within admin_repo module
+AIModelRecord = AdminAIModelRecord
+AILabelRecord = AdminAILabelRecord
 
 
 @dataclass
@@ -243,8 +248,8 @@ class InMemoryAdminMixin:
     _profiles: dict[str, str]
     _nutrition_tags: dict[str, NutritionTagRecord]
     _ingredient_nutrition_tags: dict[str, list[IngredientTagLinkRecord]]
-    _ai_models: dict[str, AIModelRecord]
-    _ai_labels: dict[str, AILabelRecord]
+    _ai_models: dict[str, AdminAIModelRecord]
+    _ai_labels: dict[str, AdminAILabelRecord]
     _audit_logs: list[AuditLogRecord]
 
     def _init_admin_state(self) -> None:
@@ -263,6 +268,32 @@ class InMemoryAdminMixin:
         self._ai_models = {}
         self._ai_labels = {}
         self._audit_logs = []
+
+    def _sync_active_ai_model_to_admin(self, active_model: Any) -> None:
+        """Populate in-memory Admin `_ai_models` and `_ai_labels` from a runtime `AIModelRecord` (`A5`)."""
+        if active_model is None:
+            return
+        for other in self._ai_models.values():
+            if other.id != active_model.id and other.status == "active" and active_model.status == "active":
+                other.status = "archived"
+        self._ai_models[active_model.id] = AdminAIModelRecord(
+            id=active_model.id,
+            version=active_model.version,
+            family=active_model.family,
+            dataset_version=active_model.dataset_version,
+            artifact_ref=active_model.artifact_ref,
+            status=active_model.status,
+            confidence_threshold=float(active_model.confidence_threshold),
+            class_count=int(active_model.class_count),
+        )
+        for lbl in getattr(active_model, "labels_by_index", {}).values():
+            self._ai_labels[lbl.id] = AdminAILabelRecord(
+                id=lbl.id,
+                model_id=lbl.model_id,
+                class_index=int(lbl.class_index),
+                class_name=lbl.class_name,
+                ingredient_id=lbl.ingredient_id,
+            )
 
     def set_profile_role(self, user_id: str, role: str) -> None:
         self._profiles[user_id] = role
@@ -456,6 +487,46 @@ class InMemoryAdminMixin:
             rec.description = payload.description
         if payload.is_active is not None:
             rec.is_active = payload.is_active
+
+        # Synchronize cached RecipeRecord.nutrition_evidence across all in-memory recipes (`A5`)
+        from app.core.database import NutritionEvidenceRecord
+
+        for recipe in self._recipes.values():
+            updated_ev: list[NutritionEvidenceRecord] = []
+            for ne in recipe.nutrition_evidence:
+                if ne.tag_id == tag_id:
+                    updated_ev.append(
+                        NutritionEvidenceRecord(
+                            tag_id=rec.id,
+                            tag_code=rec.code,
+                            tag_name_vi=rec.name_vi,
+                            tag_description=rec.description,
+                            tag_is_active=rec.is_active,
+                            source_urls=list(ne.source_urls),
+                            note=ne.note,
+                        )
+                    )
+                else:
+                    updated_ev.append(ne)
+            recipe.nutrition_evidence = [e for e in updated_ev if e.tag_is_active]
+            if any(
+                any(lnk.nutrition_tag_id == tag_id for lnk in self._ingredient_nutrition_tags.get(ri.ingredient_id, []))
+                for ri in recipe.ingredients
+            ):
+                dyn = self._compute_recipe_nutrition_evidence(recipe)
+                recipe.nutrition_evidence = [
+                    NutritionEvidenceRecord(
+                        tag_id=ev.tag.id,
+                        tag_code=ev.tag.code,
+                        tag_name_vi=ev.tag.name_vi,
+                        tag_description=ev.tag.description,
+                        tag_is_active=ev.tag.is_active,
+                        source_urls=list(ev.source_urls),
+                        note=ev.note,
+                    )
+                    for ev in dyn
+                ]
+
         out = rec.to_schema()
         self._record_audit(
             actor_id=actor_id,
@@ -979,8 +1050,46 @@ class InMemoryAdminMixin:
                 if other.id != model_id and other.status == "active":
                     other.status = "archived"
             model.status = "active"
+
+            # Synchronize runtime `_active_ai_model` consumed by `/api/v1/ai/detect` (`A5`)
+            from app.core.database import (
+                AILabelRecord as RuntimeAILabelRecord,
+                AIModelRecord as RuntimeAIModelRecord,
+            )
+
+            runtime_labels: dict[int, RuntimeAILabelRecord] = {}
+            for idx, lbl in sorted(labels_by_idx.items()):
+                ing = self._ingredients[lbl.ingredient_id]
+                runtime_labels[idx] = RuntimeAILabelRecord(
+                    id=lbl.id,
+                    model_id=lbl.model_id,
+                    class_index=lbl.class_index,
+                    class_name=lbl.class_name,
+                    ingredient_id=lbl.ingredient_id,
+                    ingredient_name_vi=ing.name_vi,
+                    category=ing.category,
+                    is_active=ing.is_active,
+                )
+            setattr(
+                self,
+                "_active_ai_model",
+                RuntimeAIModelRecord(
+                    id=model.id,
+                    version=model.version,
+                    family=model.family,
+                    dataset_version=model.dataset_version,
+                    artifact_ref=model.artifact_ref,
+                    class_count=model.class_count,
+                    confidence_threshold=model.confidence_threshold,
+                    review_threshold=0.80,
+                    status="active",
+                    labels_by_index=runtime_labels,
+                ),
+            )
         else:
             model.status = target_status
+            if not any(m.status == "active" for m in self._ai_models.values()):
+                setattr(self, "_active_ai_model", None)
 
         out = model.to_schema()
         self._record_audit(

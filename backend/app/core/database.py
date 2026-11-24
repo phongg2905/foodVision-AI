@@ -40,7 +40,6 @@ from app.schemas.recipes import (
     RecipeStepView,
     RecipeSummary,
 )
-from app.schemas.user_features import Detection
 from app.services.nutrition import (
     IngredientNutrient100g,
     PortionIngredientInput,
@@ -66,9 +65,14 @@ def is_db_configured() -> bool:
     return bool(url and "[YOUR-PASSWORD]" not in url)
 
 
+_VALID_SCAN_PROVENANCES = frozenset({"ai", "clip_assisted", "manual", "corrected"})
+
+
+# CONFLICT-RESOLVED: Unify TV1 `resolve_cover_image_url` and PR #25 `_resolve_cover_image_url`
+# into one canonical helper with backward-compatible `_resolve_cover_image_url` alias.
 # THUẬT TOÁN: Chuẩn hóa Đường dẫn Ảnh bìa Công thức sang URL Công khai (Cover Image URL Resolver)
-# Cơ chế: Giữ nguyên URL tuyệt đối `http://`/`https://`; chuyển đổi đường dẫn tương đối trên
-#         Supabase Storage (`bucket/path.jpg`) thành URL công khai `<SUPABASE_URL>/storage/v1/object/public/<path>`.
+# Cơ chế: Giữ nguyên URL tuyệt đối `http://`/`https://` hoặc đường dẫn gốc `/`; chuyển đổi đường dẫn
+#         tương đối trên Supabase Storage (`bucket/path.jpg`) thành `<SUPABASE_URL>/storage/v1/object/public/<path>`.
 # Độ phức tạp: Time O(1), Space O(1).
 def resolve_cover_image_url(path: str | None) -> str | None:
     """Resolve absolute image URLs or relative Supabase Storage object paths to public URLs."""
@@ -77,12 +81,15 @@ def resolve_cover_image_url(path: str | None) -> str | None:
     cleaned = path.strip()
     if not cleaned:
         return None
-    if cleaned.startswith(("http://", "https://")):
+    if cleaned.startswith(("http://", "https://", "/")):
         return cleaned
     base_url = settings.supabase_url.strip().rstrip("/")
     if not base_url:
         return cleaned
     return f"{base_url}/storage/v1/object/public/{cleaned.lstrip('/')}"
+
+
+_resolve_cover_image_url = resolve_cover_image_url
 
 
 @dataclass
@@ -413,6 +420,8 @@ class InMemoryCatalogRepository(InMemoryAdminMixin, InMemoryUserMixin):
             if active_ai_model is ...
             else active_ai_model
         )
+        if self._active_ai_model is not None:
+            self._sync_active_ai_model_to_admin(self._active_ai_model)
         self._personalization_engine: Any = None
 
     @property
@@ -456,6 +465,12 @@ class InMemoryCatalogRepository(InMemoryAdminMixin, InMemoryUserMixin):
 
     def set_active_ai_model(self, model: AIModelRecord | None) -> None:
         self._active_ai_model = model
+        if model is None:
+            for m in self._ai_models.values():
+                if m.status == "active":
+                    m.status = "archived"
+        else:
+            self._sync_active_ai_model_to_admin(model)
 
     def register_scan_session(self, scan_session: ScanSessionRecord) -> None:
         self._scan_sessions[scan_session.id] = scan_session
@@ -739,8 +754,10 @@ class _PostgresPersonalizationRepository:
 class PostgresCatalogRepository(PostgresAdminMixin, PostgresUserMixin):
     """PostgreSQL repository executing queries against Supabase PostgreSQL >= 15."""
 
-    def __init__(self, dsn: str) -> None:
+    def __init__(self, dsn: str, *, use_pool: bool = True) -> None:
         self._dsn = sanitize_psycopg_dsn(dsn)
+        self._use_pool = use_pool
+        self._pool: Any = None
         self._personalization_engine: Any = None
 
     @property
@@ -756,7 +773,42 @@ class PostgresCatalogRepository(PostgresAdminMixin, PostgresUserMixin):
     def set_personalization_engine(self, engine: Any) -> None:
         self._personalization_engine = engine
 
+    def _get_or_create_pool(self) -> Any:
+        if not self._use_pool or not self._dsn:
+            return None
+        if self._pool is not None:
+            return self._pool
+        try:
+            from psycopg.rows import dict_row
+            from psycopg_pool import ConnectionPool
+
+            # prepare_threshold=None ensures full compatibility with Supabase PgBouncer transaction pooler (port 6543)
+            self._pool = ConnectionPool(
+                conninfo=self._dsn,
+                min_size=1,
+                max_size=10,
+                open=True,
+                kwargs={"row_factory": dict_row, "prepare_threshold": None},
+            )
+            return self._pool
+        except Exception:
+            self._pool = None
+            return None
+
+    def close(self) -> None:
+        """Close the underlying connection pool cleanly if active."""
+        if self._pool is not None:
+            try:
+                self._pool.close()
+            except Exception:
+                pass
+            self._pool = None
+
     def _connect(self):
+        pool = self._get_or_create_pool()
+        if pool is not None:
+            return pool.connection()
+
         import psycopg
         from psycopg.rows import dict_row
 
@@ -1373,7 +1425,9 @@ class PostgresCatalogRepository(PostgresAdminMixin, PostgresUserMixin):
         model_id: str,
         detections: list[dict[str, Any]] | None = None,
         ingredient_ids: list[str] | None = None,
+        provenance: str = "ai",
     ) -> ScanSessionRecord:
+        safe_provenance = provenance if provenance in _VALID_SCAN_PROVENANCES else "ai"
         scan_id = str(uuid4())
         with self._connect() as conn, conn.cursor() as cur:
             cur.execute(
@@ -1410,10 +1464,10 @@ class PostgresCatalogRepository(PostgresAdminMixin, PostgresUserMixin):
                 cur.executemany(
                     """
                     INSERT INTO public.scan_ingredients (scan_session_id, ingredient_id, provenance)
-                    VALUES (%s::uuid, %s::uuid, 'detected')
+                    VALUES (%s::uuid, %s::uuid, %s)
                     ON CONFLICT (scan_session_id, ingredient_id) DO NOTHING
                     """,
-                    [(scan_id, iid) for iid in ingredient_ids],
+                    [(scan_id, iid, safe_provenance) for iid in ingredient_ids],
                 )
             conn.commit()
         return ScanSessionRecord(
@@ -1482,4 +1536,8 @@ def get_catalog_repo() -> CatalogRepository:
 
 def set_catalog_repo(repo: CatalogRepository | None) -> None:
     global _default_repo
+    if _default_repo is not None and _default_repo is not repo:
+        close_fn = getattr(_default_repo, "close", None)
+        if callable(close_fn):
+            close_fn()
     _default_repo = repo
