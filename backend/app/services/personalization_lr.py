@@ -1,4 +1,10 @@
-"""Logistic Regression Preference Learning Service (`TP 08`, `ADR-012`, `MATH-05`, `DEF-08`).
+"""Logistic Regression Preference Learning Reference Service (`TP 08`, `ADR-012`, `MATH-05`, `DEF-08`).
+
+Architecture Note (`A3`):
+- Online production request scoring (`POST /api/v1/recommendations`, `POST /api/v1/feedback`, `POST /api/v1/favorites`)
+  is powered by the 18-dimensional `PersonalizationEngine` in `app.intelligence.personalization` & `app.services.personalization`.
+- This module provides the compact 10-dimensional reference implementation used by the Stage 5 temporal-split
+  Ablation Variant D benchmark (`app.services.evaluation_ablation`) and `MATH-05` unit verification.
 
 Supports:
 1. Numerically stable sigmoid & SGD update: theta <- theta + lr * ((y - p) * x - l2 * theta).
