@@ -2,39 +2,30 @@
 
 from __future__ import annotations
 
-from app.core.errors import AppError
-from .candidates import _env_float
-import math
-
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Sequence
 import logging
 from typing import Any
 
 from app.ai.image_processor import BBoxInput, ImageInput, crop_region_from_bbox
+from app.core.errors import AppError
 from .candidates import (
-    _coerce_kb_candidate,
     _resolve_min_similarity,
     _resolve_review_threshold,
     _resolve_top_k,
     filter_kb_candidates,
     should_trigger_fallback,
 )
-from .embedding_providers import CLIPCosineProvider, OpenCLIPEmbeddingProvider
+from .embedding_providers import CLIPCosineProvider
 from .helpers import _FallbackResultBuilderMixin
 from .models import (
     ConfirmationReason,
     FallbackConfig,
-    FallbackModelError,
     FallbackProvider,
     FallbackResult,
     FallbackStatus,
-    FallbackTriggerReason,
     InitialYOLOPrediction,
     KBCandidateIngredient,
     MultimodalEmbeddingProvider,
-    ProviderAssessment,
-    RankedCandidate,
-    ScoreMetricType,
 )
 from .vlm_provider import _resolve_yolo_with_kb
 

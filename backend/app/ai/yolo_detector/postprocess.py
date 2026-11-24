@@ -2,39 +2,37 @@
 
 from __future__ import annotations
 
-from app.core.errors import AppError
-from .exceptions import DetectorConfigurationError
-from .calibration import _clamp_unit_probability
+from collections.abc import Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 import logging
 import math
-from .mapping import normalize_class_mapping
-logger = logging.getLogger(__name__)
-
-from collections.abc import Sequence
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 
 import numpy as np
 
+from app.core.errors import AppError
+from .calibration import _clamp_unit_probability
 from .config import DetectorConfig
 from .exceptions import (
+    DetectorConfigurationError,
     DetectorInferenceTimeoutError,
-    InvalidClassMappingError,
 )
+from .mapping import normalize_class_mapping
 from .models import (
     BoundingBox,
+    ClassMappingInput,
     ConfidenceCalibrator,
     ConfirmationStatus,
     DetectedIngredientItem,
-    IngredientDetectionResult,
     LabelMappingEntry,
     RawBoxPrediction,
     YOLOInferenceBackend,
 )
 from .nms import (
-    aggregate_suggested_ingredients,
     apply_classwise_nms,
     needs_hitl_review,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class _DetectorPostprocessMixin:

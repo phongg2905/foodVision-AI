@@ -66,6 +66,25 @@ def is_db_configured() -> bool:
     return bool(url and "[YOUR-PASSWORD]" not in url)
 
 
+# THUẬT TOÁN: Chuẩn hóa Đường dẫn Ảnh bìa Công thức sang URL Công khai (Cover Image URL Resolver)
+# Cơ chế: Giữ nguyên URL tuyệt đối `http://`/`https://`; chuyển đổi đường dẫn tương đối trên
+#         Supabase Storage (`bucket/path.jpg`) thành URL công khai `<SUPABASE_URL>/storage/v1/object/public/<path>`.
+# Độ phức tạp: Time O(1), Space O(1).
+def resolve_cover_image_url(path: str | None) -> str | None:
+    """Resolve absolute image URLs or relative Supabase Storage object paths to public URLs."""
+    if not path:
+        return None
+    cleaned = path.strip()
+    if not cleaned:
+        return None
+    if cleaned.startswith(("http://", "https://")):
+        return cleaned
+    base_url = settings.supabase_url.strip().rstrip("/")
+    if not base_url:
+        return cleaned
+    return f"{base_url}/storage/v1/object/public/{cleaned.lstrip('/')}"
+
+
 @dataclass
 class IngredientRecord:
     id: str
@@ -930,7 +949,7 @@ class PostgresCatalogRepository(PostgresAdminMixin, PostgresUserMixin):
                 cuisine_code=r["cuisine_code"],
                 prep_minutes=int(r["prep_minutes"]),
                 cook_minutes=int(r["cook_minutes"]),
-                cover_image_url=r.get("cover_image_path"),
+                cover_image_url=resolve_cover_image_url(r.get("cover_image_path")),
             )
             for r in rows
         ]
@@ -1045,7 +1064,7 @@ class PostgresCatalogRepository(PostgresAdminMixin, PostgresUserMixin):
             prep_minutes=int(r["prep_minutes"]),
             cook_minutes=int(r["cook_minutes"]),
             quality_score=float(r.get("quality_score") or 1.0),
-            cover_image_url=r.get("cover_image_path"),
+            cover_image_url=resolve_cover_image_url(r.get("cover_image_path")),
             source_name=r.get("source_name"),
             source_url=r.get("source_url"),
             content_license=r.get("content_license"),
@@ -1192,7 +1211,7 @@ class PostgresCatalogRepository(PostgresAdminMixin, PostgresUserMixin):
                 prep_minutes=int(r["prep_minutes"]),
                 cook_minutes=int(r["cook_minutes"]),
                 quality_score=float(r.get("quality_score") or 1.0),
-                cover_image_url=r.get("cover_image_path"),
+                cover_image_url=resolve_cover_image_url(r.get("cover_image_path")),
                 source_name=r.get("source_name"),
                 source_url=r.get("source_url"),
                 content_license=r.get("content_license"),

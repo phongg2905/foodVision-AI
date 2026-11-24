@@ -348,6 +348,8 @@ def test_open_world_3_state_reasoning_groups_and_hard_constraints_tc13(
     assert eval_missing_pantry.ingredient_states[ING_MUOI] == "confirmed_missing"
 
     # Scenario D: Filter candidate recipes with allergen tag (`excluded_allergen_ids=["egg"]`)
+    # CONFLICT-RESOLVED: After syncing all 20 seed.sql recipes (including EU/US 2205..2208) into seed_fixtures,
+    # non-egg tomato recipes also pass while every egg-allergen recipe remains strictly blocked.
     candidates = filter_candidate_recipes(
         repo=repo,
         params=ReasoningInput(
@@ -356,7 +358,11 @@ def test_open_world_3_state_reasoning_groups_and_hard_constraints_tc13(
             excluded_allergen_ids=["egg"],
         ),
     )
-    assert [rec.id for rec, _ev in candidates] == [REC_DAU_HU_SOT_CA]
+    cand_ids = [rec.id for rec, _ev in candidates]
+    assert REC_DAU_HU_SOT_CA in cand_ids
+    assert all("egg" not in rec.allergen_ids for rec, _ev in candidates)
+    assert REC_CANH_CA_CHUA_TRUNG not in cand_ids
+    assert REC_TRUNG_XAO_CA_CHUA not in cand_ids
 
     # Scenario E: Filter candidate recipes with direct `allergic_ingredient_ids=[ING_TRUNG_GA]` (`ADR-013`)
     candidates_ing_allergy = filter_candidate_recipes(
@@ -366,4 +372,9 @@ def test_open_world_3_state_reasoning_groups_and_hard_constraints_tc13(
             allergic_ingredient_ids=[ING_TRUNG_GA],
         ),
     )
-    assert [rec.id for rec, _ev in candidates_ing_allergy] == [REC_DAU_HU_SOT_CA]
+    cand_ing_ids = [rec.id for rec, _ev in candidates_ing_allergy]
+    assert REC_DAU_HU_SOT_CA in cand_ing_ids
+    assert all(
+        ING_TRUNG_GA not in {ri.ingredient_id for ri in rec.ingredients}
+        for rec, _ev in candidates_ing_allergy
+    )

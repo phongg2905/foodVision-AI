@@ -4,13 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-import math
 from typing import Any, Protocol, runtime_checkable
 from uuid import UUID
 
 import numpy as np
 
-from app.ai.image_processor import BBoxInput
 from .enums import (
     ConfirmationReason,
     FallbackStatus,
@@ -19,7 +17,7 @@ from .enums import (
     ScoreMetricType,
 )
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class InitialYOLOPrediction:
     """Normalized view of an upstream YOLO detector prediction for a region."""
 
@@ -146,7 +144,7 @@ class InitialYOLOPrediction:
         )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class RankedCandidate:
     """Controlled candidate suggestion returned to the HITL UI (never auto-committed)."""
 
@@ -165,7 +163,7 @@ class RankedCandidate:
         return self.similarity
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class FallbackResult:
     """Structured output of CLIP/VLM candidate assistance for HITL review."""
 
@@ -234,7 +232,7 @@ class FallbackResult:
         }
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ProviderAssessment:
     """Raw closed-set candidate scores and OOD/non-food flags from a provider."""
 
@@ -245,7 +243,7 @@ class ProviderAssessment:
     is_out_of_distribution: bool = False
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class FallbackConfig:
     """Runtime configuration injected or resolved from environment/settings."""
 

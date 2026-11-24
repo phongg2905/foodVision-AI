@@ -21,7 +21,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends
 from pydantic import Field
 
-from app.core.auth import get_required_user_id
+from app.core.auth import get_required_admin_id, get_required_user_id
+from app.core.config import Settings, get_settings
 from app.core.database import CatalogRepository, get_catalog_repo
 from app.core.errors import AppError
 from app.intelligence.personalization import (
@@ -200,14 +201,30 @@ def reset_personalization_state(
     }
 
 
+# THUẬT TOÁN: Cổng Bảo vệ Môi trường Non-Production cho Endpoint Khởi tạo Dữ liệu Demo (`SEC-01`, `SEC-03`)
+# Cơ chế: Từ chối tuyệt đối mọi yêu cầu khi `APP_ENV == "production"` trước khi truy vấn DB.
+# Độ phức tạp: Time O(1), Space O(1).
+def _require_non_production(cfg: Settings = Depends(get_settings)) -> None:
+    if cfg.app_env.strip().lower() == "production":
+        raise AppError(
+            status_code=403,
+            code="FORBIDDEN",
+            message="Endpoint demo-seed bị vô hiệu hóa trong môi trường production.",
+            details={"app_env": "production"},
+        )
+
+
 # THUẬT TOÁN: Khởi tạo Kịch bản Đối chứng `DEF-08` (User A thích món Xào vs User B thích món Canh/Luộc)
+# - Chỉ cho phép Quản trị viên (Admin) gọi ở môi trường phi-production (`SEC-01`, `SEC-03`).
 # - Huấn luyện 2 hồ sơ cô lập trên 20 tương tác (10 món 5 sao + 10 món 1 sao) để vượt ngưỡng cold-start.
 # - Kiểm chứng luôn ca khử trùng `ADR-012` bằng cách phát lại một đánh giá 1 sao có `updated_at` cũ hơn.
-@router.post("/demo-seed")
+# - Độ phức tạp: Time O(K * d) với K=20 tương tác và d=18 chiều đặc trưng; Space O(d).
+@router.post("/demo-seed", dependencies=[Depends(_require_non_production)])
 def seed_def08_demo_users(
+    _admin_id: str = Depends(get_required_admin_id),
     repo: CatalogRepository = Depends(get_catalog_repo),
 ) -> dict[str, Any]:
-    """Seed two opposite demo profiles (User A: likes stir_fry; User B: likes boil) for `DEF-08` Swagger testing."""
+    """Seed two opposite demo profiles (User A: likes stir_fry; User B: likes boil) for non-prod Admin `DEF-08` testing."""
     engine = getattr(repo, "personalization_engine", None)
     if engine is None:
         raise AppError(

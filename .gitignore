@@ -62,3 +62,6 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+
+# 7. External reference agent repositories (root-anchored so .agents/ skills stay tracked)
+/agent/

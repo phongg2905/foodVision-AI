@@ -2,23 +2,23 @@
 
 from __future__ import annotations
 
-from .candidates import _env_float
-from .candidates import compute_cosine_similarity
-
+from collections import OrderedDict
 from collections.abc import Sequence
 import threading
+from uuid import UUID
 
 import numpy as np
 
-from .candidates import compute_cosine_similarities
+from .candidates import (
+    _env_float,
+    compute_cosine_similarities,
+    compute_cosine_similarity,
+)
 from .models import (
-    FallbackConfig,
     FallbackModelError,
-    FallbackProvider,
     KBCandidateIngredient,
     MultimodalEmbeddingProvider,
     ProviderAssessment,
-    RankedCandidate,
     ScoreMetricType,
 )
 
@@ -58,14 +58,22 @@ class CLIPCosineProvider:
             else (env_neg_margin if env_neg_margin is not None else 0.0)
         )
         self._max_cache_entries = max(0, int(max_cache_entries))
-        self._text_cache: dict[str, np.ndarray] = {}
+        self._cache_lock = threading.Lock()
+        self._text_cache: OrderedDict[str, np.ndarray] = OrderedDict()
 
     @property
     def model_source(self) -> str:
         return self._embedder.model_source
 
+    # THUẬT TOÁN: Bộ nhớ đệm Vector Văn bản LRU An toàn Đa luồng (Thread-Safe LRU Text Cache)
+    # Cơ chế: Dùng `OrderedDict` + `threading.Lock` bảo vệ truy cập đồng thời và loại bỏ mục ít dùng
+    #         nhất O(1) khi đầy trần `max_cache_entries` thay vì xóa trắng toàn bộ bộ đệm.
+    # Độ phức tạp: Time O(M_miss * d + P) mỗi lô mô tả; Space O(max_cache_entries * d).
     def _encode_prompts_cached(self, prompts: Sequence[str]) -> np.ndarray:
-        missing = [p for p in prompts if p not in self._text_cache]
+        with self._cache_lock:
+            missing = [p for p in prompts if p not in self._text_cache]
+
+        newly_encoded: dict[str, np.ndarray] = {}
         if missing:
             raw_vecs = self._embedder.encode_texts(missing)
             mat = np.asarray(raw_vecs, dtype=np.float64)
@@ -74,22 +82,30 @@ class CLIPCosineProvider:
             if mat.shape[0] != len(missing):
                 raise FallbackModelError("Text encoder output count mismatch")
             for text, vec in zip(missing, mat, strict=True):
-                if (
-                    self._max_cache_entries > 0
-                    and len(self._text_cache) >= self._max_cache_entries
-                ):
-                    self._text_cache.clear()
-                if self._max_cache_entries > 0:
-                    self._text_cache[text] = np.asarray(vec, dtype=np.float64).ravel()
+                newly_encoded[text] = np.asarray(vec, dtype=np.float64).ravel()
 
-        return np.vstack(
-            [
-                self._text_cache[p]
-                if p in self._text_cache
-                else np.asarray(self._embedder.encode_texts([p]), dtype=np.float64).ravel()
-                for p in prompts
-            ]
-        )
+        rows: list[np.ndarray] = []
+        with self._cache_lock:
+            if self._max_cache_entries > 0:
+                for text, vec in newly_encoded.items():
+                    self._text_cache[text] = vec
+                    self._text_cache.move_to_end(text)
+                    while len(self._text_cache) > self._max_cache_entries:
+                        self._text_cache.popitem(last=False)
+
+            for p in prompts:
+                cached = self._text_cache.get(p)
+                if cached is not None:
+                    self._text_cache.move_to_end(p)
+                    rows.append(cached)
+                elif p in newly_encoded:
+                    rows.append(newly_encoded[p])
+                else:
+                    rows.append(
+                        np.asarray(self._embedder.encode_texts([p]), dtype=np.float64).ravel()
+                    )
+
+        return np.vstack(rows)
 
     def assess_candidates(
         self,

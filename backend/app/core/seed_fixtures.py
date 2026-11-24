@@ -58,6 +58,10 @@ REC_DAU_HU_SOT_CA = "22222222-2222-4222-8222-222222222201"
 REC_CANH_CA_CHUA_TRUNG = "22222222-2222-4222-8222-222222222202"
 REC_THIT_KHO_TRUNG = "22222222-2222-4222-8222-222222222203"
 REC_TRUNG_XAO_CA_CHUA = "22222222-2222-4222-8222-222222222204"
+REC_MI_Y_SOT_CA_CHUA = "22222222-2222-4222-8222-222222222205"
+REC_BONG_CAI_XANH_NAM_BO_TOI = "22222222-2222-4222-8222-222222222206"
+REC_BURGER_BO_PHO_MAI_US = "22222222-2222-4222-8222-222222222207"
+REC_BAP_NGOT_KHOAI_TAY_DUT_LO_US = "22222222-2222-4222-8222-222222222208"
 REC_GA_HAP_SA = "22222222-2222-4222-8222-222222222209"
 REC_GA_KHO_SA_NGHE = "22222222-2222-4222-8222-222222222210"
 REC_GA_XAO_SA_OT = "22222222-2222-4222-8222-222222222211"
@@ -71,6 +75,30 @@ REC_BO_XAO_OT_CHUONG_EU = "22222222-2222-4222-8222-222222222218"
 REC_BAP_NGOT_BO_TOI_US = "22222222-2222-4222-8222-222222222219"
 REC_RAU_MUONG_XAO_TOI = "22222222-2222-4222-8222-222222222220"
 REC_DRAFT = "22222222-2222-4222-8222-222222222299"
+
+# Canonical Unsplash-licensed cover images synced 1:1 with `supabase/seed.sql` (`LEGAL-01`)
+RECIPE_COVER_IMAGE_URLS: dict[str, str] = {
+    REC_DAU_HU_SOT_CA: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80",
+    REC_CANH_CA_CHUA_TRUNG: "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=800&q=80",
+    REC_THIT_KHO_TRUNG: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80",
+    REC_TRUNG_XAO_CA_CHUA: "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=800&q=80",
+    REC_MI_Y_SOT_CA_CHUA: "https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?auto=format&fit=crop&w=800&q=80",
+    REC_BONG_CAI_XANH_NAM_BO_TOI: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=800&q=80",
+    REC_BURGER_BO_PHO_MAI_US: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=800&q=80",
+    REC_BAP_NGOT_KHOAI_TAY_DUT_LO_US: "https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=800&q=80",
+    REC_GA_HAP_SA: "https://images.unsplash.com/photo-1532550907401-a500c9a57435?auto=format&fit=crop&w=800&q=80",
+    REC_GA_KHO_SA_NGHE: "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&w=800&q=80",
+    REC_GA_XAO_SA_OT: "https://images.unsplash.com/photo-1598103442097-8b74394b95c6?auto=format&fit=crop&w=800&q=80",
+    REC_TOM_RANG_HANH_TOI: "https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=800&q=80",
+    REC_CA_KHO_GUNG: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=800&q=80",
+    REC_THIT_HEO_HAM_KHOAI_CA_ROT: "https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=800&q=80",
+    REC_BO_XAO_BONG_CAI_NAM: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=800&q=80",
+    REC_BAP_CAI_XAO_NAM_TOI: "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=800&q=80",
+    REC_DUA_LEO_TRON_TOI_OT: "https://images.unsplash.com/photo-1495195134817-aeb325a55b65?auto=format&fit=crop&w=800&q=80",
+    REC_BO_XAO_OT_CHUONG_EU: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80",
+    REC_BAP_NGOT_BO_TOI_US: "https://images.unsplash.com/photo-1551754655-cd27e38d2076?auto=format&fit=crop&w=800&q=80",
+    REC_RAU_MUONG_XAO_TOI: "https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=800&q=80",
+}
 
 
 def build_default_seed_ingredients() -> list[IngredientRecord]:
@@ -434,7 +462,7 @@ def build_default_seed_recipes() -> list[RecipeRecord]:
         RecipeStepRecord,
     )
 
-    return [
+    recipes = [
         RecipeRecord(
             id="22222222-2222-4222-8222-222222222201",
             slug="dau-hu-sot-ca-chua",
@@ -759,6 +787,137 @@ def build_default_seed_recipes() -> list[RecipeRecord]:
                     instruction="Đổ trứng gà đã đánh tan vào đảo đều trên lửa vừa rồi rắc hành lá.",
                     estimated_minutes=10,
                 ),
+            ],
+        ),
+        RecipeRecord(
+            id=REC_MI_Y_SOT_CA_CHUA,
+            slug="mi-y-sot-ca-chua-thit-bam",
+            name_vi="Mì Ý sốt cà chua thịt băm",
+            cuisine_code="EU",
+            prep_minutes=10,
+            cook_minutes=20,
+            status="published",
+            description="Mì Spaghetti kiểu Âu nấu sốt cà chua, hành tây, tỏi và thịt bò băm.",
+            country_code="IT",
+            cooking_method="simmer",
+            required_equipment=["pot", "pan", "stove"],
+            base_servings=2,
+            quality_score=0.95,
+            source_name="FoodVision Editorial",
+            source_url="https://foodvision.local/recipes/mi-y-sot-ca-chua-thit-bam",
+            content_license="CC-BY-4.0",
+            allergen_ids=["gluten"],
+            ingredients=[
+                RecipeIngredientRecord(ING_MI_Y, "Mì Ý", "other", True, "core", "main", 4.0, 160.0, "160 g mì khô", 1),
+                RecipeIngredientRecord(ING_THIT_BO, "Thịt bò", "protein", True, "core", "main", 4.0, 150.0, "150 g băm", 2),
+                RecipeIngredientRecord(ING_CA_CHUA, "Cà chua", "vegetable", True, "secondary", "sub", 2.0, 200.0, "3 quả chín", 3),
+                RecipeIngredientRecord(ING_HANH_TAY, "Hành tây", "vegetable", True, "spice", "sub", 1.0, 50.0, "1/2 củ", 4),
+                RecipeIngredientRecord(ING_TOI, "Tỏi", "spice", False, "optional", "sub", 0.0, 10.0, "2 tép", 5),
+                RecipeIngredientRecord(ING_DAU_AN, "Dầu ăn", "pantry", True, "spice", "sub", 1.0, 10.0, "2 muỗng cà phê", 6),
+                RecipeIngredientRecord(ING_MUOI, "Muối", "pantry", True, "spice", "sub", 1.0, 4.0, "1/2 muỗng cà phê", 7),
+                RecipeIngredientRecord(ING_TIEU_XAY, "Tiêu xay", "pantry", True, "spice", "sub", 1.0, 2.0, "1/2 muỗng cà phê", 8),
+            ],
+            steps=[
+                RecipeStepRecord(1, "Luộc mì Ý trong nước sôi có pha chút muối khoảng 9 phút cho chín dẻo rồi để ráo.", 10),
+                RecipeStepRecord(2, "Phi thơm hành tây và tỏi băm với dầu ăn, cho thịt bò băm vào đảo tơi đến khi chín săn.", 8),
+                RecipeStepRecord(3, "Thêm cà chua băm nhuyễn, muối và hạt tiêu vào đun sánh 10 phút rồi trộn đều cùng mì Ý.", 12),
+            ],
+        ),
+        RecipeRecord(
+            id=REC_BONG_CAI_XANH_NAM_BO_TOI,
+            slug="bong-cai-xanh-nam-ap-chao-bo-toi",
+            name_vi="Bông cải xanh và nấm áp chảo bơ tỏi",
+            cuisine_code="EU",
+            prep_minutes=6,
+            cook_minutes=8,
+            status="published",
+            description="Món rau củ kiểu Âu nhanh gọn 14 phút giữ trọn độ giòn ngọt tự nhiên.",
+            country_code="FR",
+            cooking_method="pan_sear",
+            required_equipment=["pan", "stove"],
+            base_servings=2,
+            quality_score=0.93,
+            source_name="FoodVision Editorial",
+            source_url="https://foodvision.local/recipes/bong-cai-xanh-nam-ap-chao-bo-toi",
+            content_license="CC-BY-4.0",
+            allergen_ids=["milk"],
+            ingredients=[
+                RecipeIngredientRecord(ING_BONG_CAI_XANH, "Bông cải xanh", "vegetable", True, "core", "main", 4.0, 180.0, "1 bông vừa", 1),
+                RecipeIngredientRecord(ING_NAM, "Nấm", "vegetable", True, "secondary", "sub", 2.0, 120.0, "120 g nấm tươi", 2),
+                RecipeIngredientRecord(ING_BO_LAT, "Bơ lạt", "other", True, "secondary", "sub", 2.0, 15.0, "1 muỗng canh", 3),
+                RecipeIngredientRecord(ING_TOI, "Tỏi", "spice", True, "spice", "sub", 1.0, 10.0, "2 tép", 4),
+                RecipeIngredientRecord(ING_MUOI, "Muối", "pantry", True, "spice", "sub", 1.0, 3.0, "1/2 muỗng cà phê", 5),
+                RecipeIngredientRecord(ING_TIEU_XAY, "Tiêu xay", "pantry", True, "spice", "sub", 1.0, 2.0, "1/3 muỗng cà phê", 6),
+            ],
+            steps=[
+                RecipeStepRecord(1, "Rửa sạch bông cải xanh và nấm tươi, cắt miếng vừa ăn và để thật ráo nước.", 6),
+                RecipeStepRecord(2, "Đun chảy bơ lạt cùng tỏi băm, cho nấm và bông cải xanh vào áp chảo lửa vừa với muối tiêu đến khi chín kỹ.", 8),
+            ],
+        ),
+        RecipeRecord(
+            id=REC_BURGER_BO_PHO_MAI_US,
+            slug="burger-bo-pho-mai-kieu-my",
+            name_vi="Burger bò phô mai kiểu Mỹ",
+            cuisine_code="US",
+            prep_minutes=10,
+            cook_minutes=12,
+            status="published",
+            description="Bánh burger nhân thịt bò áp chảo phủ phô mai Cheddar, cà chua và xà lách.",
+            country_code="US",
+            cooking_method="grill",
+            required_equipment=["pan", "stove"],
+            base_servings=2,
+            quality_score=0.94,
+            source_name="FoodVision Editorial",
+            source_url="https://foodvision.local/recipes/burger-bo-pho-mai-kieu-my",
+            content_license="CC-BY-4.0",
+            allergen_ids=["gluten", "milk"],
+            ingredients=[
+                RecipeIngredientRecord(ING_THIT_BO, "Thịt bò", "protein", True, "core", "main", 4.0, 200.0, "2 viên thịt bò xay", 1),
+                RecipeIngredientRecord(ING_BANH_MI_BURGER, "Vỏ bánh Burger", "other", True, "core", "main", 4.0, 120.0, "2 vỏ bánh", 2),
+                RecipeIngredientRecord(ING_PHO_MAI_CHEDDAR, "Phô mai Cheddar", "other", True, "secondary", "sub", 2.0, 40.0, "2 lát", 3),
+                RecipeIngredientRecord(ING_CA_CHUA, "Cà chua", "vegetable", True, "spice", "sub", 1.0, 60.0, "4 lát tròn", 4),
+                RecipeIngredientRecord(ING_XA_LACH, "Rau xà lách", "vegetable", True, "spice", "sub", 1.0, 40.0, "4 lá tươi", 5),
+                RecipeIngredientRecord(ING_HANH_TAY, "Hành tây", "vegetable", False, "optional", "sub", 0.0, 30.0, "3 khoanh mỏng", 6),
+                RecipeIngredientRecord(ING_DAU_AN, "Dầu ăn", "pantry", True, "spice", "sub", 1.0, 5.0, "1 muỗng cà phê", 7),
+                RecipeIngredientRecord(ING_MUOI, "Muối", "pantry", True, "spice", "sub", 1.0, 3.0, "1/2 muỗng cà phê", 8),
+                RecipeIngredientRecord(ING_TIEU_XAY, "Tiêu xay", "pantry", True, "spice", "sub", 1.0, 2.0, "1/2 muỗng cà phê", 9),
+            ],
+            steps=[
+                RecipeStepRecord(1, "Ướp nhẹ thịt bò xay với muối và hạt tiêu, nắn thành 2 viên dẹt đều nhau; rửa sạch xà lách, cắt lát cà chua và hành tây.", 10),
+                RecipeStepRecord(2, "Áp chảo viên thịt bò chín kỹ hai mặt, đặt lát phô mai Cheddar lên mặt thịt nóng cho chảy nhẹ rồi kẹp vào vỏ bánh Burger đã áp chảo cùng rau.", 12),
+            ],
+        ),
+        RecipeRecord(
+            id=REC_BAP_NGOT_KHOAI_TAY_DUT_LO_US,
+            slug="bap-ngot-khoai-tay-dut-lo-bo-toi",
+            name_vi="Bắp ngọt và khoai tây đút lò bơ tỏi",
+            cuisine_code="US",
+            prep_minutes=10,
+            cook_minutes=25,
+            status="published",
+            description="Món ăn kèm kiểu Mỹ nướng lò thơm ngậy bơ lạt, tỏi và tiêu đen.",
+            country_code="US",
+            cooking_method="bake",
+            required_equipment=["oven"],
+            base_servings=2,
+            quality_score=0.91,
+            source_name="FoodVision Editorial",
+            source_url="https://foodvision.local/recipes/bap-ngot-khoai-tay-dut-lo-bo-toi",
+            content_license="CC-BY-4.0",
+            allergen_ids=["milk"],
+            ingredients=[
+                RecipeIngredientRecord(ING_BAP_NGOT, "Bắp ngọt", "vegetable", True, "core", "main", 4.0, 150.0, "1 trái tách hạt", 1),
+                RecipeIngredientRecord(ING_KHOAI_TAY, "Khoai tây", "vegetable", True, "core", "main", 4.0, 200.0, "2 củ cắt múi cau", 2),
+                RecipeIngredientRecord(ING_BO_LAT, "Bơ lạt", "other", True, "secondary", "sub", 2.0, 20.0, "1.5 muỗng canh", 3),
+                RecipeIngredientRecord(ING_TOI, "Tỏi", "spice", True, "spice", "sub", 1.0, 10.0, "2 tép băm", 4),
+                RecipeIngredientRecord(ING_HANH_LA, "Hành lá", "spice", False, "optional", "sub", 0.0, 10.0, "1 nhánh cắt nhỏ", 5),
+                RecipeIngredientRecord(ING_MUOI, "Muối", "pantry", True, "spice", "sub", 1.0, 4.0, "1/2 muỗng cà phê", 6),
+                RecipeIngredientRecord(ING_TIEU_XAY, "Tiêu xay", "pantry", True, "spice", "sub", 1.0, 2.0, "1/3 muỗng cà phê", 7),
+            ],
+            steps=[
+                RecipeStepRecord(1, "Gọt vỏ khoai tây cắt múi cau, tách hạt bắp ngọt rồi trộn đều cùng bơ lạt đun chảy, tỏi băm, muối và tiêu.", 10),
+                RecipeStepRecord(2, "Dàn đều khoai tây và bắp ngọt lên khay, đút lò ở 200 độ C trong 25 phút cho chín vàng thơm rồi rắc hành lá.", 25),
             ],
         ),
         RecipeRecord(
@@ -1149,6 +1308,10 @@ def build_default_seed_recipes() -> list[RecipeRecord]:
             steps=[],
         ),
     ]
+    for rec in recipes:
+        if rec.cover_image_url is None and rec.id in RECIPE_COVER_IMAGE_URLS:
+            rec.cover_image_url = RECIPE_COVER_IMAGE_URLS[rec.id]
+    return recipes
 
 
 # THUẬT TOÁN: Khởi tạo cấu hình mô hình YOLO v1 active kèm 20 nhãn chuẩn (0..19) và mã băm SHA-256

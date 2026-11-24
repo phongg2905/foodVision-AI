@@ -2,26 +2,24 @@
 
 from __future__ import annotations
 
-from pydantic import Field
-from collections.abc import Mapping
-from app.schemas.common import StrictSchema
-from .constants import UnauthorizedPersonalizationError
-from pydantic import model_validator
-from collections.abc import Sequence
-from dataclasses import dataclass
+from collections.abc import Mapping, Sequence
 import json
 import math
 import os
 from typing import Any
 from uuid import UUID
+
 import numpy as np
+from pydantic import Field, model_validator
+
 from app.core.config import Settings, get_settings
+from app.schemas.common import StrictSchema
 from .constants import (
     DEFAULT_PERSONALIZATION_MODEL_VERSION,
     FEATURE_SCHEMA_VERSION,
     FeatureDimensionError,
-    PersonalizationError,
     SchemaVersionError,
+    UnauthorizedPersonalizationError,
     _SCHEMA_REGISTRY,
 )
 

@@ -2,30 +2,26 @@
 
 from __future__ import annotations
 
-import re
-from collections.abc import Mapping
-from .candidates import _env_float
-from app.core.config import get_settings
-import math
-import os
-
 import base64
-from collections.abc import Sequence
+from collections.abc import Callable, Mapping, Sequence
 from io import BytesIO
 import json
+import math
+import os
+import re
 from typing import Any
 from uuid import UUID
 
 import numpy as np
 from PIL import Image
 
+from app.core.config import get_settings
+from .candidates import _env_float
 from .models import (
-    FallbackConfig,
     FallbackModelError,
     InitialYOLOPrediction,
     KBCandidateIngredient,
     ProviderAssessment,
-    RankedCandidate,
     ScoreMetricType,
     _coerce_uuid,
 )

@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-from .exceptions import ImageDecodeError
-from .mapping import normalize_class_mapping
-import os
-
-from collections.abc import Callable, Sequence
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+from collections.abc import Callable, Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor
 import logging
+import os
 from pathlib import Path
 import threading
 from typing import Annotated, Any
@@ -18,33 +15,24 @@ import numpy as np
 
 from app.ai.image_processor import ProcessedImage
 from app.core.config import Settings, get_settings
+from app.schemas.ai import Detection
 from .backend import UltralyticsYOLOBackend, _CallableBackendAdapter
 from .calibration import build_calibrator_from_env
 from .config import DetectorConfig
-from .exceptions import (
-    DetectorConfigurationError,
-    DetectorInferenceTimeoutError,
-    InvalidClassMappingError,
-)
+from .exceptions import ImageDecodeError
 from .input_guard import _DetectorInputGuardMixin
-from .postprocess import _DetectorPostprocessMixin
+from .mapping import normalize_class_mapping
 from .models import (
-    BoundingBox,
     ClassMappingInput,
     ConfidenceCalibrator,
-    ConfirmationStatus,
-    DetectedIngredientItem,
     ImageSource,
     IngredientDetectionResult,
     LabelMappingEntry,
     RawBoxPrediction,
     YOLOInferenceBackend,
 )
-from .nms import (
-    aggregate_suggested_ingredients,
-    apply_classwise_nms,
-    needs_hitl_review,
-)
+from .nms import aggregate_suggested_ingredients
+from .postprocess import _DetectorPostprocessMixin
 
 logger = logging.getLogger(__name__)
 

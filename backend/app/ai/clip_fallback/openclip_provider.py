@@ -2,26 +2,18 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-import os
-
 from collections.abc import Callable, Sequence
-import threading
+import os
+from pathlib import Path
 from typing import Any
 
 import numpy as np
 from PIL import Image
 
-from .candidates import compute_cosine_similarities
 from .models import (
-    FallbackConfig,
     FallbackModelError,
-    FallbackProvider,
     KBCandidateIngredient,
-    MultimodalEmbeddingProvider,
     ProviderAssessment,
-    RankedCandidate,
-    ScoreMetricType,
 )
 
 class CallableEmbeddingProvider:

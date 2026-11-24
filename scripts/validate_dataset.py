@@ -63,7 +63,7 @@ FORBIDDEN_PANTRY_SLUGS: frozenset[str] = frozenset(
 )
 
 
-@dataclass
+@dataclass(slots=True)
 class DatasetValidationReport:
     is_valid: bool = True
     errors: list[str] = field(default_factory=list)

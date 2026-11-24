@@ -2,17 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from collections.abc import Sequence
+from dataclasses import dataclass
 from enum import StrEnum
-import math
-from typing import Any, Protocol, runtime_checkable
 from uuid import UUID
 
 import numpy as np
-
-from app.ai.image_processor import BBoxInput
-from app.core.errors import AppError
 
 class FallbackStatus(StrEnum):
     """Terminal state of a controlled multimodal fallback evaluation."""
@@ -59,7 +54,7 @@ class FallbackModelError(RuntimeError):
     """Internal error raised when a multimodal provider is unconfigured or fails."""
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class CandidateEmbedding:
     """Precomputed text embedding g(T_m) for a valid non-pantry KB ingredient."""
 
@@ -68,7 +63,7 @@ class CandidateEmbedding:
     embedding: np.ndarray
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class KBCandidateIngredient:
     """Read-only Knowledge Base ingredient candidate (`category != 'pantry'`)."""
 

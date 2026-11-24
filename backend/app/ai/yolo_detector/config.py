@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 import json
 import os
 from pathlib import Path
 
 from app.core.config import Settings, get_settings
-from .exceptions import DetectorConfigurationError, InvalidClassMappingError
+from .exceptions import DetectorConfigurationError
 from .mapping import (
     _resolve_artifact_path,
     load_class_mapping_from_json_file,
@@ -20,7 +20,7 @@ from .models import ClassMappingInput, LabelMappingEntry
 # ==============================================================================
 # Configuration Object (DI & Environment Settings Integration — Zero Hardcoding)
 # ==============================================================================
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class DetectorConfig:
     """Typed, immutable runtime configuration injected into `YOLODetector`."""
 

@@ -93,14 +93,14 @@ def apply_classwise_nms(
         ordered = sorted(cls_preds, key=lambda p: p.confidence, reverse=True)
         coords = np.array(
             [(p.x1, p.y1, p.x2, p.y2) for p in ordered],
-            dtype=np.float64,
+            dtype=np.float32,
         )
         x1 = coords[:, 0]
         y1 = coords[:, 1]
         x2 = coords[:, 2]
         y2 = coords[:, 3]
-        areas = np.maximum(0.0, x2 - x1) * np.maximum(0.0, y2 - y1)
-        remaining = np.arange(len(ordered), dtype=np.int64)
+        areas = np.maximum(np.float32(0.0), x2 - x1) * np.maximum(np.float32(0.0), y2 - y1)
+        remaining = np.arange(len(ordered), dtype=np.int32)
 
         while remaining.size > 0:
             head = int(remaining[0])

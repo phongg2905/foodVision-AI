@@ -368,6 +368,7 @@ class PostgresUserMixin:
     def list_user_favorites(
         self, user_id: str, limit: int = 20, offset: int = 0
     ) -> tuple[list[FavoriteView], int]:
+        from app.core.database import resolve_cover_image_url
         from app.schemas.recipes import RecipeSummary
 
         with self._connect() as conn, conn.cursor() as cur:
@@ -407,7 +408,7 @@ class PostgresUserMixin:
                     prep_minutes=int(r["prep_minutes"]),
                     cook_minutes=int(r["cook_minutes"]),
                     total_minutes=int(r["prep_minutes"]) + int(r["cook_minutes"]),
-                    cover_image_url=r.get("cover_image_path"),
+                    cover_image_url=resolve_cover_image_url(r.get("cover_image_path")),
                 ),
             )
             for r in rows
@@ -415,6 +416,7 @@ class PostgresUserMixin:
         return items, total
 
     def add_user_favorite(self, user_id: str, recipe_id: str) -> tuple[FavoriteView, bool]:
+        from app.core.database import resolve_cover_image_url
         from app.schemas.recipes import RecipeSummary
 
         with self._connect() as conn, conn.cursor() as cur:
@@ -478,7 +480,7 @@ class PostgresUserMixin:
             prep_minutes=int(rec_row["prep_minutes"]),
             cook_minutes=int(rec_row["cook_minutes"]),
             total_minutes=int(rec_row["prep_minutes"]) + int(rec_row["cook_minutes"]),
-            cover_image_url=rec_row.get("cover_image_path"),
+            cover_image_url=resolve_cover_image_url(rec_row.get("cover_image_path")),
         )
         return FavoriteView(recipe_id=recipe_id, created_at=created_at, recipe=summary), is_created
 

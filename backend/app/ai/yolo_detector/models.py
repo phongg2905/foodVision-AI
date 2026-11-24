@@ -24,7 +24,7 @@ ConfirmationStatus = Literal["confident", "needs_confirmation"]
 ImageSource = bytes | bytearray | memoryview | str | Path | np.ndarray
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class LabelMappingEntry:
     """In-memory representation of a validated `ai_labels` food class mapping."""
 
@@ -45,7 +45,7 @@ class LabelMappingEntry:
         return self.class_name
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class RawBoxPrediction:
     """Backend-agnostic raw bounding box emitted by an object detection runner."""
 
