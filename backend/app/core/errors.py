@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
@@ -56,7 +57,7 @@ def register_exception_handlers(app: FastAPI) -> None:
             content={
                 "code": "VALIDATION_ERROR",
                 "message": "Dữ liệu yêu cầu không hợp lệ.",
-                "details": {"errors": exc.errors()},
+                "details": {"errors": jsonable_encoder(exc.errors())},
                 "request_id": req_id,
             },
             headers={"X-Request-Id": req_id},

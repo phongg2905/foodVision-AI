@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query, Response
 
 from app.core.database import CatalogRepository, get_catalog_repo
 from app.core.errors import AppError
-from app.schemas.catalog import IngredientCategory, PagedIngredients
+from app.schemas.catalog import IngredientCategory, NutritionTag, PagedIngredients
 
 router = APIRouter(tags=["Catalog"])
 
@@ -54,3 +54,11 @@ def list_ingredients(
     )
     items = [r.to_schema() for r in records]
     return PagedIngredients(items=items, total=total, limit=limit, offset=offset)
+
+
+@router.get("/nutrition-tags", response_model=list[NutritionTag])
+def list_nutrition_tags(
+    repo: CatalogRepository = Depends(get_catalog_repo),
+) -> list[NutritionTag]:
+    """List active qualitative nutrition tags (`FR-08`, `TP 11` Tier 1)."""
+    return repo.list_active_nutrition_tags()
