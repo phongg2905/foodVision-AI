@@ -498,11 +498,177 @@ def _row_to_ingredient(row: dict[str, Any]) -> IngredientRecord:
     )
 
 
+class _PostgresPersonalizationRepository:
+    """PostgreSQL-backed `UserPersonalizationRepository` reading/writing `public.user_preferences`."""
+
+    # THUẬT TOÁN: Kho Lưu trữ Trọng số Hồi quy Logistic (`TP 08`) trên PostgreSQL (`user_preferences`)
+    # Cơ chế: Đồng bộ cột `lr_weights`, `feedback_count`, `lr_model_version` theo từng `user_id` UUID
+    #         với cơ chế UPSERT idempotent và giữ cache `recipe_feedback_timestamps` chống phát lại `ADR-012`.
+    # Complexity: Time O(1) mỗi truy vấn khóa chính `user_id`, Space O(U * R_feedback) cho bộ nhớ đệm mốc thời gian.
+    def __init__(self, connect_fn: Any) -> None:
+        self._connect = connect_fn
+        self._timestamps_by_user: dict[Any, dict[str, str]] = {}
+
+    def get_user_model_state(self, user_id: Any) -> Any:
+        from app.intelligence.personalization.config import _ensure_uuid
+        from app.intelligence.personalization.constants import (
+            FEATURE_SCHEMA_VERSION,
+            _DISABLED_MODEL_SENTINEL,
+        )
+        from app.intelligence.personalization.models import UserModelState
+
+        uid = _ensure_uuid(user_id, field_name="user_id")
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT lr_weights, feedback_count, lr_model_version, updated_at
+                FROM public.user_preferences
+                WHERE user_id = %s::uuid
+                """,
+                (str(uid),),
+            )
+            row = cur.fetchone()
+        if not row:
+            return None
+
+        raw_version: str | None = row.get("lr_model_version")
+        raw_weights = row.get("lr_weights")
+        is_enabled = raw_version != _DISABLED_MODEL_SENTINEL
+        theta_tuple: tuple[float, ...] | None = None
+        schema_ver: str | None = None
+        if isinstance(raw_weights, list) and len(raw_weights) > 0:
+            theta_tuple = tuple(float(v) for v in raw_weights)
+            schema_ver = FEATURE_SCHEMA_VERSION
+
+        return UserModelState(
+            user_id=uid,
+            theta_user=theta_tuple,
+            feedback_count=int(row.get("feedback_count") or 0),
+            model_version=None if raw_version == _DISABLED_MODEL_SENTINEL else raw_version,
+            schema_version=schema_ver,
+            personalization_enabled=is_enabled,
+            recipe_feedback_timestamps=dict(self._timestamps_by_user.get(uid, {})),
+            updated_at=row.get("updated_at"),
+        )
+
+    def save_user_model_state(self, state: Any) -> Any:
+        from psycopg.types.json import Jsonb
+
+        from app.intelligence.personalization.config import _ensure_uuid
+        from app.intelligence.personalization.constants import (
+            DEFAULT_PERSONALIZATION_MODEL_VERSION,
+            _DISABLED_MODEL_SENTINEL,
+        )
+        from app.intelligence.personalization.models import UserModelState
+
+        uid = _ensure_uuid(state.user_id, field_name="state.user_id")
+        version_tag = (
+            _DISABLED_MODEL_SENTINEL
+            if not state.personalization_enabled
+            else (state.model_version or DEFAULT_PERSONALIZATION_MODEL_VERSION)
+        )
+        weights_payload = list(state.theta_user) if state.theta_user is not None else []
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO public.user_preferences (
+                    user_id, lr_weights, feedback_count, lr_model_version
+                )
+                VALUES (%s::uuid, %s, %s, %s)
+                ON CONFLICT (user_id) DO UPDATE
+                SET lr_weights = EXCLUDED.lr_weights,
+                    feedback_count = EXCLUDED.feedback_count,
+                    lr_model_version = EXCLUDED.lr_model_version,
+                    updated_at = now()
+                RETURNING updated_at
+                """,
+                (str(uid), Jsonb(weights_payload), int(state.feedback_count), version_tag),
+            )
+            ret = cur.fetchone()
+            conn.commit()
+        self._timestamps_by_user[uid] = dict(state.recipe_feedback_timestamps)
+        return UserModelState(
+            user_id=uid,
+            theta_user=tuple(weights_payload) if weights_payload else None,
+            feedback_count=int(state.feedback_count),
+            model_version=None if not state.personalization_enabled else version_tag,
+            schema_version=state.schema_version if weights_payload else None,
+            personalization_enabled=state.personalization_enabled,
+            recipe_feedback_timestamps=dict(state.recipe_feedback_timestamps),
+            updated_at=ret["updated_at"] if ret else datetime.now(timezone.utc),
+        )
+
+    def reset_user_model_state(
+        self,
+        user_id: Any,
+        *,
+        disable_personalization: bool = False,
+    ) -> Any:
+        from psycopg.types.json import Jsonb
+
+        from app.intelligence.personalization.config import _ensure_uuid
+        from app.intelligence.personalization.constants import (
+            DEFAULT_PERSONALIZATION_MODEL_VERSION,
+            _DISABLED_MODEL_SENTINEL,
+        )
+        from app.intelligence.personalization.models import UserModelState
+
+        uid = _ensure_uuid(user_id, field_name="user_id")
+        version_tag = (
+            _DISABLED_MODEL_SENTINEL
+            if disable_personalization
+            else DEFAULT_PERSONALIZATION_MODEL_VERSION
+        )
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO public.user_preferences (
+                    user_id, lr_weights, feedback_count, lr_model_version
+                )
+                VALUES (%s::uuid, %s, 0, %s)
+                ON CONFLICT (user_id) DO UPDATE
+                SET lr_weights = EXCLUDED.lr_weights,
+                    feedback_count = 0,
+                    lr_model_version = EXCLUDED.lr_model_version,
+                    updated_at = now()
+                RETURNING updated_at
+                """,
+                (str(uid), Jsonb([]), version_tag),
+            )
+            ret = cur.fetchone()
+            conn.commit()
+        self._timestamps_by_user[uid] = {}
+        return UserModelState(
+            user_id=uid,
+            theta_user=None,
+            feedback_count=0,
+            model_version=None,
+            schema_version=None,
+            personalization_enabled=not disable_personalization,
+            recipe_feedback_timestamps={},
+            updated_at=ret["updated_at"] if ret else datetime.now(timezone.utc),
+        )
+
+
 class PostgresCatalogRepository:
     """PostgreSQL repository executing queries against Supabase PostgreSQL >= 15."""
 
     def __init__(self, dsn: str) -> None:
         self._dsn = sanitize_psycopg_dsn(dsn)
+        self._personalization_engine: Any = None
+
+    @property
+    def personalization_engine(self) -> Any:
+        if self._personalization_engine is None:
+            from app.intelligence.personalization import PersonalizationEngine
+
+            self._personalization_engine = PersonalizationEngine(
+                repository=_PostgresPersonalizationRepository(self._connect)
+            )
+        return self._personalization_engine
+
+    def set_personalization_engine(self, engine: Any) -> None:
+        self._personalization_engine = engine
 
     def _connect(self):
         import psycopg

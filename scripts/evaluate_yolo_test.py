@@ -213,7 +213,7 @@ def _render_markdown_section(
         "Checkpoint hiệu chuẩn CPU cục bộ (`pytorch_cpu_pilot`, chưa chạy huấn luyện đầy đủ trên GPU CUDA); "
         "chạy lại lệnh này sau khi nhập `ingredients_best.pt` từ Colab/Kaggle T4 để cập nhật `mAP` GPU chính thức."
         if backend_tag == "pytorch_cpu_pilot"
-        else "Trọng số Ultralytics YOLO11s (`imgsz=640`) huấn luyện đầy đủ trên GPU Tesla T4 (`ultralytics_yolo`); tích phân PR-curve theo chuẩn COCO (`conf=0.001`), vận hành tại `conf=0.25`."
+        else "Trọng số Ultralytics YOLO11s (`imgsz=640`, dataset `v1.1` khóa đầy đủ 20/20 lớp) huấn luyện trên GPU Tesla T4 (`ultralytics_yolo`); tích phân PR-curve theo chuẩn COCO (`conf=0.001`), vận hành tại `conf=0.25`."
     )
 
     lines: list[str] = [
@@ -246,20 +246,30 @@ def _render_markdown_section(
             f"| {row['f1']:.4f} | {row['ap50']:.4f} | {row['ap50_95']:.4f} |"
         )
 
-    lines.extend(
-        [
-            "",
-            "### 6.3. Minh bạch 5 lớp ứng viên chuyển sang nhập tay / CLIP trước khi mở tập `test` (`NFR-11`)",
-            "",
-            "Theo quy tắc tại [`label-catalog.md`](label-catalog.md) (Mục 1), 5 lớp ứng viên có số mẫu thô `< 80` đã được khóa chuyển sang tìm kiếm tiếng Việt (`FR-18`) và nhánh phụ CLIP (`TP 02`) **tại mốc `dataset_ready` trước khi chạy `split='test'`**, tuyệt đối không phải loại bỏ hậu kiểm:",
-            "",
-            "| `class_index` | Mã nhãn (`code`) | Tổng mẫu thô hiện có | Thiếu hụt so với ngưỡng `80` | Cơ chế bù đắp trong kiến trúc 7 tầng |",
-            "|---:|---|---:|---:|---|",
-        ]
-    )
-    for cid_str, info in sorted(deferred.items(), key=lambda x: int(x[0])):
-        lines.append(
-            f"| {cid_str} | `{info['name']}` | {info['count']} | {info['deficit_to_80']} | `{info['fallback_policy']}` |"
+    if deferred:
+        lines.extend(
+            [
+                "",
+                f"### 6.3. Minh bạch {len(deferred)} lớp ứng viên chuyển sang nhập tay / CLIP trước khi mở tập `test` (`NFR-11`)",
+                "",
+                f"Theo quy tắc tại [`label-catalog.md`](label-catalog.md) (Mục 1), {len(deferred)} lớp ứng viên có số mẫu thô `< 80` đã được khóa chuyển sang tìm kiếm tiếng Việt (`FR-18`) và nhánh phụ CLIP (`TP 02`) **tại mốc `dataset_ready` trước khi chạy `split='test'`**, tuyệt đối không phải loại bỏ hậu kiểm:",
+                "",
+                "| `class_index` | Mã nhãn (`code`) | Tổng mẫu thô hiện có | Thiếu hụt so với ngưỡng `80` | Cơ chế bù đắp trong kiến trúc 7 tầng |",
+                "|---:|---|---:|---:|---|",
+            ]
+        )
+        for cid_str, info in sorted(deferred.items(), key=lambda x: int(x[0])):
+            lines.append(
+                f"| {cid_str} | `{info['name']}` | {info['count']} | {info['deficit_to_80']} | `{info['fallback_policy']}` |"
+            )
+    else:
+        lines.extend(
+            [
+                "",
+                "### 6.3. Minh bạch trạng thái khóa đầy đủ 20/20 lớp (`NFR-11` — 0 lớp chuyển dự phòng)",
+                "",
+                "Toàn bộ **20/20 lớp nguyên liệu chuẩn** (từ `0: tomato` đến `19: sweet_corn`) đều vượt ngưỡng `>= 80` hộp nhãn tại mốc `dataset_ready` nhờ bổ sung hợp pháp các bộ dữ liệu `CC BY 4.0` / `CC BY 2.0` (`ADR-005`), đạt `0` lớp chuyển dự phòng và `0` lớp loại bỏ hậu kiểm (`post_hoc_dropped_classes = []`). Nhánh tìm kiếm tiếng Việt (`FR-18`) và VLM/CLIP (`TP 02`) tiếp tục đóng vai trò mở rộng cho nguyên liệu ngoài 20 lớp chuẩn (ví dụ: `Sả`, `Nghệ tươi`, `Thịt bò`, `Mực tươi`, `Rau muống`...).",
+            ]
         )
 
     lines.extend(

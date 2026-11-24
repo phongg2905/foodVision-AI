@@ -4,11 +4,11 @@
   "family": "yolo11s",
   "training_backend": "ultralytics_gpu_imported",
   "dataset_version": "food-ingredients-v1.0",
-  "dataset_manifest_sha256": "b56aba197e6ef2ed4b8076cbb176bfbb895e14f377e3f4f29f07325cb27dfc97",
-  "locked_eval_class_count": 15,
+  "dataset_manifest_sha256": "5eb7b1e7500127be479431abb0fd27a000d071aa7f63c6b77f8fc983390866e5",
+  "locked_eval_class_count": 20,
   "artifact_ref": "weights/yolo/ingredients_best.pt",
-  "weights_sha256": "ae5e3c16c0e80281babe423ab37318b6f6ee318a720e7aa0da3704530d0e0d92",
-  "weights_size_bytes": 19191642,
+  "weights_sha256": "f72e4c58607722028f247002d6cc7afe63c6c5a4b6519118a045f14f761e03e5",
+  "weights_size_bytes": 19192410,
   "class_count": 20,
   "confidence_threshold": 0.25,
   "review_threshold": 0.8,
@@ -16,16 +16,18 @@
   "hyperparameters": {
     "model_family": "yolo11s",
     "imgsz": 640,
-    "epochs": 80,
-    "patience": 20,
-    "mosaic": 0.8,
-    "mixup": 0.1,
+    "epochs": 55,
+    "patience": 15,
+    "mosaic": 0.7,
+    "mixup": 0.05,
+    "copy_paste": 0.15,
+    "cos_lr": true,
     "confidence_threshold": 0.25,
     "review_threshold": 0.8,
     "nms_iou_threshold": 0.5
   },
   "pilot_metrics": {
-    "imported_from": "ingredients_best_s640.pt"
+    "imported_from": "ingredients_best_v11_s640.pt"
   },
   "labels": [
     {
@@ -189,5 +191,5 @@
       "category": "vegetable"
     }
   ],
-  "exported_at": "2026-11-20T05:12:51.615270+00:00"
+  "exported_at": "2026-11-22T19:20:42.358076+00:00"
 }
