@@ -12,7 +12,8 @@
   html {
     background-color: #e8d8c6;
     color: #181512;
-    caret-color: #c65112;
+    caret-color: #b4490e;
+    accent-color: #b4490e;
     scroll-behavior: smooth;
   }
 

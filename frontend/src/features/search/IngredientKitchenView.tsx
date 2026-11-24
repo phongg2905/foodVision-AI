@@ -13,6 +13,7 @@ import { IngredientSearchBox } from './components/IngredientSearchBox';
 import { SelectedIngredientsList } from './components/SelectedIngredientsList';
 import { PantryToggleBar } from './components/PantryToggleBar';
 import { DesiredTimeSelector } from '../../shared/components/DesiredTimeSelector';
+import { VisionScanPanel } from '../vision/VisionScanPanel';
 
 export interface IngredientKitchenViewProps {
   selectedIngredients: Ingredient[];
@@ -23,6 +24,8 @@ export interface IngredientKitchenViewProps {
   onMainIngredientIdsChange?: (ids: string[]) => void;
   desiredMinutes?: number | null;
   onDesiredMinutesChange?: (minutes: number | null) => void;
+  scanId?: string | null;
+  onScanIdChange?: (scanId: string | null) => void;
   onTriggerRecommend?: (payload: RecommendDraftPayload) => void;
   studioMode?: boolean;
 }
@@ -51,6 +54,8 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
   onMainIngredientIdsChange,
   desiredMinutes: controlledDesiredMinutes,
   onDesiredMinutesChange,
+  scanId: controlledScanId,
+  onScanIdChange,
   onTriggerRecommend,
   studioMode = false,
 }) => {
@@ -65,6 +70,7 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
   const [internalDesiredMinutes, setInternalDesiredMinutes] = useState<
     number | null
   >(null);
+  const [internalScanId, setInternalScanId] = useState<string | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [openPopover, setOpenPopover] = useState<
     'none' | 'pantry' | 'time' | 'camera'
@@ -96,6 +102,16 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
     }
   };
 
+  const activeScanId =
+    controlledScanId !== undefined ? controlledScanId : internalScanId;
+  const setActiveScanId = (nextScanId: string | null) => {
+    if (onScanIdChange) {
+      onScanIdChange(nextScanId);
+    } else {
+      setInternalScanId(nextScanId);
+    }
+  };
+
   const selectedIdSet = new Set(selectedIngredients.map((item) => item.id));
   const mainIdSet = new Set(activeMainIds);
   const ingredientBySlug = new Map(
@@ -105,7 +121,8 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
   useEffect(() => {
     const handleOutside = (e: MouseEvent) => {
       if (barRef.current && !barRef.current.contains(e.target as Node)) {
-        setOpenPopover('none');
+        // Không tự đóng khay camera khi người dùng đang duyệt xác nhận HITL
+        setOpenPopover((prev) => (prev === 'camera' ? 'camera' : 'none'));
       }
     };
     document.addEventListener('mousedown', handleOutside);
@@ -176,7 +193,45 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
   const handleClearAllIngredients = () => {
     onSelectedIngredientsChange([]);
     setActiveMainIds([]);
+    setActiveScanId(null);
     setSubmittedPayload(null);
+  };
+
+  const focusVietnameseSearchInput = () => {
+    window.setTimeout(() => {
+      const input = barRef.current?.querySelector<HTMLInputElement>(
+        'input[aria-label="Nhập tên nguyên liệu chính"]'
+      );
+      input?.focus();
+    }, 0);
+  };
+
+  const handleConfirmHitlIngredients = (
+    confirmedIngredients: Ingredient[],
+    nextScanId: string | null
+  ) => {
+    // Khử trùng lặp UUID tuyệt đối khi hợp nhất vào tủ bếp (TC-08)
+    const mergedMap = new Map<string, Ingredient>();
+    for (const existing of selectedIngredients) {
+      mergedMap.set(existing.id, existing);
+    }
+    for (const confirmed of confirmedIngredients) {
+      if (confirmed.category !== 'pantry') {
+        mergedMap.set(confirmed.id, confirmed);
+      }
+    }
+    const mergedList = Array.from(mergedMap.values());
+    onSelectedIngredientsChange(mergedList);
+    setActiveScanId(nextScanId);
+    setShowQuickPick(false);
+    setOpenPopover('none');
+    setSubmittedPayload(null);
+  };
+
+  const handleFallbackToManualSearch = () => {
+    setActiveScanId(null);
+    setOpenPopover('none');
+    focusVietnameseSearchInput();
   };
 
   const handleToggleMainIngredient = (ingredientId: string) => {
@@ -216,6 +271,7 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
     ...(computedDesiredHours !== undefined
       ? { desired_hours: computedDesiredHours }
       : {}),
+    ...(activeScanId ? { scan_id: activeScanId } : {}),
   };
 
   const handleRecommendClick = () => {
@@ -260,7 +316,7 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
             onClick={() =>
               setOpenPopover((prev) => (prev === 'camera' ? 'none' : 'camera'))
             }
-            className={`inline-flex min-h-[44px] shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full border px-4.5 px-5 py-2 text-[13.5px] font-medium transition ${
+            className={`inline-flex min-h-[44px] shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full border px-5 py-2 text-[13.5px] font-medium transition ${
               openPopover === 'camera'
                 ? 'border-[#181512] bg-[#181512] text-[#FFF8F0]'
                 : 'border-[#B89F86] bg-transparent text-[#3B3027] hover:border-[#181512] hover:text-[#181512]'
@@ -271,29 +327,14 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
           </button>
         </div>
 
-        {/* Khay chờ tính năng Quét ảnh YOLO Giai đoạn 3 (chỉ mở khi bấm Quét ảnh AI) */}
+        {/* Khay Quét ảnh AI, vẽ BBox EXIF & Xác nhận HITL (TP 14 — Thẻ #22) */}
         {openPopover === 'camera' && (
-          <div
-            data-testid="kitchen-camera-slot-preview"
-            className="mt-3.5 flex flex-col items-center justify-between gap-3 rounded-[14px] border border-dashed border-[#C7B39C] bg-[#FAF2E8] px-4 py-4 text-center sm:flex-row sm:text-left"
-          >
-            <div>
-              <p className="font-serif text-[16px] font-bold text-[#181512]">
-                Nhận diện nguyên liệu từ ảnh chụp (YOLO — Thẻ #22)
-              </p>
-              <p className="mt-0.5 text-[12.5px] text-[#595047]">
-                Tính năng tải ảnh &amp; xác nhận vùng nhận diện Giai đoạn 3 sẽ
-                đặt trực tiếp tại khung này.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setOpenPopover('none')}
-              className="inline-flex min-h-[34px] shrink-0 items-center rounded-full bg-[#EFE2D2] px-3.5 py-1 text-xs font-semibold text-[#181512] hover:bg-[#E5D4BF]"
-            >
-              Đóng
-            </button>
-          </div>
+          <VisionScanPanel
+            catalogIngredients={catalogIngredients}
+            onConfirmHitlIngredients={handleConfirmHitlIngredients}
+            onFallbackToManual={handleFallbackToManualSearch}
+            onClose={() => setOpenPopover('none')}
+          />
         )}
 
         {/* DÒNG 2: Bên trái là Tag nguyên liệu đã chọn — Bên phải là 2 nút xổ Gia vị & Thời gian */}

@@ -48,6 +48,7 @@ export interface RecommendationResultsViewProps {
   onMainIngredientIdsChange: (ids: string[]) => void;
   desiredMinutes: number | null;
   onDesiredMinutesChange: (minutes: number | null) => void;
+  scanId?: string | null;
   onBackToKitchen: () => void;
   onSelectRecipe: (recipeId: string, item: RecommendationItem) => void;
   embeddedInStudio?: boolean;
@@ -63,6 +64,7 @@ export const RecommendationResultsView: React.FC<
   onMainIngredientIdsChange,
   desiredMinutes,
   onDesiredMinutesChange,
+  scanId = null,
   onBackToKitchen,
   onSelectRecipe,
   embeddedInStudio = false,
@@ -112,6 +114,7 @@ export const RecommendationResultsView: React.FC<
       include_missing: embeddedInStudio ? true : includeMissing,
       diversify,
       limit: 20,
+      ...(scanId ? { scan_id: scanId } : {}),
     })
       .then((res) => {
         if (!isCancelled) {
@@ -145,6 +148,7 @@ export const RecommendationResultsView: React.FC<
     maxTotalMinutes,
     includeMissing,
     diversify,
+    scanId,
     retryTick,
     embeddedInStudio,
     selectedIngredients,

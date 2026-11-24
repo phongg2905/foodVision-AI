@@ -256,51 +256,78 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
           {recommendationContext && (
             <div
               data-testid="detail-recommendation-summary"
-              className="border-y border-[#CDB9A2] py-3.5 text-[13px] text-[#181512]"
+              className="border-y border-[#BDA992]/80 py-4 text-[13px] text-[#181512]"
             >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-bold text-[#181512]">
-                  Độ phù hợp gian bếp:{' '}
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="font-serif text-[18px] font-bold text-[#181512]">
+                  Độ phù hợp với tủ bếp:{' '}
                   <span className="text-[#B4490E] tabular-nums">
-                    {formatScoreValue(recommendationContext.score)} điểm
+                    {formatScoreValue(recommendationContext.score)}/100 điểm
                   </span>
                 </span>
-                <span className="rounded-full bg-[#EFE2D2] px-3 py-0.5 text-xs font-semibold text-[#3B3027]">
+                <span className="text-[12.5px] font-medium text-[#595047]">
                   {recommendationContext.availability === 'ready'
                     ? 'Đủ nguyên liệu nấu ngay'
-                    : `Cần thêm ${recommendationContext.missing_required_ingredient_ids.length} nguyên liệu`}
+                    : `Cần chuẩn bị thêm ${recommendationContext.missing_required_ingredient_ids.length} nguyên liệu`}
                 </span>
               </div>
 
-              <p className="mt-1.5 text-[12.5px] text-[#4A4037]">
+              <p className="mt-1 text-[13px] leading-relaxed text-[#4A4037]">
                 {recommendationContext.explanation_vi}
               </p>
 
-              <div className="mt-2.5 flex flex-wrap gap-x-5 gap-y-1 text-[12px] text-[#595047] tabular-nums">
-                <span>
-                  Độ phủ:{' '}
-                  <strong className="text-[#181512]">
-                    {formatScoreValue(recommendationContext.score_contributions.C)}
-                  </strong>
-                </span>
-                <span>
-                  Món chính:{' '}
-                  <strong className="text-[#181512]">
-                    {formatScoreValue(recommendationContext.score_contributions.G)}
-                  </strong>
-                </span>
-                <span>
-                  Thời gian:{' '}
-                  <strong className="text-[#181512]">
-                    {formatScoreValue(recommendationContext.score_contributions.T)}
-                  </strong>
-                </span>
-                <span>
-                  Vị quen:{' '}
-                  <strong className="text-[#181512]">
-                    {formatScoreValue(recommendationContext.score_contributions.P)}
-                  </strong>
-                </span>
+              {/* Dải chữ tạp chí kẻ mảnh mở trên mặt giấy (không đóng hộp, không thanh màu) */}
+              <div
+                data-testid="detail-xai-breakdown-grid"
+                className="mt-3.5 grid grid-cols-2 border-t border-[#CDB9A2]/70 pt-3 tabular-nums sm:grid-cols-4 sm:divide-x sm:divide-[#BDA992]/80"
+              >
+                {[
+                  {
+                    key: 'C',
+                    label: 'NGUYÊN LIỆU SẴN CÓ',
+                    val: recommendationContext.score_contributions.C,
+                    max: 50,
+                  },
+                  {
+                    key: 'G',
+                    label: 'NGUYÊN LIỆU CHÍNH',
+                    val: recommendationContext.score_contributions.G,
+                    max: 25,
+                  },
+                  {
+                    key: 'T',
+                    label: 'QUỸ THỜI GIAN',
+                    val: recommendationContext.score_contributions.T,
+                    max: 15,
+                  },
+                  {
+                    key: 'P',
+                    label: 'KHẨU VỊ QUEN',
+                    val: recommendationContext.score_contributions.P,
+                    max: 10,
+                  },
+                ].map((crit, idx) => (
+                  <div
+                    key={crit.key}
+                    className={`py-1.5 sm:py-0 ${
+                      idx === 0
+                        ? 'sm:pr-3'
+                        : idx === 3
+                          ? 'sm:pl-3'
+                          : 'sm:px-3'
+                    }`}
+                  >
+                    <strong className="block font-serif text-[20px] font-bold text-[#181512]">
+                      {formatScoreValue(crit.val)}
+                      <span className="font-sans text-[12px] font-normal text-[#6B5E52]">
+                        /{crit.max}
+                      </span>
+                    </strong>
+                    <span className="mt-0.5 block text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#595047]">
+                      {crit.label}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           )}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { getIngredientNameById } from '../../../shared/api/mockData';
 import {
   CuisineCode,
@@ -25,6 +25,8 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
   onSelectRecipe,
 }) => {
   const [imageError, setImageError] = useState(false);
+  const [showScoreBreakdown, setShowScoreBreakdown] = useState(false);
+  const popoverWrapperRef = useRef<HTMLDivElement | null>(null);
 
   const { recipe } = item;
   const isReady = item.availability === 'ready';
@@ -35,12 +37,26 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
   const firstMissing = missingNames[0] ?? '';
   const extraMissingCount = Math.max(0, missingNames.length - 1);
 
+  useEffect(() => {
+    if (!showScoreBreakdown) return;
+    const handleOutside = (e: MouseEvent) => {
+      if (
+        popoverWrapperRef.current &&
+        !popoverWrapperRef.current.contains(e.target as Node)
+      ) {
+        setShowScoreBreakdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [showScoreBreakdown]);
+
   return (
     <article
       data-testid={`recommendation-card-${recipe.slug}`}
       className="group relative flex flex-col items-center pt-16"
     >
-      {/* Đĩa món ăn tròn lớn 144px đồng bộ 100% với Trang chủ chuẩn Mockup A */}
+      {/* Đĩa món ăn tròn lớn 144px đồng bộ 100% với Trang chủ chuẩn Phương án A */}
       <div className="relative z-10 -mb-16 h-36 w-36 shrink-0 overflow-hidden rounded-full bg-[#181512] ring-4 ring-[#FFF8F0] shadow-[0_12px_26px_rgba(24,21,18,0.16)] transition duration-300 group-hover:scale-[1.03]">
         {recipe.cover_image_url && !imageError ? (
           <img
@@ -57,10 +73,9 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
         )}
       </div>
 
-      {/* Thân thẻ trắng kem #FFF8F0 tối giản, đơn sắc ấm chuẩn Mockup A */}
+      {/* Thân thẻ trắng kem #FFF8F0 sạch thoáng nguyên bản Phương án A */}
       <div className="relative flex w-full flex-1 flex-col justify-between rounded-tl-[26px] rounded-br-[26px] rounded-tr-[6px] rounded-bl-[6px] bg-[#FFF8F0] px-5 pb-5 pt-20 text-left shadow-[0_10px_28px_rgba(24,21,18,0.06)] transition duration-200 group-hover:-translate-y-1 group-hover:shadow-[0_16px_36px_rgba(24,21,18,0.1)]">
         <div>
-          {/* Cặp nhãn trạng thái & điểm số đồng bộ gam cát ấm #EFE2D2 (không icon thừa, không xanh chói) */}
           <div className="flex items-center justify-between gap-2">
             <span
               data-testid={`availability-badge-${recipe.slug}`}
@@ -80,15 +95,63 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
               )}
             </span>
 
-            <span
-              data-testid={`recommendation-score-${recipe.slug}`}
-              className="shrink-0 rounded-full bg-[#EFE2D2] px-2.5 py-0.5 text-[11.5px] font-semibold text-[#181512] tabular-nums"
-            >
-              {formatScoreValue(item.score)} điểm
-            </span>
+            {/* Bấm nhẹ vào huy hiệu điểm để mở chi tiết cách tính điểm XAI mà không làm rối mặt thẻ */}
+            <div ref={popoverWrapperRef} className="relative z-20 shrink-0">
+              <button
+                type="button"
+                data-testid={`recommendation-score-${recipe.slug}`}
+                aria-expanded={showScoreBreakdown}
+                title="Bấm để xem chi tiết điểm phù hợp"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowScoreBreakdown((prev) => !prev);
+                }}
+                className="rounded-full bg-[#EFE2D2] px-2.5 py-0.5 text-[11.5px] font-semibold text-[#181512] tabular-nums transition hover:bg-[#E3D1BC]"
+              >
+                {formatScoreValue(item.score)} điểm
+              </button>
+
+              <div
+                data-testid={`score-xai-${recipe.slug}`}
+                className={
+                  showScoreBreakdown
+                    ? 'absolute right-0 top-full z-30 mt-2 w-56 rounded-[14px] bg-[#FFFDF9] p-3.5 text-[12px] text-[#181512] shadow-[0_16px_38px_rgba(24,21,18,0.18)]'
+                    : 'sr-only'
+                }
+              >
+                <p className="font-serif text-[14px] font-bold text-[#181512]">
+                  Chi tiết điểm phù hợp
+                </p>
+                <dl className="mt-2 divide-y divide-[#EADFD2] tabular-nums">
+                  <div className="flex items-center justify-between py-1.5">
+                    <dt className="text-[#595047]">Nguyên liệu sẵn có</dt>
+                    <dd className="font-semibold text-[#181512]">
+                      {formatScoreValue(item.score_contributions.C)}/50
+                    </dd>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5">
+                    <dt className="text-[#595047]">Nguyên liệu chính</dt>
+                    <dd className="font-semibold text-[#181512]">
+                      {formatScoreValue(item.score_contributions.G)}/25
+                    </dd>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5">
+                    <dt className="text-[#595047]">Quỹ thời gian</dt>
+                    <dd className="font-semibold text-[#181512]">
+                      {formatScoreValue(item.score_contributions.T)}/15
+                    </dd>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5">
+                    <dt className="text-[#595047]">Khẩu vị quen</dt>
+                    <dd className="font-semibold text-[#181512]">
+                      {formatScoreValue(item.score_contributions.P)}/10
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
           </div>
 
-          {/* Tên món & thời gian */}
           <h3 className="mt-3 line-clamp-2 min-h-[3.2rem] font-serif text-[19px] font-bold leading-snug text-[#181512] transition group-hover:text-[#B4490E]">
             {recipe.name_vi}
           </h3>
@@ -97,12 +160,10 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
             {CUISINE_LABELS[recipe.cuisine_code]} · {recipe.total_minutes} phút
           </p>
 
-          {/* Lời giải thích biên tập 2 dòng gọn nhẹ */}
-          <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed text-[#4A4037]">
+          <p className="mt-2 line-clamp-2 min-h-[2.65rem] text-[13px] leading-relaxed text-[#4A4037]">
             {item.explanation_vi}
           </p>
 
-          {/* Dữ liệu ngữ nghĩa ẩn cho trình đọc màn hình & kiểm thử tự động (không làm rối bề mặt thẻ) */}
           {missingNames.length > 0 && (
             <div
               data-testid={`missing-ingredients-${recipe.slug}`}
@@ -113,20 +174,8 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
               ))}
             </div>
           )}
-
-          <div data-testid={`score-xai-${recipe.slug}`} className="sr-only">
-            <span>Độ phủ {formatScoreValue(item.score_contributions.C)} </span>
-            <span>
-              Món chính {formatScoreValue(item.score_contributions.G)}{' '}
-            </span>
-            <span>
-              Thời gian {formatScoreValue(item.score_contributions.T)}{' '}
-            </span>
-            <span>Vị quen {formatScoreValue(item.score_contributions.P)}</span>
-          </div>
         </div>
 
-        {/* Liên kết chữ Xem công thức → thanh thoát chuẩn Mockup A (phủ vùng bấm toàn thẻ) */}
         <div className="mt-4 pt-1">
           <button
             type="button"
