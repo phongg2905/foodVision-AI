@@ -1,6 +1,35 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { MOCK_MAIN_INGREDIENTS } from './shared/api/mockData';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  listPantryIngredients,
+  searchMainIngredients,
+} from './shared/api/ingredientsApi';
+import {
+  MOCK_MAIN_INGREDIENTS,
+  MOCK_PANTRY_INGREDIENTS,
+} from './shared/api/mockData';
 import { Ingredient, RecommendationItem } from './shared/api/types';
+
+const STARTER_SLUG_FALLBACKS: Record<string, string[]> = {
+  'thit-heo': ['thit-ba-chi', 'thit-heo-song'],
+  'uc-ga': ['thit-ga-song'],
+  'tom-tuoi': ['tom'],
+  bap: ['bap-ngot'],
+  'hat-tieu': ['tieu-xay'],
+};
+
+function resolveIngredientBySlug(
+  slug: string,
+  bySlug: Map<string, Ingredient>
+): Ingredient | undefined {
+  const direct = bySlug.get(slug);
+  if (direct) return direct;
+  const aliases = STARTER_SLUG_FALLBACKS[slug] ?? [];
+  for (const alt of aliases) {
+    const found = bySlug.get(alt);
+    if (found) return found;
+  }
+  return undefined;
+}
 import { ActiveTab, AppLayout } from './shared/components/AppLayout';
 import { RecipeCatalogView } from './features/recipes/RecipeCatalogView';
 import { RecipeDetailView } from './features/recipes/RecipeDetailView';
@@ -170,6 +199,12 @@ export const App: React.FC = () => {
     initialRoute.tab
   );
   const [catalogSearchQuery, setCatalogSearchQuery] = useState('');
+  const [liveMainIngredients, setLiveMainIngredients] = useState<Ingredient[]>(
+    MOCK_MAIN_INGREDIENTS
+  );
+  const [livePantryIngredients, setLivePantryIngredients] = useState<
+    Ingredient[]
+  >(MOCK_PANTRY_INGREDIENTS);
   const [selectedIngredients, setSelectedIngredients] = useState<Ingredient[]>(
     () => initialDraft.selectedIngredients ?? []
   );
@@ -185,6 +220,133 @@ export const App: React.FC = () => {
   const [activeScanId, setActiveScanId] = useState<string | null>(null);
   const [activeRecipeDetail, setActiveRecipeDetail] =
     useState<ActiveRecipeDetailState | null>(initialRoute.detail);
+
+  const knownCatalogIngredients = useMemo(
+    () => [...liveMainIngredients, ...livePantryIngredients],
+    [liveMainIngredients, livePantryIngredients]
+  );
+
+  // Đồng bộ danh mục nguyên liệu & gia vị thật từ Backend và tự chuẩn hóa UUID cũ lưu trong sessionStorage
+  useEffect(() => {
+    let isCancelled = false;
+
+    Promise.all([
+      searchMainIngredients('', 50, 0).catch(() => null),
+      listPantryIngredients().catch(() => null),
+    ]).then(([mainRes, pantryRes]) => {
+      if (isCancelled) return;
+
+      if (mainRes && mainRes.items.length > 0) {
+        const liveMain = mainRes.items.filter(
+          (item) => item.category !== 'pantry' && item.is_active
+        );
+        if (liveMain.length > 0) {
+          setLiveMainIngredients(liveMain);
+        }
+
+        const byId = new Map(liveMain.map((item) => [item.id, item] as const));
+        const bySlug = new Map(
+          liveMain.map((item) => [item.slug, item] as const)
+        );
+        const remappedIdPairs = new Map<string, string>();
+
+        setSelectedIngredients((prev) => {
+          if (prev.length === 0) return prev;
+          let changed = false;
+          const next: Ingredient[] = [];
+          const seen = new Set<string>();
+
+          for (const item of prev) {
+            const matched =
+              byId.get(item.id) ?? resolveIngredientBySlug(item.slug, bySlug);
+            if (!matched) {
+              changed = true;
+              continue;
+            }
+            if (matched.id !== item.id) {
+              changed = true;
+              remappedIdPairs.set(item.id, matched.id);
+            }
+            if (!seen.has(matched.id)) {
+              seen.add(matched.id);
+              next.push(matched);
+            } else {
+              changed = true;
+            }
+          }
+          return changed ? next : prev;
+        });
+
+        setMainIngredientIds((prev) => {
+          if (prev.length === 0) return prev;
+          const mapped = Array.from(
+            new Set(
+              prev
+                .map((id) => remappedIdPairs.get(id) ?? id)
+                .filter((id) => byId.has(id))
+            )
+          );
+          if (
+            mapped.length === prev.length &&
+            mapped.every((id, idx) => id === prev[idx])
+          ) {
+            return prev;
+          }
+          return mapped;
+        });
+      }
+
+      if (pantryRes && pantryRes.items.length > 0) {
+        const livePantry = pantryRes.items.filter(
+          (item) => item.category === 'pantry' && item.is_active
+        );
+        if (livePantry.length > 0) {
+          setLivePantryIngredients(livePantry);
+        }
+
+        const livePantryById = new Set(livePantry.map((item) => item.id));
+        const livePantryBySlug = new Map(
+          livePantry.map((item) => [item.slug, item] as const)
+        );
+        const mockPantryById = new Map(
+          MOCK_PANTRY_INGREDIENTS.map((item) => [item.id, item] as const)
+        );
+
+        setExcludedPantryIds((prev) => {
+          if (prev.length === 0) return prev;
+          const mapped: string[] = [];
+          for (const id of prev) {
+            if (livePantryById.has(id)) {
+              mapped.push(id);
+              continue;
+            }
+            const oldMock = mockPantryById.get(id);
+            if (oldMock) {
+              const liveMatch = resolveIngredientBySlug(
+                oldMock.slug,
+                livePantryBySlug
+              );
+              if (liveMatch) {
+                mapped.push(liveMatch.id);
+              }
+            }
+          }
+          const uniqueMapped = Array.from(new Set(mapped));
+          if (
+            uniqueMapped.length === prev.length &&
+            uniqueMapped.every((id, idx) => id === prev[idx])
+          ) {
+            return prev;
+          }
+          return uniqueMapped;
+        });
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -262,15 +424,18 @@ export const App: React.FC = () => {
 
   const handleApplyStarterSlugs = (slugs: string[]) => {
     const bySlug = new Map(
-      MOCK_MAIN_INGREDIENTS.map((item) => [item.slug, item] as const)
+      liveMainIngredients.map((item) => [item.slug, item] as const)
     );
     const matched = slugs
-      .map((slug) => bySlug.get(slug))
+      .map((slug) => resolveIngredientBySlug(slug, bySlug))
       .filter((item): item is Ingredient => Boolean(item));
     if (matched.length === 0) return;
 
-    setSelectedIngredients(matched);
-    setMainIngredientIds([matched[0].id]);
+    const deduped = Array.from(
+      new Map(matched.map((item) => [item.id, item] as const)).values()
+    );
+    setSelectedIngredients(deduped);
+    setMainIngredientIds([deduped[0].id]);
     setActiveScanId(null);
     setActiveRecipeDetail(null);
     setActiveTab('kitchen');
@@ -368,6 +533,7 @@ export const App: React.FC = () => {
             <RecommendationResultsView
               embeddedInStudio
               selectedIngredients={selectedIngredients}
+              knownCatalogIngredients={knownCatalogIngredients}
               excludedPantryIds={excludedPantryIds}
               mainIngredientIds={mainIngredientIds}
               onMainIngredientIdsChange={setMainIngredientIds}
