@@ -19,10 +19,10 @@ export interface DetectImageWithMetaResult {
   inspection: ValidImageInspection;
 }
 
-const ID_DAU_HU = '11111111-1111-4111-8111-000000000001';
-const ID_CA_CHUA = '11111111-1111-4111-8111-000000000002';
-const ID_TRUNG_GA = '11111111-1111-4111-8111-000000000003';
-const ID_DUA_LEO = '11111111-1111-4111-8111-000000000006';
+const ID_CA_CHUA = '11111111-1111-4111-8111-111111111101';
+const ID_TRUNG_GA = '11111111-1111-4111-8111-111111111102';
+const ID_DAU_HU = '11111111-1111-4111-8111-111111111103';
+const ID_DUA_LEO = '11111111-1111-4111-8111-111111111207';
 
 /**
  * Chuẩn hóa cấu trúc DetectResponse đảm bảo:
@@ -64,19 +64,22 @@ export function normalizeDetectResponse(raw: DetectResponse): DetectResponse {
     (a, b) => b.max_confidence - a.max_confidence
   );
 
-  const clear =
-    raw.clear_ingredients && raw.clear_ingredients.length > 0
-      ? raw.clear_ingredients
-      : suggested.filter(
-          (item) => item.max_confidence >= REVIEW_CONFIDENCE_THRESHOLD
-        );
+  // F3: Chỉ tự phân tách clear / uncertain từ suggested khi CẢ HAI mảng từ server cùng rỗng
+  const bothServerTiersEmpty =
+    (raw.clear_ingredients?.length ?? 0) === 0 &&
+    (raw.uncertain_ingredients?.length ?? 0) === 0;
 
-  const uncertain =
-    raw.uncertain_ingredients && raw.uncertain_ingredients.length > 0
-      ? raw.uncertain_ingredients
-      : suggested.filter(
-          (item) => item.max_confidence < REVIEW_CONFIDENCE_THRESHOLD
-        );
+  const clear = bothServerTiersEmpty
+    ? suggested.filter(
+        (item) => item.max_confidence >= REVIEW_CONFIDENCE_THRESHOLD
+      )
+    : (raw.clear_ingredients ?? []);
+
+  const uncertain = bothServerTiersEmpty
+    ? suggested.filter(
+        (item) => item.max_confidence < REVIEW_CONFIDENCE_THRESHOLD
+      )
+    : (raw.uncertain_ingredients ?? []);
 
   return {
     scan_id: raw.scan_id ?? null,
