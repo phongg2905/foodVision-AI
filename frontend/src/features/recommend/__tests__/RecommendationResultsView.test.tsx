@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  MOCK_ALL_INGREDIENTS,
   MOCK_MAIN_INGREDIENTS,
   MOCK_PANTRY_INGREDIENTS,
 } from '../../../shared/api/mockData';
@@ -44,6 +45,7 @@ const Harness: React.FC<{
   return (
     <RecommendationResultsView
       selectedIngredients={initialIngredients}
+      knownCatalogIngredients={MOCK_ALL_INGREDIENTS}
       excludedPantryIds={initialExcludedPantry}
       mainIngredientIds={mainIds}
       onMainIngredientIdsChange={setMainIds}
@@ -55,9 +57,13 @@ const Harness: React.FC<{
   );
 };
 
-describe('RecommendationResultsView (FR-06, FR-07, TC-09..TC-14, TC-32..TC-35)', () => {
+describe('RecommendationResultsView (FR-06, FR-07, TC-09..TC-14, TC-32..TC-35, F1, F3)', () => {
   beforeEach(() => {
     import.meta.env.VITE_API_MOCK_MODE = 'true';
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('TC-09: Hiển thị hướng dẫn chọn nguyên liệu khi danh sách rỗng', () => {
@@ -68,7 +74,7 @@ describe('RecommendationResultsView (FR-06, FR-07, TC-09..TC-14, TC-32..TC-35)',
     ).toBeInTheDocument();
   });
 
-  it('TC-10, TC-11, TC-12: Tách bạch nhóm "Nấu được ngay" (ready) trước "Còn thiếu nguyên liệu" (missing) kèm nguyên liệu khớp/thiếu', async () => {
+  it('TC-10, TC-11, TC-12 & F1: Tách bạch nhóm "Nấu được ngay" (ready) trước "Còn thiếu nguyên liệu" (missing) và hiển thị đúng tên tiếng Việt không bị lỗi "Nguyên liệu (111111)"', async () => {
     render(<Harness />);
 
     await waitFor(() => {
@@ -86,16 +92,17 @@ describe('RecommendationResultsView (FR-06, FR-07, TC-09..TC-14, TC-32..TC-35)',
     ).toHaveTextContent('Nấu được ngay');
 
     expect(
-      within(missingSection).getByText('Canh cà chua trứng (Canh mây)')
+      within(missingSection).getByText('Canh cà chua trứng')
     ).toBeInTheDocument();
     expect(
       within(missingSection).getByTestId(
         'missing-ingredients-canh-ca-chua-trung'
       )
     ).toHaveTextContent('Thiếu: Trứng gà');
+    expect(missingSection.textContent).not.toContain('Nguyên liệu (111111)');
   });
 
-  it('TC-32: Bỏ chọn gia vị bắt buộc Nước mắm (excluded_pantry_ids) chuyển Canh cà chua trứng sang "Còn thiếu nguyên liệu" và báo thiếu Nước mắm', async () => {
+  it('TC-32: Bỏ chọn gia vị bắt buộc Nước mắm (excluded_pantry_ids) chuyển Trứng xào cà chua sang "Còn thiếu nguyên liệu" và báo thiếu Nước mắm', async () => {
     render(
       <Harness
         initialIngredients={[findIng('ca-chua'), findIng('trung-ga')]}
@@ -111,11 +118,11 @@ describe('RecommendationResultsView (FR-06, FR-07, TC-09..TC-14, TC-32..TC-35)',
 
     const missingSection = screen.getByTestId('recommend-missing-section');
     expect(
-      within(missingSection).getByText('Canh cà chua trứng (Canh mây)')
+      within(missingSection).getByText('Trứng xào cà chua')
     ).toBeInTheDocument();
     expect(
       within(missingSection).getByTestId(
-        'missing-ingredients-canh-ca-chua-trung'
+        'missing-ingredients-trung-xao-ca-chua'
       )
     ).toHaveTextContent('Thiếu: Nước mắm');
   });
@@ -135,31 +142,33 @@ describe('RecommendationResultsView (FR-06, FR-07, TC-09..TC-14, TC-32..TC-35)',
       screen.getByTestId('score-xai-dau-hu-sot-ca-chua')
     ).toHaveTextContent('15.0');
 
-    // Chọn thời gian mong muốn 15 phút (0.25h) cho món 25 phút -> T = 0.25 / (25/60) = 0.6 -> đóng góp 9.0
+    // Chọn thời gian mong muốn 15 phút (0.25h) cho món 30 phút (0.5h) -> T = 0.25 / 0.5 = 0.5 -> đóng góp 7.5
     await user.click(screen.getByTestId('quick-desired-time-15'));
 
     await waitFor(() => {
       expect(
         screen.getByTestId('score-xai-dau-hu-sot-ca-chua')
-      ).toHaveTextContent('9.0');
+      ).toHaveTextContent('7.5');
     });
 
-    // Ưu tiên Đậu hũ làm món chính -> G = 0.85 -> 21.25 -> tổng = 50.0 + 21.25 + 9.0 + 5.0 = 85.25
+    // Ưu tiên Đậu hũ làm món chính -> G = 0.85 -> 21.25 -> tổng = 50.0 + 21.25 + 7.5 + 5.0 = 83.75
     await user.click(screen.getByTestId('quick-main-dau-hu'));
 
     await waitFor(() => {
       expect(
         screen.getByTestId('recommendation-score-dau-hu-sot-ca-chua')
-      ).toHaveTextContent('85.25 điểm');
+      ).toHaveTextContent('83.75 điểm');
     });
 
-    // Nhập thời gian tùy chỉnh 20 phút (0.3333h) cho món 25 phút -> T = 20/25 = 0.8 -> đóng góp 12.0
-    const customTimeInput = screen.getByTestId('quick-desired-time-custom-input');
+    // Nhập thời gian tùy chỉnh 20 phút (0.3333h) cho món 30 phút (0.5h) -> T = 20/30 = 0.6667 -> đóng góp 10.0
+    const customTimeInput = screen.getByTestId(
+      'quick-desired-time-custom-input'
+    );
     await user.type(customTimeInput, '20');
     await waitFor(() => {
       expect(
         screen.getByTestId('score-xai-dau-hu-sot-ca-chua')
-      ).toHaveTextContent('12.0');
+      ).toHaveTextContent('10.0');
     });
   });
 
@@ -169,7 +178,7 @@ describe('RecommendationResultsView (FR-06, FR-07, TC-09..TC-14, TC-32..TC-35)',
 
     await waitFor(() => {
       expect(
-        screen.getByTestId('recommendation-card-salad-dua-leo-ca-chua-kieu-au')
+        screen.getByTestId('recommendation-card-mi-y-sot-ca-chua-thit-bam')
       ).toBeInTheDocument();
     });
 
@@ -177,9 +186,7 @@ describe('RecommendationResultsView (FR-06, FR-07, TC-09..TC-14, TC-32..TC-35)',
     await user.click(screen.getByTestId('filter-cuisine-VN'));
     await waitFor(() => {
       expect(
-        screen.queryByTestId(
-          'recommendation-card-salad-dua-leo-ca-chua-kieu-au'
-        )
+        screen.queryByTestId('recommendation-card-mi-y-sot-ca-chua-thit-bam')
       ).not.toBeInTheDocument();
     });
 
@@ -202,12 +209,54 @@ describe('RecommendationResultsView (FR-06, FR-07, TC-09..TC-14, TC-32..TC-35)',
       ).toBeInTheDocument();
     });
 
-    // TC-14 & TC-34: Chọn <= 15 phút (món Đậu hũ sốt cà chua tốn 25p nên bị loại, còn 0 món ready)
+    // TC-14 & TC-34: Chọn <= 15 phút (món Đậu hũ sốt cà chua tốn 30p nên bị loại, còn 0 món ready)
     await user.selectOptions(screen.getByTestId('filter-max-minutes'), '15');
     await waitFor(() => {
       expect(
         screen.getByTestId('recommendations-empty-state')
       ).toBeInTheDocument();
     });
+  });
+
+  it('F3: Không nuốt lỗi HTTP 500 có JSON ErrorResponse chuẩn sang dữ liệu mock và không gọi thừa API khi chỉ đổi tham chiếu mảng', async () => {
+    import.meta.env.VITE_API_MOCK_MODE = 'false';
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          code: 'INTERNAL_ERROR',
+          message: 'Lỗi kết nối cơ sở dữ liệu khi xếp hạng công thức.',
+          request_id: 'req-500-audit-f3',
+        }),
+        {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      )
+    );
+
+    const { rerender } = render(
+      <Harness initialIngredients={[findIng('dau-hu'), findIng('ca-chua')]} />
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('recommendations-error-alert')
+      ).toHaveTextContent('Lỗi kết nối cơ sở dữ liệu khi xếp hạng công thức.');
+    });
+
+    // Tuyệt đối không nuốt lỗi 500 sang mock card
+    expect(
+      screen.queryByTestId('recommendation-card-dau-hu-sot-ca-chua')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId('recommendations-retry-btn')
+    ).toBeInTheDocument();
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+
+    // Rerender với mảng mới cùng bộ UUID -> không được gọi lại API nhờ khóa primitive
+    rerender(
+      <Harness initialIngredients={[findIng('dau-hu'), findIng('ca-chua')]} />
+    );
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 });
