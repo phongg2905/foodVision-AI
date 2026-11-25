@@ -1,13 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { ExternalLink } from 'lucide-react';
-import { getRecipeById } from '../../shared/api/recipesApi';
+import { ChevronDown, ExternalLink, Minus, Plus } from 'lucide-react';
+import {
+  PORTION_SCALING_WARNING_VI,
+  getRecipeById,
+} from '../../shared/api/recipesApi';
 import {
   CuisineCode,
   RecommendationItem,
   RecipeDetail,
+  RecipeIngredientView,
 } from '../../shared/api/types';
 import { BotanicalDecor } from '../../shared/components/BotanicalDecor';
 import { formatScoreValue } from '../../shared/utils/formatters';
+import { resolveRecipeCoverUrl } from '../../shared/utils/recipeCover';
 
 export interface RecipeDetailViewProps {
   recipeId: string;
@@ -22,12 +27,60 @@ const CUISINE_BADGE_MAP: Record<CuisineCode, string> = {
   US: 'Món Mỹ',
 };
 
+const SERVINGS_OPTIONS = Array.from({ length: 20 }, (_, idx) => idx + 1);
+
 const MANDATORY_NUTRITION_DISCLAIMER =
   'Thông tin dinh dưỡng chỉ mang tính tham khảo ở mức nguyên liệu (ước tính khi có khối lượng chuẩn), không suy diễn từ ảnh chụp, không thay thế tư vấn y tế và người dùng cần tự kiểm tra thành phần dị ứng thực phẩm.';
 
 function isSafeHttpUrl(rawUrl: string | null | undefined): rawUrl is string {
   if (!rawUrl) return false;
   return /^https?:\/\//i.test(rawUrl.trim());
+}
+
+function formatNutrientNumber(value: number): string {
+  const rounded = Math.round(value * 100) / 100;
+  if (Number.isInteger(rounded)) {
+    return String(rounded);
+  }
+  return rounded.toFixed(2).replace(/\.?0+$/, '');
+}
+
+function renderIngredientQuantity(
+  item: RecipeIngredientView,
+  baseServings: number,
+  currentServings: number
+): React.ReactNode {
+  const hasGrams = typeof item.grams === 'number' && item.grams > 0;
+  const formattedGrams = hasGrams ? `${formatNutrientNumber(item.grams!)}g` : null;
+  const rawDisplay = item.display_quantity?.trim() ?? '';
+  const isScaled = currentServings !== baseServings;
+
+  if (!hasGrams) {
+    return rawDisplay || 'Vừa đủ';
+  }
+
+  const normalizedDisplay = rawDisplay.toLowerCase().replace(/\s+/g, '');
+  const isPureGramDisplay = /^\d+([.,]\d+)?g$/.test(normalizedDisplay);
+
+  if (!isScaled) {
+    if (!rawDisplay || isPureGramDisplay) {
+      return formattedGrams;
+    }
+    return `${rawDisplay} (${formattedGrams})`;
+  }
+
+  if (!rawDisplay || isPureGramDisplay) {
+    return formattedGrams;
+  }
+
+  return (
+    <span>
+      <strong className="font-semibold text-[#181512]">{formattedGrams}</strong>
+      <span className="ml-1.5 text-[12px] font-normal text-[#6B5E52]">
+        (chuẩn {baseServings} người: {rawDisplay})
+      </span>
+    </span>
+  );
 }
 
 export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
@@ -38,42 +91,69 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
 }) => {
   const [recipe, setRecipe] = useState<RecipeDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isScalingServings, setIsScalingServings] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
   const [retryTick, setRetryTick] = useState(0);
+  const [servingsOverride, setServingsOverride] = useState<{
+    forRecipeId: string;
+    servings: number;
+  } | null>(null);
+
+  const activeServingsParam =
+    servingsOverride?.forRecipeId === recipeId
+      ? servingsOverride.servings
+      : undefined;
 
   useEffect(() => {
     let isCancelled = false;
-    setIsLoading(true);
-    setErrorMessage(null);
-    setImageError(false);
+    const controller = new AbortController();
+    const isSameLoadedRecipe = recipe?.id === recipeId;
 
-    getRecipeById(recipeId)
+    if (isSameLoadedRecipe && activeServingsParam !== undefined) {
+      setIsScalingServings(true);
+    } else {
+      setIsLoading(true);
+      setImageError(false);
+    }
+    setErrorMessage(null);
+
+    getRecipeById(recipeId, activeServingsParam, controller.signal)
       .then((detail) => {
-        if (!isCancelled) {
+        if (!isCancelled && !controller.signal.aborted) {
           setRecipe(detail);
         }
       })
       .catch((err: unknown) => {
-        if (!isCancelled) {
-          setRecipe(null);
-          setErrorMessage(
-            err instanceof Error
-              ? err.message
-              : 'Không thể tải thông tin chi tiết công thức.'
-          );
+        if (
+          isCancelled ||
+          controller.signal.aborted ||
+          (err &&
+            typeof err === 'object' &&
+            (err as { name?: string }).name === 'AbortError')
+        ) {
+          return;
         }
+        setRecipe(null);
+        setErrorMessage(
+          err instanceof Error
+            ? err.message
+            : 'Không thể tải thông tin chi tiết công thức.'
+        );
       })
       .finally(() => {
-        if (!isCancelled) {
+        if (!isCancelled && !controller.signal.aborted) {
           setIsLoading(false);
+          setIsScalingServings(false);
         }
       });
 
     return () => {
       isCancelled = true;
+      controller.abort();
     };
-  }, [recipeId, retryTick]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recipeId, activeServingsParam, retryTick]);
 
   const matchedIdSet = new Set(
     recommendationContext?.matched_ingredient_ids ?? []
@@ -147,6 +227,22 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
     );
   }
 
+  const baseServings =
+    typeof recipe.base_servings === 'number' && recipe.base_servings > 0
+      ? recipe.base_servings
+      : 2;
+  const currentServings =
+    activeServingsParam ??
+    (typeof recipe.servings === 'number' && recipe.servings > 0
+      ? recipe.servings
+      : baseServings);
+  const isPortionScaled = currentServings !== baseServings;
+
+  const handleChangeServings = (nextServings: number) => {
+    const clamped = Math.min(Math.max(Math.round(nextServings), 1), 20);
+    setServingsOverride({ forRecipeId: recipeId, servings: clamped });
+  };
+
   const sortedIngredients = [...recipe.ingredients].sort(
     (a, b) => a.sort_order - b.sort_order
   );
@@ -163,6 +259,8 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
     `Hoàn thiện ${recipe.total_minutes} phút`,
     ...recipe.nutrition_evidence.map((ev) => ev.tag.name_vi),
   ];
+
+  const usdaNutrition = recipe.usda_nutrition ?? null;
 
   return (
     <article
@@ -253,6 +351,90 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
             thức có bước ướp).
           </p>
 
+          {/* BỘ CHỌN KHẨU PHẦN (1..20 NGƯỜI) TRÊN MẶT GIẤY MỞ (F5 - TP 10) */}
+          <div
+            data-testid="portion-scaling-bar"
+            className="flex flex-wrap items-center justify-between gap-3 border-t border-[#CDB9A2]/80 pt-4"
+          >
+            <div>
+              <span className="text-[13.5px] font-semibold text-[#181512]">
+                Khẩu phần chế biến
+              </span>
+              <span className="ml-2 text-[12.5px] text-[#595047]">
+                (công thức gốc {baseServings} người)
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex items-center rounded-full border border-[#C6B199] bg-[#FFF8F0]">
+                <button
+                  type="button"
+                  data-testid="servings-decrease-btn"
+                  aria-label="Giảm khẩu phần"
+                  disabled={currentServings <= 1 || isScalingServings}
+                  onClick={() => handleChangeServings(currentServings - 1)}
+                  className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-l-full text-[#3B3027] transition hover:bg-[#F4E7D7] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Minus className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+
+                <div className="relative inline-flex items-center border-x border-[#E2D3C1]">
+                  <select
+                    aria-label="Chọn số khẩu phần"
+                    data-testid="servings-selector"
+                    value={currentServings}
+                    disabled={isScalingServings}
+                    onChange={(e) =>
+                      handleChangeServings(Number(e.target.value))
+                    }
+                    className="h-[34px] cursor-pointer appearance-none bg-transparent pl-3 pr-6 text-[13px] font-semibold tabular-nums text-[#181512] focus:outline-none"
+                  >
+                    {SERVINGS_OPTIONS.map((num) => (
+                      <option key={num} value={num}>
+                        {num} người
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown
+                    className="pointer-events-none absolute right-1.5 h-3.5 w-3.5 text-[#595047]"
+                    aria-hidden="true"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  data-testid="servings-increase-btn"
+                  aria-label="Tăng khẩu phần"
+                  disabled={currentServings >= 20 || isScalingServings}
+                  onClick={() => handleChangeServings(currentServings + 1)}
+                  className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-r-full text-[#3B3027] transition hover:bg-[#F4E7D7] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              </div>
+
+              {isPortionScaled && (
+                <button
+                  type="button"
+                  data-testid="servings-reset-btn"
+                  onClick={() => setServingsOverride(null)}
+                  className="text-[12px] font-semibold text-[#B4490E] hover:underline"
+                >
+                  Về {baseServings} người
+                </button>
+              )}
+            </div>
+          </div>
+
+          {!usdaNutrition && isPortionScaled && (
+            <p
+              data-testid="portion-scaling-warning"
+              className="text-[12.5px] italic leading-relaxed text-[#8F3708]"
+            >
+              {PORTION_SCALING_WARNING_VI}
+            </p>
+          )}
+
           {recommendationContext && (
             <div
               data-testid="detail-recommendation-summary"
@@ -332,7 +514,109 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
             </div>
           )}
 
-          {/* NHÃN DINH DƯỠNG ÊM DỊU (Không dùng băng vàng chói) */}
+          {/* DINH DƯỠNG ĐỊNH LƯỢNG TẦNG 2 THEO USDA — CHỈ HIỂN THỊ KHI usda_nutrition != null (ADR-004, DEF-09) */}
+          {usdaNutrition && (
+            <section
+              aria-label="Ước tính dinh dưỡng định lượng theo USDA"
+              data-testid="usda-nutrition-section"
+              className={`space-y-3 border-t border-[#CDB9A2]/80 pt-4 transition-opacity ${
+                isScalingServings ? 'opacity-70' : 'opacity-100'
+              }`}
+            >
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h2 className="font-serif text-[20px] font-bold text-[#181512]">
+                  Ước tính dinh dưỡng theo USDA
+                </h2>
+                <span className="text-[12.5px] font-medium tabular-nums text-[#595047]">
+                  Tổng cho {currentServings} khẩu phần
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 border-y border-[#BDA992]/80 py-2.5 tabular-nums sm:grid-cols-4 sm:divide-x sm:divide-[#BDA992]/80">
+                <div className="py-1.5 sm:py-0 sm:pr-3">
+                  <strong
+                    data-testid="usda-kcal-value"
+                    className="block font-serif text-[24px] font-bold text-[#B4490E]"
+                  >
+                    {formatNutrientNumber(usdaNutrition.kcal)}
+                  </strong>
+                  <span className="mt-0.5 block text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#595047]">
+                    KCAL NĂNG LƯỢNG
+                  </span>
+                </div>
+
+                <div className="py-1.5 sm:px-3 sm:py-0">
+                  <strong
+                    data-testid="usda-protein-value"
+                    className="block font-serif text-[24px] font-bold text-[#181512]"
+                  >
+                    {formatNutrientNumber(usdaNutrition.protein_g)}g
+                  </strong>
+                  <span className="mt-0.5 block text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#595047]">
+                    CHẤT ĐẠM
+                  </span>
+                </div>
+
+                <div className="py-1.5 sm:px-3 sm:py-0">
+                  <strong
+                    data-testid="usda-fat-value"
+                    className="block font-serif text-[24px] font-bold text-[#181512]"
+                  >
+                    {formatNutrientNumber(usdaNutrition.fat_g)}g
+                  </strong>
+                  <span className="mt-0.5 block text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#595047]">
+                    CHẤT BÉO
+                  </span>
+                </div>
+
+                <div className="py-1.5 sm:py-0 sm:pl-3">
+                  <strong
+                    data-testid="usda-carb-value"
+                    className="block font-serif text-[24px] font-bold text-[#181512]"
+                  >
+                    {formatNutrientNumber(usdaNutrition.carb_g)}g
+                  </strong>
+                  <span className="mt-0.5 block text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#595047]">
+                    TINH BỘT
+                  </span>
+                </div>
+              </div>
+
+              {usdaNutrition.scaling_warning_vi && (
+                <p
+                  data-testid="usda-scaling-warning"
+                  className="text-[12.5px] italic leading-relaxed text-[#8F3708]"
+                >
+                  {usdaNutrition.scaling_warning_vi}
+                </p>
+              )}
+
+              {usdaNutrition.source_urls.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                  <span className="text-[11.5px] font-semibold text-[#595047]">
+                    Dữ liệu chuẩn 100g:
+                  </span>
+                  {usdaNutrition.source_urls
+                    .filter((url) => isSafeHttpUrl(url))
+                    .slice(0, 3)
+                    .map((url, idx) => (
+                      <a
+                        key={`usda-src-${idx}`}
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex min-h-[30px] items-center gap-1 rounded-full bg-[#FFF8F0]/80 px-2.5 py-0.5 text-[11.5px] font-semibold text-[#B4490E] transition hover:bg-[#FFF8F0] hover:underline"
+                      >
+                        <span>USDA #{idx + 1}</span>
+                        <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                      </a>
+                    ))}
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* NHÃN DINH DƯỠNG THAM KHẢO TẦNG 1 */}
           <section
             aria-label="Nhãn dinh dưỡng tham khảo và miễn trừ trách nhiệm"
             data-testid="nutrition-evidence-section"
@@ -429,9 +713,12 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
             />
 
             <div className="relative z-10 aspect-square w-full overflow-hidden rounded-full bg-[#181512] ring-[6px] ring-[#FFF8F0] shadow-[0_24px_52px_rgba(24,21,18,0.18)]">
-              {recipe.cover_image_url && !imageError ? (
+              {!imageError ? (
                 <img
-                  src={recipe.cover_image_url}
+                  src={resolveRecipeCoverUrl(
+                    recipe.slug,
+                    recipe.cover_image_url
+                  )}
                   alt={recipe.name_vi}
                   onError={() => setImageError(true)}
                   className="h-full w-full object-cover"
@@ -453,9 +740,14 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
           data-testid="recipe-main-ingredients"
           className="lg:col-span-7"
         >
-          <h2 className="mb-4 font-serif text-[21px] font-bold text-[#181512]">
-            Nguyên liệu ({mainIngredients.length})
-          </h2>
+          <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="font-serif text-[21px] font-bold text-[#181512]">
+              Nguyên liệu ({mainIngredients.length})
+            </h2>
+            <span className="text-[12.5px] font-medium tabular-nums text-[#595047]">
+              Định lượng cho {currentServings} người
+            </span>
+          </div>
 
           {mainIngredients.length === 0 ? (
             <p className="py-3 text-sm text-[#595047]">
@@ -494,8 +786,15 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
                       )}
                     </div>
 
-                    <span className="text-[14px] font-medium text-[#3F362E] tabular-nums">
-                      {item.display_quantity ?? 'Vừa đủ'}
+                    <span
+                      data-testid={`ingredient-qty-${item.ingredient_id}`}
+                      className="text-[14px] font-medium text-[#3F362E] tabular-nums"
+                    >
+                      {renderIngredientQuantity(
+                        item,
+                        baseServings,
+                        currentServings
+                      )}
                     </span>
                   </li>
                 );
@@ -537,8 +836,15 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
                       )}
                     </div>
 
-                    <span className="text-[14px] font-medium text-[#3F362E] tabular-nums">
-                      {item.display_quantity ?? 'Vừa đủ'}
+                    <span
+                      data-testid={`ingredient-qty-${item.ingredient_id}`}
+                      className="text-[14px] font-medium text-[#3F362E] tabular-nums"
+                    >
+                      {renderIngredientQuantity(
+                        item,
+                        baseServings,
+                        currentServings
+                      )}
                     </span>
                   </li>
                 );

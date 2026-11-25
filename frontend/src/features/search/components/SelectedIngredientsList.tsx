@@ -128,8 +128,12 @@ export const SelectedIngredientsList: React.FC<
 
           {onToggleMainIngredient && (
             <p className="mt-2 text-[11px] leading-relaxed text-[#595047]">
-              Bấm <span className="font-semibold text-[#9E3D08]">★</span> trên
-              nguyên liệu muốn ưu tiên làm món chính (tùy chọn).
+              Bấm{' '}
+              <Star
+                className="mx-0.5 inline h-3 w-3 fill-current text-[#9E3D08]"
+                aria-hidden="true"
+              />{' '}
+              trên nguyên liệu muốn ưu tiên làm món chính (tùy chọn).
             </p>
           )}
         </>
