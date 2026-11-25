@@ -33,6 +33,11 @@ export class ApiClientError extends Error {
   }
 }
 
+function isAbortError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  return (err as { name?: string }).name === 'AbortError';
+}
+
 function parseErrorEnvelope(
   status: number,
   body: Partial<ErrorResponse> | null
@@ -58,9 +63,6 @@ async function executeJsonRequestWithFallback<T>(
     const contentType = response.headers.get('content-type') ?? '';
 
     if (!contentType.includes('application/json')) {
-      if (isFallbackAllowed()) {
-        return fallbackFn();
-      }
       throw new ApiClientError(
         response.status,
         'NON_JSON_RESPONSE',
@@ -70,18 +72,19 @@ async function executeJsonRequestWithFallback<T>(
 
     if (!response.ok) {
       const errorBody = (await response.json()) as Partial<ErrorResponse>;
-      if (response.status >= 500 && isFallbackAllowed()) {
-        return fallbackFn();
-      }
+      // F3: Tuyệt đối KHÔNG nuốt lỗi HTTP 4xx/5xx sang mock data; chỉ fallback khi VITE_API_MOCK_MODE=true hoặc lỗi mạng TypeError
       throw parseErrorEnvelope(response.status, errorBody);
     }
 
     return (await response.json()) as T;
   } catch (err) {
-    if (err instanceof ApiClientError && err.status < 500) {
+    if (isAbortError(err)) {
       throw err;
     }
-    if (isFallbackAllowed()) {
+    if (err instanceof ApiClientError) {
+      throw err;
+    }
+    if (err instanceof TypeError && isFallbackAllowed()) {
       return fallbackFn();
     }
     throw err;
@@ -89,14 +92,13 @@ async function executeJsonRequestWithFallback<T>(
 }
 
 /**
- * Thực thi GET request tới Backend API.
- * Nếu đang ở chế độ mock hoặc Backend chưa khởi chạy (network error / 5xx),
- * tự động gọi hàm fallback để UI của TV3 hoạt động độc lập chuẩn OpenAPI.
+ * Thực thi GET request tới Backend API (hỗ trợ AbortSignal).
  */
 export async function apiGetWithFallback<T>(
   path: string,
   queryParams: Record<string, string | number | boolean | undefined | null>,
-  fallbackFn: () => T
+  fallbackFn: () => T,
+  signal?: AbortSignal
 ): Promise<T> {
   const searchParams = new URLSearchParams();
   Object.entries(queryParams).forEach(([key, value]) => {
@@ -115,19 +117,20 @@ export async function apiGetWithFallback<T>(
       headers: {
         Accept: 'application/json',
       },
+      signal,
     },
     fallbackFn
   );
 }
 
 /**
- * Thực thi POST request JSON tới Backend API kèm fallback chuẩn OpenAPI khi Backend offline.
- * Giữ nguyên các lỗi nghiệp vụ/hợp đồng 4xx (VD: 422 INVALID_INGREDIENTS) thay vì nuốt lỗi.
+ * Thực thi POST request JSON tới Backend API (hỗ trợ AbortSignal).
  */
 export async function apiPostWithFallback<TBody, TRes>(
   path: string,
   body: TBody,
-  fallbackFn: () => TRes
+  fallbackFn: () => TRes,
+  signal?: AbortSignal
 ): Promise<TRes> {
   const url = `${getApiBaseUrl()}${path}`;
 
@@ -140,6 +143,7 @@ export async function apiPostWithFallback<TBody, TRes>(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
+      signal,
     },
     fallbackFn
   );
@@ -147,14 +151,13 @@ export async function apiPostWithFallback<TBody, TRes>(
 
 /**
  * Thực thi POST multipart/form-data (VD: POST /api/v1/ai/detect).
- * Bảo toàn 100% các mã lỗi nghiệp vụ có cấu trúc từ Backend (401, 413, 415, 422, 429, 503 MODEL_NOT_READY, 504 INFERENCE_TIMEOUT)
- * để giao diện hiển thị đúng cảnh báo & lối tắt nhập tay FR-18 (TC-05, TC-06, TC-29, TC-30).
- * Chỉ fallback sang mock khi chạy độc lập không có Backend (network error / non-JSON proxy response).
+ * Bảo toàn 100% các mã lỗi nghiệp vụ có cấu trúc từ Backend (401, 413, 415, 422, 429, 500, 503, 504).
  */
 export async function apiPostMultipartWithFallback<TRes>(
   path: string,
   formData: FormData,
-  fallbackFn: () => TRes | Promise<TRes>
+  fallbackFn: () => TRes | Promise<TRes>,
+  signal?: AbortSignal
 ): Promise<TRes> {
   if (isForceMockMode()) {
     return await fallbackFn();
@@ -169,14 +172,12 @@ export async function apiPostMultipartWithFallback<TRes>(
         Accept: 'application/json',
       },
       body: formData,
+      signal,
     });
 
     const contentType = response.headers.get('content-type') ?? '';
 
     if (!contentType.includes('application/json')) {
-      if (isFallbackAllowed()) {
-        return await fallbackFn();
-      }
       throw new ApiClientError(
         response.status,
         'NON_JSON_RESPONSE',
@@ -186,21 +187,18 @@ export async function apiPostMultipartWithFallback<TRes>(
 
     if (!response.ok) {
       const errorBody = (await response.json()) as Partial<ErrorResponse>;
-      const hasCanonicalCode = Boolean(
-        errorBody?.code || errorBody?.error?.code
-      );
-      if (!hasCanonicalCode && response.status >= 500 && isFallbackAllowed()) {
-        return await fallbackFn();
-      }
       throw parseErrorEnvelope(response.status, errorBody);
     }
 
     return (await response.json()) as TRes;
   } catch (err) {
+    if (isAbortError(err)) {
+      throw err;
+    }
     if (err instanceof ApiClientError) {
       throw err;
     }
-    if (isFallbackAllowed()) {
+    if (err instanceof TypeError && isFallbackAllowed()) {
       return await fallbackFn();
     }
     throw err;

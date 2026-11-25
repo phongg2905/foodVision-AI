@@ -6,6 +6,7 @@ import {
   RecommendationItem,
 } from '../../../shared/api/types';
 import { formatScoreValue } from '../../../shared/utils/formatters';
+import { resolveRecipeCoverUrl } from '../../../shared/utils/recipeCover';
 
 export interface RecommendationCardProps {
   item: RecommendationItem;
@@ -29,6 +30,10 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
   const popoverWrapperRef = useRef<HTMLDivElement | null>(null);
 
   const { recipe } = item;
+  const resolvedCoverUrl = resolveRecipeCoverUrl(
+    recipe.slug,
+    recipe.cover_image_url
+  );
   const isReady = item.availability === 'ready';
 
   const missingNames = item.missing_required_ingredient_ids.map((id) =>
@@ -58,9 +63,9 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
     >
       {/* Đĩa món ăn tròn lớn 144px đồng bộ 100% với Trang chủ chuẩn Phương án A */}
       <div className="relative z-10 -mb-16 h-36 w-36 shrink-0 overflow-hidden rounded-full bg-[#181512] ring-4 ring-[#FFF8F0] shadow-[0_12px_26px_rgba(24,21,18,0.16)] transition duration-300 group-hover:scale-[1.03]">
-        {recipe.cover_image_url && !imageError ? (
+        {resolvedCoverUrl && !imageError ? (
           <img
-            src={recipe.cover_image_url}
+            src={resolvedCoverUrl}
             alt={recipe.name_vi}
             loading="lazy"
             onError={() => setImageError(true)}

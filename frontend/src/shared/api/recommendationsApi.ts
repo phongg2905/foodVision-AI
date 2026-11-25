@@ -437,12 +437,14 @@ export function computeMockRecommendations(
  * Gọi POST /api/v1/recommendations theo hợp đồng OpenAPI v1.1.0 (`ADR-013`).
  */
 export async function postRecommendations(
-  request: RecommendRequest
+  request: RecommendRequest,
+  signal?: AbortSignal
 ): Promise<RecommendResponse> {
   const sanitizedBody = buildSanitizedRequestBody(request);
   return apiPostWithFallback<RecommendRequest, RecommendResponse>(
     '/recommendations',
     sanitizedBody,
-    () => computeMockRecommendations(sanitizedBody)
+    () => computeMockRecommendations(sanitizedBody),
+    signal
   );
 }

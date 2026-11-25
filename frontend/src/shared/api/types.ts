@@ -51,6 +51,7 @@ export interface RecipeIngredientView {
   name_vi: string;
   category: IngredientCategory;
   is_required: boolean;
+  grams?: number | null;
   display_quantity: string | null;
   sort_order: number;
 }
@@ -75,12 +76,26 @@ export interface NutritionEvidence {
   note: string | null;
 }
 
+export interface USDANutritionEstimate {
+  kcal: number;
+  protein_g: number;
+  fat_g: number;
+  carb_g: number;
+  source_urls: string[];
+  scaling_factor: number;
+  scaling_warning_vi?: string | null;
+}
+
 export interface RecipeDetail extends RecipeSummary {
   description: string | null;
   country_code: string | null;
+  base_servings?: number;
+  servings?: number;
   ingredients: RecipeIngredientView[];
   steps: RecipeStepView[];
   nutrition_evidence: NutritionEvidence[];
+  usda_nutrition?: USDANutritionEstimate | null;
+  nutrition_disclaimer_vi?: string;
   source_name: string | null;
   source_url: string | null;
   content_license: string | null;

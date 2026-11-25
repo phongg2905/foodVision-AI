@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Camera, ChevronDown, X } from 'lucide-react';
+import { Camera, Check, ChevronDown, Star, X } from 'lucide-react';
 import { Ingredient, RecommendDraftPayload } from '../../shared/api/types';
 import {
   listPantryIngredients,
@@ -33,15 +33,15 @@ export interface IngredientKitchenViewProps {
 const POPULAR_SLUGS = [
   'dau-hu',
   'ca-chua',
-  'thit-heo',
   'trung-ga',
+  'thit-ba-chi',
+  'thit-heo-song',
   'thit-bo',
-  'uc-ga',
-  'tom-tuoi',
-  'bap',
+  'thit-ga-song',
+  'tom',
+  'bap-ngot',
   'dua-leo',
   'bong-cai-xanh',
-  'hanh-tay',
   'hanh-la',
 ];
 
@@ -134,28 +134,26 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
 
     listPantryIngredients()
       .then((res) => {
-        if (!isCancelled && res.items.length > 0) {
-          setPantryItems(res.items);
+        if (isCancelled) return;
+        const filteredPantry = res.items.filter(
+          (item) => item.category === 'pantry' && item.is_active
+        );
+        if (filteredPantry.length > 0) {
+          setPantryItems(filteredPantry);
         }
       })
       .catch(() => {});
 
     searchMainIngredients('', 50, 0)
       .then((res) => {
-        if (isCancelled || res.items.length === 0) return;
-        const liveBySlug = new Map(
-          res.items.map((item) => [item.slug, item] as const)
+        if (isCancelled) return;
+        // Thay thế hoàn toàn bằng danh mục live từ Backend và lọc cứng category !== 'pantry' (F1)
+        const filteredMain = res.items.filter(
+          (item) => item.category !== 'pantry' && item.is_active
         );
-        setCatalogIngredients((prev) => {
-          const merged = prev.map((item) => liveBySlug.get(item.slug) ?? item);
-          const knownSlugs = new Set(merged.map((item) => item.slug));
-          for (const liveItem of res.items) {
-            if (!knownSlugs.has(liveItem.slug)) {
-              merged.push(liveItem);
-            }
-          }
-          return merged;
-        });
+        if (filteredMain.length > 0) {
+          setCatalogIngredients(filteredMain);
+        }
       })
       .catch(() => {});
 
@@ -282,7 +280,9 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
 
   const popularItems = POPULAR_SLUGS.map((slug) =>
     ingredientBySlug.get(slug)
-  ).filter((item): item is Ingredient => Boolean(item));
+  )
+    .filter((item): item is Ingredient => Boolean(item))
+    .slice(0, 12);
 
   const availablePantryCount = Math.max(
     0,
@@ -362,7 +362,12 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
                     onClick={() => handleToggleMainIngredient(item.id)}
                     className="inline-flex min-h-[34px] items-center gap-1 pl-3.5 pr-2"
                   >
-                    {isMain && <span aria-hidden="true">★</span>}
+                    {isMain && (
+                      <Star
+                        className="h-3.5 w-3.5 shrink-0 fill-current"
+                        aria-hidden="true"
+                      />
+                    )}
                     <span>{item.name_vi}</span>
                   </button>
                   <button
@@ -477,7 +482,17 @@ export const IngredientKitchenView: React.FC<IngredientKitchenViewProps> = ({
                         : 'bg-[#F5EADF] text-[#3B3027] hover:bg-[#E8D8C6]'
                     }`}
                   >
-                    {isSelected ? `✓ ${item.name_vi}` : `+ ${item.name_vi}`}
+                    {isSelected ? (
+                      <>
+                        <Check
+                          className="mr-1 h-3.5 w-3.5 shrink-0"
+                          aria-hidden="true"
+                        />
+                        <span>{item.name_vi}</span>
+                      </>
+                    ) : (
+                      <span>+ {item.name_vi}</span>
+                    )}
                   </button>
                 );
               })}

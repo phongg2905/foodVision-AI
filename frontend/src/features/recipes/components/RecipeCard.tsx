@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { CuisineCode, RecipeSummary } from '../../../shared/api/types';
+import { resolveRecipeCoverUrl } from '../../../shared/utils/recipeCover';
 
 export interface RecipeCardProps {
   recipe: RecipeSummary;
@@ -11,18 +12,26 @@ const RECIPE_BLURB_BY_SLUG: Record<string, string> = {
     'Canh nóng thanh nhẹ với vân trứng mềm tơi và vị chua dịu từ cà chua chín.',
   'dau-hu-sot-ca-chua':
     'Đậu hũ chiên vàng ngoài giòn trong mềm quyện sốt cà chua sánh đậm đưa cơm.',
-  'thit-heo-kho-trung':
-    'Thịt heo kho mềm đậm vị nước mắm truyền thống cùng trứng cút béo bùi.',
-  'bo-luc-lac-hanh-tay':
-    'Thịt bò áp chảo lửa lớn săn mềm bên ngoài, mọng ngọt bên trong với hành tây.',
-  'salad-dua-leo-ca-chua-kieu-au':
-    'Salad thanh mát phối dưa leo giòn, cà chua bi và sốt chanh tỏi cân vị.',
-  'uc-ga-ap-chao-bo-toi':
-    'Ức gà áp chảo vàng ươm áo lớp bơ tỏi thơm lừng, giữ trọn độ mềm mọng.',
-  'bap-xao-bo-toi-kieu-my':
+  'thit-kho-trung':
+    'Thịt ba chỉ kho mềm đậm vị nước mắm truyền thống cùng trứng gà béo bùi.',
+  'trung-xao-ca-chua':
+    'Trứng gà đảo tơi mềm quyện sốt cà chua mọng ngọt, hoàn thiện nhanh trong 15 phút.',
+  'mi-y-sot-ca-chua-thit-bam':
+    'Sợi mì Ý dai mềm áo đẫm sốt thịt bò băm cà chua ninh thơm kiểu Âu.',
+  'bong-cai-xanh-nam-ap-chao-bo-toi':
+    'Bông cải xanh giòn ngọt áp chảo cùng nấm tươi và bơ tỏi dậy hương.',
+  'burger-bo-pho-mai-kieu-my':
+    'Nhân bò băm áp chảo mọng nước phủ phô mai Cheddar tan chảy kẹp bánh mềm.',
+  'bap-ngot-khoai-tay-dut-lo-bo-toi':
+    'Khoai tây và hạt bắp ngọt đút lò vàng ươm quyện bơ lạt tỏi thơm.',
+  'bo-xao-ot-chuong-hanh-tay':
+    'Thịt bò áp chảo lửa lớn săn mềm bên ngoài, mọng ngọt bên trong với ớt chuông hành tây.',
+  'bap-ngot-ap-chao-bo-toi-kieu-my':
     'Hạt bắp ngọt giòn đảo nhanh cùng bơ tỏi dậy mùi, béo nhẹ làm món ăn kèm.',
-  'tom-xao-bong-cai-xanh':
-    'Tôm tươi săn ngọt xào giòn bông cải xanh, thanh đạm và giữ trọn sắc xanh.',
+  'bo-xao-bong-cai-xanh-nam':
+    'Thịt bò thái mỏng xào nhanh tay cùng bông cải xanh giòn và nấm ngọt tự nhiên.',
+  'thit-heo-ham-khoai-tay-ca-rot':
+    'Thịt heo hầm mềm ngọt nước cùng khoai tây bở bùi và cà rốt thanh dịu.',
 };
 
 const CUISINE_LABELS: Record<CuisineCode, string> = {
@@ -42,6 +51,10 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
   onSelectRecipe,
 }) => {
   const [imageError, setImageError] = useState(false);
+  const resolvedCoverUrl = resolveRecipeCoverUrl(
+    recipe.slug,
+    recipe.cover_image_url
+  );
 
   const descriptionText =
     RECIPE_BLURB_BY_SLUG[recipe.slug] ??
@@ -52,11 +65,11 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
       data-testid={`recipe-card-${recipe.slug}`}
       className="group relative flex flex-col items-center pt-16"
     >
-      {/* Đĩa món ăn tròn lớn chồng lên đỉnh thẻ đồng bộ 100% với trang Bếp AI */}
+      {/* Đĩa món ăn tròn lớn chồng lên đỉnh thẻ đồng bộ 100% với trang Gợi ý từ tủ bếp */}
       <div className="relative z-10 -mb-16 h-36 w-36 shrink-0 overflow-hidden rounded-full bg-[#181512] ring-4 ring-[#FFF8F0] shadow-[0_12px_26px_rgba(24,21,18,0.16)] transition duration-300 group-hover:scale-[1.03]">
-        {recipe.cover_image_url && !imageError ? (
+        {resolvedCoverUrl && !imageError ? (
           <img
-            src={recipe.cover_image_url}
+            src={resolvedCoverUrl}
             alt={recipe.name_vi}
             loading="lazy"
             onError={() => setImageError(true)}

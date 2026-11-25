@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { ChevronDown, Star } from 'lucide-react';
 import { postRecommendations } from '../../shared/api/recommendationsApi';
 import {
   CuisineCode,
@@ -43,6 +43,7 @@ type StudioAvailabilityTab = 'all' | 'ready' | 'missing';
 
 export interface RecommendationResultsViewProps {
   selectedIngredients: Ingredient[];
+  knownCatalogIngredients?: Ingredient[];
   excludedPantryIds: string[];
   mainIngredientIds: string[];
   onMainIngredientIdsChange: (ids: string[]) => void;
@@ -59,6 +60,7 @@ export const RecommendationResultsView: React.FC<
   RecommendationResultsViewProps
 > = ({
   selectedIngredients,
+  knownCatalogIngredients = [],
   excludedPantryIds,
   mainIngredientIds,
   onMainIngredientIdsChange,
@@ -87,8 +89,28 @@ export const RecommendationResultsView: React.FC<
   const pantryIdsKey = excludedPantryIds.join(',');
   const cuisineKey = cuisineCodes.join(',');
 
+  const latestFiltersRef = useRef({
+    selectedIngredients,
+    mainIngredientIds,
+    excludedPantryIds,
+    cuisineCodes,
+  });
+  latestFiltersRef.current = {
+    selectedIngredients,
+    mainIngredientIds,
+    excludedPantryIds,
+    cuisineCodes,
+  };
+
   useEffect(() => {
-    if (selectedIngredients.length === 0) {
+    const {
+      selectedIngredients: currentSelected,
+      mainIngredientIds: currentMainIds,
+      excludedPantryIds: currentExcludedPantry,
+      cuisineCodes: currentCuisines,
+    } = latestFiltersRef.current;
+
+    if (currentSelected.length === 0) {
       setItems([]);
       setErrorMessage(null);
       setIsLoading(false);
@@ -96,6 +118,7 @@ export const RecommendationResultsView: React.FC<
     }
 
     let isCancelled = false;
+    const controller = new AbortController();
     setIsLoading(true);
     setErrorMessage(null);
 
@@ -104,40 +127,51 @@ export const RecommendationResultsView: React.FC<
         ? Math.round((desiredMinutes / 60) * 10000) / 10000
         : 100.0;
 
-    postRecommendations({
-      ingredient_ids: selectedIngredients.map((item) => item.id),
-      main_ingredient_ids: mainIngredientIds,
-      desired_hours: desiredHours,
-      excluded_pantry_ids: excludedPantryIds,
-      cuisine_codes: cuisineCodes,
-      max_total_minutes: maxTotalMinutes,
-      include_missing: embeddedInStudio ? true : includeMissing,
-      diversify,
-      limit: 20,
-      ...(scanId ? { scan_id: scanId } : {}),
-    })
+    postRecommendations(
+      {
+        ingredient_ids: currentSelected.map((item) => item.id),
+        main_ingredient_ids: currentMainIds,
+        desired_hours: desiredHours,
+        excluded_pantry_ids: currentExcludedPantry,
+        cuisine_codes: currentCuisines,
+        max_total_minutes: maxTotalMinutes,
+        include_missing: embeddedInStudio ? true : includeMissing,
+        diversify,
+        limit: 20,
+        ...(scanId ? { scan_id: scanId } : {}),
+      },
+      controller.signal
+    )
       .then((res) => {
-        if (!isCancelled) {
+        if (!isCancelled && !controller.signal.aborted) {
           setItems(res.items);
         }
       })
       .catch((err: unknown) => {
-        if (!isCancelled) {
-          setErrorMessage(
-            err instanceof Error
-              ? err.message
-              : 'Không thể tải danh sách gợi ý món ăn.'
-          );
+        if (
+          isCancelled ||
+          controller.signal.aborted ||
+          (err &&
+            typeof err === 'object' &&
+            (err as { name?: string }).name === 'AbortError')
+        ) {
+          return;
         }
+        setErrorMessage(
+          err instanceof Error
+            ? err.message
+            : 'Không thể tải danh sách gợi ý món ăn.'
+        );
       })
       .finally(() => {
-        if (!isCancelled) {
+        if (!isCancelled && !controller.signal.aborted) {
           setIsLoading(false);
         }
       });
 
     return () => {
       isCancelled = true;
+      controller.abort();
     };
   }, [
     ingredientIdsKey,
@@ -151,10 +185,6 @@ export const RecommendationResultsView: React.FC<
     scanId,
     retryTick,
     embeddedInStudio,
-    selectedIngredients,
-    mainIngredientIds,
-    excludedPantryIds,
-    cuisineCodes,
   ]);
 
   const handleToggleMain = (ingredientId: string) => {
@@ -178,6 +208,13 @@ export const RecommendationResultsView: React.FC<
   const readyItems = items.filter((item) => item.availability === 'ready');
   const missingItems = items.filter((item) => item.availability === 'missing');
   const mainSet = new Set(mainIngredientIds);
+  const allKnownIngredients = Array.from(
+    new Map(
+      [...knownCatalogIngredients, ...selectedIngredients].map(
+        (item) => [item.id, item] as const
+      )
+    ).values()
+  );
 
   if (selectedIngredients.length === 0) {
     return (
@@ -402,11 +439,13 @@ export const RecommendationResultsView: React.FC<
         {errorMessage && (
           <div
             role="alert"
+            data-testid="recommendations-error-alert"
             className="flex items-center justify-between gap-3 rounded-[14px] bg-[#FFF8F0] p-4 text-sm text-[#8F2D0A]"
           >
             <span>{errorMessage}</span>
             <button
               type="button"
+              data-testid="recommendations-retry-btn"
               onClick={() => setRetryTick((n) => n + 1)}
               className="rounded-full bg-[#B4490E] px-4 py-1.5 text-xs font-semibold text-white"
             >
@@ -457,7 +496,7 @@ export const RecommendationResultsView: React.FC<
               <RecommendationCard
                 key={item.recipe.id}
                 item={item}
-                knownIngredients={selectedIngredients}
+                knownIngredients={allKnownIngredients}
                 onSelectRecipe={onSelectRecipe}
               />
             ))}
@@ -500,7 +539,12 @@ export const RecommendationResultsView: React.FC<
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:items-center">
           <div className="lg:col-span-6">
             <p className="text-[12.5px] font-semibold text-[#181512]">
-              Nguyên liệu đang có (bấm ★ để ưu tiên món chính):
+              Nguyên liệu đang có (bấm{' '}
+              <Star
+                className="mx-0.5 inline h-3.5 w-3.5 fill-current text-[#9E3D08]"
+                aria-hidden="true"
+              />{' '}
+              để ưu tiên món chính):
             </p>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {selectedIngredients.map((item) => {
@@ -518,7 +562,12 @@ export const RecommendationResultsView: React.FC<
                         : 'bg-[#EFE2D2] font-medium text-[#181512]'
                     }`}
                   >
-                    <span>{isMain ? '★' : '☆'}</span>
+                    <Star
+                      className={`h-3.5 w-3.5 shrink-0 ${
+                        isMain ? 'fill-current' : ''
+                      }`}
+                      aria-hidden="true"
+                    />
                     <span>{item.name_vi}</span>
                   </button>
                 );
@@ -555,7 +604,25 @@ export const RecommendationResultsView: React.FC<
         missingCount={missingItems.length}
       />
 
-      {items.length === 0 && !isLoading ? (
+      {errorMessage && (
+        <div
+          role="alert"
+          data-testid="recommendations-error-alert"
+          className="flex items-center justify-between gap-3 rounded-[14px] bg-[#FFF8F0] p-4 text-sm text-[#8F2D0A]"
+        >
+          <span>{errorMessage}</span>
+          <button
+            type="button"
+            data-testid="recommendations-retry-btn"
+            onClick={() => setRetryTick((n) => n + 1)}
+            className="rounded-full bg-[#B4490E] px-4 py-1.5 text-xs font-semibold text-white"
+          >
+            Thử lại
+          </button>
+        </div>
+      )}
+
+      {items.length === 0 && !isLoading && !errorMessage ? (
         <div
           data-testid="recommendations-empty-state"
           className="py-12 text-center"
@@ -586,7 +653,7 @@ export const RecommendationResultsView: React.FC<
                   <RecommendationCard
                     key={item.recipe.id}
                     item={item}
-                    knownIngredients={selectedIngredients}
+                    knownIngredients={allKnownIngredients}
                     onSelectRecipe={onSelectRecipe}
                   />
                 ))}
@@ -615,7 +682,7 @@ export const RecommendationResultsView: React.FC<
                   <RecommendationCard
                     key={item.recipe.id}
                     item={item}
-                    knownIngredients={selectedIngredients}
+                    knownIngredients={allKnownIngredients}
                     onSelectRecipe={onSelectRecipe}
                   />
                 ))}

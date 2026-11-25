@@ -1,413 +1,307 @@
 import {
   Ingredient,
   RecipeDetail,
-  RecipeIngredientView,
   RecipeSummary,
 } from './types';
 
 /**
- * Danh sách 5 gia vị sẵn có trong bếp (category = 'pantry') theo đúng BR-04 & ADR-008:
- * Muối, Đường, Nước mắm, Dầu ăn, Hạt tiêu (Tuyệt đối không tính Nước lọc).
+ * Danh mục 5 gia vị sẵn có trong bếp (category = 'pantry') đồng bộ 1-1 với backend/app/core/seed_fixtures.py & supabase/seed.sql:
+ * Muối, Nước mắm, Dầu ăn, Đường, Tiêu xay (BR-04 & ADR-008).
  */
 export const MOCK_PANTRY_INGREDIENTS: Ingredient[] = [
   {
-    id: '22222222-2222-4222-8222-000000000001',
-    slug: 'muoi',
-    name_vi: 'Muối',
-    category: 'pantry',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111106",
+    "slug": "muoi",
+    "name_vi": "Muối",
+    "category": "pantry",
+    "is_active": true
   },
   {
-    id: '22222222-2222-4222-8222-000000000002',
-    slug: 'duong',
-    name_vi: 'Đường',
-    category: 'pantry',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111107",
+    "slug": "nuoc-mam",
+    "name_vi": "Nước mắm",
+    "category": "pantry",
+    "is_active": true
   },
   {
-    id: '22222222-2222-4222-8222-000000000003',
-    slug: 'nuoc-mam',
-    name_vi: 'Nước mắm',
-    category: 'pantry',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111108",
+    "slug": "dau-an",
+    "name_vi": "Dầu ăn",
+    "category": "pantry",
+    "is_active": true
   },
   {
-    id: '22222222-2222-4222-8222-000000000004',
-    slug: 'dau-an',
-    name_vi: 'Dầu ăn',
-    category: 'pantry',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111109",
+    "slug": "duong",
+    "name_vi": "Đường",
+    "category": "pantry",
+    "is_active": true
   },
   {
-    id: '22222222-2222-4222-8222-000000000005',
-    slug: 'hat-tieu',
-    name_vi: 'Hạt tiêu',
-    category: 'pantry',
-    is_active: true,
-  },
+    "id": "11111111-1111-4111-8111-111111111110",
+    "slug": "tieu-xay",
+    "name_vi": "Tiêu xay",
+    "category": "pantry",
+    "is_active": true
+  }
 ];
 
 /**
- * Danh sách nguyên liệu chính chuẩn trong từ điển (category != 'pantry').
+ * Danh mục 36 nguyên liệu chính chuẩn (category != 'pantry') đồng bộ 1-1 UUID & slug với Backend.
  */
 export const MOCK_MAIN_INGREDIENTS: Ingredient[] = [
   {
-    id: '11111111-1111-4111-8111-000000000001',
-    slug: 'dau-hu',
-    name_vi: 'Đậu hũ',
-    category: 'protein',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111101",
+    "slug": "ca-chua",
+    "name_vi": "Cà chua",
+    "category": "vegetable",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000002',
-    slug: 'ca-chua',
-    name_vi: 'Cà chua',
-    category: 'vegetable',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111102",
+    "slug": "trung-ga",
+    "name_vi": "Trứng gà",
+    "category": "protein",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000003',
-    slug: 'trung-ga',
-    name_vi: 'Trứng gà',
-    category: 'protein',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111103",
+    "slug": "dau-hu",
+    "name_vi": "Đậu hũ",
+    "category": "protein",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000004',
-    slug: 'thit-heo',
-    name_vi: 'Thịt heo',
-    category: 'protein',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111104",
+    "slug": "thit-ba-chi",
+    "name_vi": "Thịt ba chỉ",
+    "category": "protein",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000005',
-    slug: 'bap',
-    name_vi: 'Bắp',
-    category: 'vegetable',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111105",
+    "slug": "hanh-la",
+    "name_vi": "Hành lá",
+    "category": "spice",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000006',
-    slug: 'dua-leo',
-    name_vi: 'Dưa leo',
-    category: 'vegetable',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111202",
+    "slug": "khoai-tay",
+    "name_vi": "Khoai tây",
+    "category": "vegetable",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000007',
-    slug: 'hanh-la',
-    name_vi: 'Hành lá',
-    category: 'spice',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111203",
+    "slug": "ca-rot",
+    "name_vi": "Cà rốt",
+    "category": "vegetable",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000008',
-    slug: 'hanh-tay',
-    name_vi: 'Hành tây',
-    category: 'vegetable',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111204",
+    "slug": "hanh-tay",
+    "name_vi": "Hành tây",
+    "category": "vegetable",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000009',
-    slug: 'toi',
-    name_vi: 'Tỏi',
-    category: 'spice',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111205",
+    "slug": "toi",
+    "name_vi": "Tỏi",
+    "category": "spice",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000010',
-    slug: 'thit-bo',
-    name_vi: 'Thịt bò',
-    category: 'protein',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111206",
+    "slug": "ot",
+    "name_vi": "Ớt",
+    "category": "spice",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000011',
-    slug: 'uc-ga',
-    name_vi: 'Ức gà',
-    category: 'protein',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111207",
+    "slug": "dua-leo",
+    "name_vi": "Dưa leo",
+    "category": "vegetable",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000012',
-    slug: 'tom-tuoi',
-    name_vi: 'Tôm tươi',
-    category: 'seafood',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111208",
+    "slug": "bap-cai",
+    "name_vi": "Bắp cải",
+    "category": "vegetable",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000013',
-    slug: 'bong-cai-xanh',
-    name_vi: 'Bông cải xanh',
-    category: 'vegetable',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111209",
+    "slug": "bong-cai-xanh",
+    "name_vi": "Bông cải xanh",
+    "category": "vegetable",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000014',
-    slug: 'thom',
-    name_vi: 'Thơm',
-    category: 'vegetable',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111210",
+    "slug": "nam",
+    "name_vi": "Nấm",
+    "category": "vegetable",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000015',
-    slug: 'ca-hoi',
-    name_vi: 'Cá hồi',
-    category: 'seafood',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111212",
+    "slug": "thit-ga-song",
+    "name_vi": "Thịt gà sống",
+    "category": "protein",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000016',
-    slug: 'muc-tuoi',
-    name_vi: 'Mực tươi',
-    category: 'seafood',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111213",
+    "slug": "thit-heo-song",
+    "name_vi": "Thịt heo sống",
+    "category": "protein",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000017',
-    slug: 'gung',
-    name_vi: 'Gừng',
-    category: 'spice',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111214",
+    "slug": "tom",
+    "name_vi": "Tôm tươi",
+    "category": "seafood",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000018',
-    slug: 'ot-sung',
-    name_vi: 'Ớt sừng',
-    category: 'spice',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111215",
+    "slug": "ca-nguyen-con",
+    "name_vi": "Cá nguyên con",
+    "category": "seafood",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000019',
-    slug: 'suon-heo',
-    name_vi: 'Sườn heo',
-    category: 'protein',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111216",
+    "slug": "gung",
+    "name_vi": "Gừng",
+    "category": "spice",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000020',
-    slug: 'thit-ga-ta',
-    name_vi: 'Thịt gà ta',
-    category: 'protein',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111218",
+    "slug": "ot-chuong",
+    "name_vi": "Ớt chuông",
+    "category": "vegetable",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000021',
-    slug: 'trung-cut',
-    name_vi: 'Trứng cút',
-    category: 'protein',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111219",
+    "slug": "bap-ngot",
+    "name_vi": "Bắp ngọt",
+    "category": "vegetable",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000022',
-    slug: 'cha-lua',
-    name_vi: 'Chả lụa',
-    category: 'protein',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111301",
+    "slug": "thit-bo",
+    "name_vi": "Thịt bò",
+    "category": "protein",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000023',
-    slug: 'ca-rot',
-    name_vi: 'Cà rốt',
-    category: 'vegetable',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111302",
+    "slug": "mi-y",
+    "name_vi": "Mì Ý",
+    "category": "other",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000024',
-    slug: 'khoai-tay',
-    name_vi: 'Khoai tây',
-    category: 'vegetable',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111303",
+    "slug": "bo-lat",
+    "name_vi": "Bơ lạt",
+    "category": "other",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000025',
-    slug: 'rau-muong',
-    name_vi: 'Rau muống',
-    category: 'vegetable',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111304",
+    "slug": "pho-mai-cheddar",
+    "name_vi": "Phô mai Cheddar",
+    "category": "other",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000026',
-    slug: 'nam-huong',
-    name_vi: 'Nấm hương',
-    category: 'vegetable',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111305",
+    "slug": "banh-mi-burger",
+    "name_vi": "Vỏ bánh Burger",
+    "category": "other",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000027',
-    slug: 'ca-basa',
-    name_vi: 'Cá basa',
-    category: 'seafood',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111306",
+    "slug": "xa-lach",
+    "name_vi": "Rau xà lách",
+    "category": "vegetable",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000028',
-    slug: 'ngheu-tuoi',
-    name_vi: 'Nghêu (Ngao)',
-    category: 'seafood',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111307",
+    "slug": "sa",
+    "name_vi": "Sả",
+    "category": "spice",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000029',
-    slug: 'cua-bien',
-    name_vi: 'Cua biển',
-    category: 'seafood',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111308",
+    "slug": "nghe",
+    "name_vi": "Nghệ tươi",
+    "category": "spice",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000030',
-    slug: 'sa-cay',
-    name_vi: 'Sả cây',
-    category: 'spice',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111309",
+    "slug": "la-chanh",
+    "name_vi": "Lá chanh",
+    "category": "spice",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000031',
-    slug: 'hanh-tim',
-    name_vi: 'Hành tím',
-    category: 'spice',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111310",
+    "slug": "hanh-tim",
+    "name_vi": "Hành tím",
+    "category": "spice",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000032',
-    slug: 'ngo-ri',
-    name_vi: 'Ngò rí (Rau mùi)',
-    category: 'spice',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111311",
+    "slug": "chanh",
+    "name_vi": "Chanh tươi",
+    "category": "vegetable",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000033',
-    slug: 'cai-thia',
-    name_vi: 'Cải thìa',
-    category: 'vegetable',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111312",
+    "slug": "rau-muong",
+    "name_vi": "Rau muống",
+    "category": "vegetable",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000034',
-    slug: 'bap-cai',
-    name_vi: 'Bắp cải',
-    category: 'vegetable',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111313",
+    "slug": "cai-thia",
+    "name_vi": "Cải thìa",
+    "category": "vegetable",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000035',
-    slug: 'xa-lach',
-    name_vi: 'Xà lách',
-    category: 'vegetable',
-    is_active: true,
+    "id": "11111111-1111-4111-8111-111111111314",
+    "slug": "bi-do",
+    "name_vi": "Bí đỏ",
+    "category": "vegetable",
+    "is_active": true
   },
   {
-    id: '11111111-1111-4111-8111-000000000036',
-    slug: 'nam-kim-cham',
-    name_vi: 'Nấm kim châm',
-    category: 'vegetable',
-    is_active: true,
-  },
-  {
-    id: '11111111-1111-4111-8111-000000000037',
-    slug: 'thit-ba-chi',
-    name_vi: 'Thịt ba chỉ',
-    category: 'protein',
-    is_active: true,
-  },
-  {
-    id: '11111111-1111-4111-8111-000000000038',
-    slug: 'thit-bam',
-    name_vi: 'Thịt heo bằm',
-    category: 'protein',
-    is_active: true,
-  },
-  {
-    id: '11111111-1111-4111-8111-000000000039',
-    slug: 'thit-vit',
-    name_vi: 'Thịt vịt',
-    category: 'protein',
-    is_active: true,
-  },
-  {
-    id: '11111111-1111-4111-8111-000000000040',
-    slug: 'ca-thu',
-    name_vi: 'Cá thu',
-    category: 'seafood',
-    is_active: true,
-  },
-  {
-    id: '11111111-1111-4111-8111-000000000041',
-    slug: 'cha-ca',
-    name_vi: 'Chả cá',
-    category: 'seafood',
-    is_active: true,
-  },
-  {
-    id: '11111111-1111-4111-8111-000000000042',
-    slug: 'oc-buou',
-    name_vi: 'Ốc bươu',
-    category: 'seafood',
-    is_active: true,
-  },
-  {
-    id: '11111111-1111-4111-8111-000000000043',
-    slug: 'trung-vit',
-    name_vi: 'Trứng vịt',
-    category: 'protein',
-    is_active: true,
-  },
-  {
-    id: '11111111-1111-4111-8111-000000000044',
-    slug: 'dau-hu-non',
-    name_vi: 'Đậu hũ non',
-    category: 'protein',
-    is_active: true,
-  },
-  {
-    id: '11111111-1111-4111-8111-000000000045',
-    slug: 'tau-hu-ky',
-    name_vi: 'Tàu hũ ky (Váng đậu)',
-    category: 'protein',
-    is_active: true,
-  },
-  {
-    id: '11111111-1111-4111-8111-000000000046',
-    slug: 'trung-muoi',
-    name_vi: 'Trứng muối',
-    category: 'protein',
-    is_active: true,
-  },
-  {
-    id: '11111111-1111-4111-8111-000000000047',
-    slug: 'rau-ngot',
-    name_vi: 'Rau ngót',
-    category: 'vegetable',
-    is_active: true,
-  },
-  {
-    id: '11111111-1111-4111-8111-000000000048',
-    slug: 'cai-ngot',
-    name_vi: 'Cải ngọt',
-    category: 'vegetable',
-    is_active: true,
-  },
-  {
-    id: '11111111-1111-4111-8111-000000000049',
-    slug: 'rau-mong-toi',
-    name_vi: 'Rau mồng tơi',
-    category: 'vegetable',
-    is_active: true,
-  },
-  {
-    id: '11111111-1111-4111-8111-000000000050',
-    slug: 'la-chanh',
-    name_vi: 'Lá chanh',
-    category: 'spice',
-    is_active: true,
-  },
-  {
-    id: '11111111-1111-4111-8111-000000000051',
-    slug: 'rau-ram',
-    name_vi: 'Rau răm',
-    category: 'spice',
-    is_active: true,
-  },
+    "id": "11111111-1111-4111-8111-111111111315",
+    "slug": "muc-tuoi",
+    "name_vi": "Mực tươi",
+    "category": "seafood",
+    "is_active": true
+  }
 ];
 
 export const MOCK_ALL_INGREDIENTS: Ingredient[] = [
@@ -416,97 +310,209 @@ export const MOCK_ALL_INGREDIENTS: Ingredient[] = [
 ];
 
 /**
- * Danh sách công thức món ăn mẫu chuẩn OpenAPI (bao phủ VN, EU, US và các mốc thời gian <=15, <=30, <=60 phút).
+ * Danh sách 20 công thức món ăn chuẩn đồng bộ 1-1 UUID & slug với Backend & seed.sql.
  */
 export const MOCK_RECIPES: RecipeSummary[] = [
   {
-    id: 'a1111111-1111-4111-8111-000000000001',
-    slug: 'canh-ca-chua-trung',
-    name_vi: 'Canh cà chua trứng (Canh mây)',
-    cuisine_code: 'VN',
-    prep_minutes: 5,
-    cook_minutes: 10,
-    total_minutes: 15,
-    cover_image_url:
-      'https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=800&q=80',
+    "id": "22222222-2222-4222-8222-222222222201",
+    "slug": "dau-hu-sot-ca-chua",
+    "name_vi": "Đậu hũ sốt cà chua",
+    "cuisine_code": "VN",
+    "prep_minutes": 10,
+    "cook_minutes": 20,
+    "total_minutes": 30,
+    "cover_image_url": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80"
   },
   {
-    id: 'a1111111-1111-4111-8111-000000000002',
-    slug: 'dau-hu-sot-ca-chua',
-    name_vi: 'Đậu hũ sốt cà chua',
-    cuisine_code: 'VN',
-    prep_minutes: 10,
-    cook_minutes: 15,
-    total_minutes: 25,
-    cover_image_url:
-      'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80',
+    "id": "22222222-2222-4222-8222-222222222202",
+    "slug": "canh-ca-chua-trung",
+    "name_vi": "Canh cà chua trứng",
+    "cuisine_code": "VN",
+    "prep_minutes": 5,
+    "cook_minutes": 10,
+    "total_minutes": 15,
+    "cover_image_url": "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=800&q=80"
   },
   {
-    id: 'a1111111-1111-4111-8111-000000000003',
-    slug: 'thit-heo-kho-trung',
-    name_vi: 'Thịt heo kho trứng cút đậm đà',
-    cuisine_code: 'VN',
-    prep_minutes: 15,
-    cook_minutes: 35,
-    total_minutes: 50,
-    cover_image_url:
-      'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80',
+    "id": "22222222-2222-4222-8222-222222222203",
+    "slug": "thit-kho-trung",
+    "name_vi": "Thịt kho trứng",
+    "cuisine_code": "VN",
+    "prep_minutes": 15,
+    "cook_minutes": 45,
+    "total_minutes": 60,
+    "cover_image_url": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80"
   },
   {
-    id: 'a1111111-1111-4111-8111-000000000004',
-    slug: 'bo-luc-lac-hanh-tay',
-    name_vi: 'Bò lúc lắc xào hành tây',
-    cuisine_code: 'VN',
-    prep_minutes: 15,
-    cook_minutes: 10,
-    total_minutes: 25,
-    cover_image_url:
-      'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=800&q=80',
+    "id": "22222222-2222-4222-8222-222222222204",
+    "slug": "trung-xao-ca-chua",
+    "name_vi": "Trứng xào cà chua",
+    "cuisine_code": "VN",
+    "prep_minutes": 5,
+    "cook_minutes": 10,
+    "total_minutes": 15,
+    "cover_image_url": "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=800&q=80"
   },
   {
-    id: 'a1111111-1111-4111-8111-000000000005',
-    slug: 'salad-dua-leo-ca-chua-kieu-au',
-    name_vi: 'Salad dưa leo cà chua kiểu Âu',
-    cuisine_code: 'EU',
-    prep_minutes: 10,
-    cook_minutes: 2,
-    total_minutes: 12,
-    cover_image_url:
-      'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=800&q=80',
+    "id": "22222222-2222-4222-8222-222222222205",
+    "slug": "mi-y-sot-ca-chua-thit-bam",
+    "name_vi": "Mì Ý sốt cà chua thịt băm",
+    "cuisine_code": "EU",
+    "prep_minutes": 10,
+    "cook_minutes": 20,
+    "total_minutes": 30,
+    "cover_image_url": "https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&w=800&q=80"
   },
   {
-    id: 'a1111111-1111-4111-8111-000000000006',
-    slug: 'uc-ga-ap-chao-bo-toi',
-    name_vi: 'Ức gà áp chảo sốt bơ tỏi',
-    cuisine_code: 'EU',
-    prep_minutes: 10,
-    cook_minutes: 15,
-    total_minutes: 25,
-    cover_image_url:
-      'https://images.unsplash.com/photo-1532550907401-a500c9a57435?auto=format&fit=crop&w=800&q=80',
+    "id": "22222222-2222-4222-8222-222222222206",
+    "slug": "bong-cai-xanh-nam-ap-chao-bo-toi",
+    "name_vi": "Bông cải xanh và nấm áp chảo bơ tỏi",
+    "cuisine_code": "EU",
+    "prep_minutes": 5,
+    "cook_minutes": 8,
+    "total_minutes": 13,
+    "cover_image_url": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=800&q=80"
   },
   {
-    id: 'a1111111-1111-4111-8111-000000000007',
-    slug: 'bap-xao-bo-toi-kieu-my',
-    name_vi: 'Bắp ngọt xào bơ tỏi kiểu Mỹ',
-    cuisine_code: 'US',
-    prep_minutes: 5,
-    cook_minutes: 10,
-    total_minutes: 15,
-    cover_image_url:
-      'https://images.unsplash.com/photo-1551754655-cd27e38d2076?auto=format&fit=crop&w=800&q=80',
+    "id": "22222222-2222-4222-8222-222222222207",
+    "slug": "burger-bo-pho-mai-kieu-my",
+    "name_vi": "Burger bò phô mai kiểu Mỹ",
+    "cuisine_code": "US",
+    "prep_minutes": 10,
+    "cook_minutes": 12,
+    "total_minutes": 22,
+    "cover_image_url": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=800&q=80"
   },
   {
-    id: 'a1111111-1111-4111-8111-000000000008',
-    slug: 'tom-xao-bong-cai-xanh',
-    name_vi: 'Tôm tươi xào bông cải xanh',
-    cuisine_code: 'US',
-    prep_minutes: 10,
-    cook_minutes: 12,
-    total_minutes: 22,
-    cover_image_url:
-      'https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=800&q=80',
+    "id": "22222222-2222-4222-8222-222222222208",
+    "slug": "bap-ngot-khoai-tay-dut-lo-bo-toi",
+    "name_vi": "Bắp ngọt và khoai tây đút lò bơ tỏi",
+    "cuisine_code": "US",
+    "prep_minutes": 10,
+    "cook_minutes": 25,
+    "total_minutes": 35,
+    "cover_image_url": "https://images.unsplash.com/photo-1551754655-cd27e38d2076?auto=format&fit=crop&w=800&q=80"
   },
+  {
+    "id": "22222222-2222-4222-8222-222222222209",
+    "slug": "ga-hap-sa",
+    "name_vi": "Gà hấp sả",
+    "cuisine_code": "VN",
+    "prep_minutes": 10,
+    "cook_minutes": 20,
+    "total_minutes": 30,
+    "cover_image_url": "https://images.unsplash.com/photo-1532550907401-a500c9a57435?auto=format&fit=crop&w=800&q=80"
+  },
+  {
+    "id": "22222222-2222-4222-8222-222222222210",
+    "slug": "ga-kho-sa-nghe",
+    "name_vi": "Gà kho sả nghệ",
+    "cuisine_code": "VN",
+    "prep_minutes": 10,
+    "cook_minutes": 25,
+    "total_minutes": 35,
+    "cover_image_url": "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?auto=format&fit=crop&w=800&q=80"
+  },
+  {
+    "id": "22222222-2222-4222-8222-222222222211",
+    "slug": "ga-xao-sa-ot",
+    "name_vi": "Gà xào sả ớt",
+    "cuisine_code": "VN",
+    "prep_minutes": 10,
+    "cook_minutes": 12,
+    "total_minutes": 22,
+    "cover_image_url": "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&w=800&q=80"
+  },
+  {
+    "id": "22222222-2222-4222-8222-222222222212",
+    "slug": "tom-rang-hanh-toi",
+    "name_vi": "Tôm rang hành tỏi",
+    "cuisine_code": "VN",
+    "prep_minutes": 8,
+    "cook_minutes": 10,
+    "total_minutes": 18,
+    "cover_image_url": "https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=800&q=80"
+  },
+  {
+    "id": "22222222-2222-4222-8222-222222222213",
+    "slug": "ca-kho-gung",
+    "name_vi": "Cá kho gừng",
+    "cuisine_code": "VN",
+    "prep_minutes": 10,
+    "cook_minutes": 30,
+    "total_minutes": 40,
+    "cover_image_url": "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=800&q=80"
+  },
+  {
+    "id": "22222222-2222-4222-8222-222222222214",
+    "slug": "thit-heo-ham-khoai-tay-ca-rot",
+    "name_vi": "Thịt heo hầm khoai tây cà rốt",
+    "cuisine_code": "VN",
+    "prep_minutes": 15,
+    "cook_minutes": 30,
+    "total_minutes": 45,
+    "cover_image_url": "https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=800&q=80"
+  },
+  {
+    "id": "22222222-2222-4222-8222-222222222215",
+    "slug": "bo-xao-bong-cai-xanh-nam",
+    "name_vi": "Thịt bò xào bông cải xanh nấm",
+    "cuisine_code": "VN",
+    "prep_minutes": 8,
+    "cook_minutes": 10,
+    "total_minutes": 18,
+    "cover_image_url": "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=800&q=80"
+  },
+  {
+    "id": "22222222-2222-4222-8222-222222222216",
+    "slug": "bap-cai-xao-nam-toi",
+    "name_vi": "Bắp cải xào nấm tỏi",
+    "cuisine_code": "VN",
+    "prep_minutes": 6,
+    "cook_minutes": 8,
+    "total_minutes": 14,
+    "cover_image_url": "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=800&q=80"
+  },
+  {
+    "id": "22222222-2222-4222-8222-222222222217",
+    "slug": "dua-leo-tron-toi-ot",
+    "name_vi": "Dưa leo trộn tỏi ớt",
+    "cuisine_code": "VN",
+    "prep_minutes": 10,
+    "cook_minutes": 0,
+    "total_minutes": 10,
+    "cover_image_url": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=800&q=80"
+  },
+  {
+    "id": "22222222-2222-4222-8222-222222222218",
+    "slug": "bo-xao-ot-chuong-hanh-tay",
+    "name_vi": "Thịt bò xào ớt chuông hành tây kiểu Âu",
+    "cuisine_code": "EU",
+    "prep_minutes": 8,
+    "cook_minutes": 12,
+    "total_minutes": 20,
+    "cover_image_url": "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80"
+  },
+  {
+    "id": "22222222-2222-4222-8222-222222222219",
+    "slug": "bap-ngot-ap-chao-bo-toi-kieu-my",
+    "name_vi": "Bắp ngọt áp chảo bơ tỏi kiểu Mỹ",
+    "cuisine_code": "US",
+    "prep_minutes": 5,
+    "cook_minutes": 10,
+    "total_minutes": 15,
+    "cover_image_url": "https://images.unsplash.com/photo-1551754655-cd27e38d2076?auto=format&fit=crop&w=800&q=80"
+  },
+  {
+    "id": "22222222-2222-4222-8222-222222222220",
+    "slug": "rau-muong-xao-toi",
+    "name_vi": "Rau muống xào tỏi",
+    "cuisine_code": "VN",
+    "prep_minutes": 5,
+    "cook_minutes": 7,
+    "total_minutes": 12,
+    "cover_image_url": "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=800&q=80"
+  }
 ];
 
 export type MockIngredientRole = 'core' | 'secondary' | 'spice' | 'optional';
@@ -524,936 +530,2492 @@ export interface MockRecipeScoringMeta {
   >;
 }
 
-const ING_BY_ID = new Map(
-  MOCK_ALL_INGREDIENTS.map((item) => [item.id, item] as const)
+export const MOCK_RECIPE_SCORING_META: Record<string, MockRecipeScoringMeta> = {
+  "22222222-2222-4222-8222-222222222201": {
+    "cookingMethod": "braise",
+    "rolesByIngredientId": {
+      "11111111-1111-4111-8111-111111111103": {
+        "role": "core",
+        "dishRole": "main",
+        "weight": 4
+      },
+      "11111111-1111-4111-8111-111111111101": {
+        "role": "secondary",
+        "dishRole": "sub",
+        "weight": 2
+      },
+      "11111111-1111-4111-8111-111111111105": {
+        "role": "optional",
+        "dishRole": "sub",
+        "weight": 0
+      },
+      "11111111-1111-4111-8111-111111111106": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111108": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      }
+    }
+  },
+  "22222222-2222-4222-8222-222222222202": {
+    "cookingMethod": "boil",
+    "rolesByIngredientId": {
+      "11111111-1111-4111-8111-111111111101": {
+        "role": "core",
+        "dishRole": "main",
+        "weight": 4
+      },
+      "11111111-1111-4111-8111-111111111102": {
+        "role": "core",
+        "dishRole": "main",
+        "weight": 4
+      },
+      "11111111-1111-4111-8111-111111111106": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      }
+    }
+  },
+  "22222222-2222-4222-8222-222222222203": {
+    "cookingMethod": "braise",
+    "rolesByIngredientId": {
+      "11111111-1111-4111-8111-111111111104": {
+        "role": "core",
+        "dishRole": "main",
+        "weight": 4
+      },
+      "11111111-1111-4111-8111-111111111102": {
+        "role": "secondary",
+        "dishRole": "sub",
+        "weight": 2
+      },
+      "11111111-1111-4111-8111-111111111107": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      }
+    }
+  },
+  "22222222-2222-4222-8222-222222222204": {
+    "cookingMethod": "stir_fry",
+    "rolesByIngredientId": {
+      "11111111-1111-4111-8111-111111111101": {
+        "role": "core",
+        "dishRole": "main",
+        "weight": 4
+      },
+      "11111111-1111-4111-8111-111111111102": {
+        "role": "core",
+        "dishRole": "main",
+        "weight": 4
+      },
+      "11111111-1111-4111-8111-111111111105": {
+        "role": "optional",
+        "dishRole": "sub",
+        "weight": 0
+      },
+      "11111111-1111-4111-8111-111111111108": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111107": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      }
+    }
+  },
+  "22222222-2222-4222-8222-222222222205": {
+    "cookingMethod": "simmer",
+    "rolesByIngredientId": {
+      "11111111-1111-4111-8111-111111111302": {
+        "role": "core",
+        "dishRole": "main",
+        "weight": 4
+      },
+      "11111111-1111-4111-8111-111111111301": {
+        "role": "core",
+        "dishRole": "main",
+        "weight": 4
+      },
+      "11111111-1111-4111-8111-111111111101": {
+        "role": "secondary",
+        "dishRole": "sub",
+        "weight": 2
+      },
+      "11111111-1111-4111-8111-111111111205": {
+        "role": "optional",
+        "dishRole": "sub",
+        "weight": 0
+      },
+      "11111111-1111-4111-8111-111111111106": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111108": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      }
+    }
+  },
+  "22222222-2222-4222-8222-222222222206": {
+    "cookingMethod": "pan_sear",
+    "rolesByIngredientId": {
+      "11111111-1111-4111-8111-111111111209": {
+        "role": "core",
+        "dishRole": "main",
+        "weight": 4
+      },
+      "11111111-1111-4111-8111-111111111210": {
+        "role": "core",
+        "dishRole": "main",
+        "weight": 4
+      },
+      "11111111-1111-4111-8111-111111111303": {
+        "role": "secondary",
+        "dishRole": "sub",
+        "weight": 2
+      },
+      "11111111-1111-4111-8111-111111111205": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111106": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      }
+    }
+  },
+  "22222222-2222-4222-8222-222222222207": {
+    "cookingMethod": "grill",
+    "rolesByIngredientId": {
+      "11111111-1111-4111-8111-111111111305": {
+        "role": "core",
+        "dishRole": "main",
+        "weight": 4
+      },
+      "11111111-1111-4111-8111-111111111301": {
+        "role": "core",
+        "dishRole": "main",
+        "weight": 4
+      },
+      "11111111-1111-4111-8111-111111111304": {
+        "role": "secondary",
+        "dishRole": "sub",
+        "weight": 2
+      },
+      "11111111-1111-4111-8111-111111111306": {
+        "role": "optional",
+        "dishRole": "sub",
+        "weight": 0
+      },
+      "11111111-1111-4111-8111-111111111101": {
+        "role": "optional",
+        "dishRole": "sub",
+        "weight": 0
+      },
+      "11111111-1111-4111-8111-111111111106": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111110": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      }
+    }
+  },
+  "22222222-2222-4222-8222-222222222208": {
+    "cookingMethod": "bake",
+    "rolesByIngredientId": {
+      "11111111-1111-4111-8111-111111111219": {
+        "role": "core",
+        "dishRole": "main",
+        "weight": 4
+      },
+      "11111111-1111-4111-8111-111111111202": {
+        "role": "core",
+        "dishRole": "main",
+        "weight": 4
+      },
+      "11111111-1111-4111-8111-111111111303": {
+        "role": "secondary",
+        "dishRole": "sub",
+        "weight": 2
+      },
+      "11111111-1111-4111-8111-111111111205": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111106": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      }
+    }
+  },
+  "22222222-2222-4222-8222-222222222209": {
+    "cookingMethod": "steam",
+    "rolesByIngredientId": {
+      "11111111-1111-4111-8111-111111111212": {
+        "role": "core",
+        "dishRole": "main",
+        "weight": 4
+      },
+      "11111111-1111-4111-8111-111111111307": {
+        "role": "core",
+        "dishRole": "main",
+        "weight": 4
+      },
+      "11111111-1111-4111-8111-111111111309": {
+        "role": "optional",
+        "dishRole": "sub",
+        "weight": 0
+      },
+      "11111111-1111-4111-8111-111111111216": {
+        "role": "optional",
+        "dishRole": "sub",
+        "weight": 0
+      },
+      "11111111-1111-4111-8111-111111111106": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111110": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      }
+    }
+  },
+  "22222222-2222-4222-8222-222222222210": {
+    "cookingMethod": "braise",
+    "rolesByIngredientId": {
+      "11111111-1111-4111-8111-111111111212": {
+        "role": "core",
+        "dishRole": "main",
+        "weight": 4
+      },
+      "11111111-1111-4111-8111-111111111307": {
+        "role": "secondary",
+        "dishRole": "sub",
+        "weight": 2
+      },
+      "11111111-1111-4111-8111-111111111308": {
+        "role": "secondary",
+        "dishRole": "sub",
+        "weight": 2
+      },
+      "11111111-1111-4111-8111-111111111107": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111108": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111109": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      }
+    }
+  },
+  "22222222-2222-4222-8222-222222222211": {
+    "cookingMethod": "stir_fry",
+    "rolesByIngredientId": {
+      "11111111-1111-4111-8111-111111111212": {
+        "role": "core",
+        "dishRole": "main",
+        "weight": 4
+      },
+      "11111111-1111-4111-8111-111111111307": {
+        "role": "secondary",
+        "dishRole": "sub",
+        "weight": 2
+      },
+      "11111111-1111-4111-8111-111111111206": {
+        "role": "secondary",
+        "dishRole": "sub",
+        "weight": 2
+      },
+      "11111111-1111-4111-8111-111111111205": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111107": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111108": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      }
+    }
+  },
+  "22222222-2222-4222-8222-222222222212": {
+    "cookingMethod": "stir_fry",
+    "rolesByIngredientId": {
+      "11111111-1111-4111-8111-111111111214": {
+        "role": "core",
+        "dishRole": "main",
+        "weight": 4
+      },
+      "11111111-1111-4111-8111-111111111205": {
+        "role": "secondary",
+        "dishRole": "sub",
+        "weight": 2
+      },
+      "11111111-1111-4111-8111-111111111105": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111107": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111109": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111108": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111110": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      }
+    }
+  },
+  "22222222-2222-4222-8222-222222222213": {
+    "cookingMethod": "braise",
+    "rolesByIngredientId": {
+      "11111111-1111-4111-8111-111111111215": {
+        "role": "core",
+        "dishRole": "main",
+        "weight": 4
+      },
+      "11111111-1111-4111-8111-111111111216": {
+        "role": "secondary",
+        "dishRole": "sub",
+        "weight": 2
+      },
+      "11111111-1111-4111-8111-111111111206": {
+        "role": "optional",
+        "dishRole": "sub",
+        "weight": 0
+      },
+      "11111111-1111-4111-8111-111111111105": {
+        "role": "optional",
+        "dishRole": "sub",
+        "weight": 0
+      },
+      "11111111-1111-4111-8111-111111111107": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111109": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111108": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111110": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      }
+    }
+  },
+  "22222222-2222-4222-8222-222222222214": {
+    "cookingMethod": "simmer",
+    "rolesByIngredientId": {
+      "11111111-1111-4111-8111-111111111213": {
+        "role": "core",
+        "dishRole": "main",
+        "weight": 4
+      },
+      "11111111-1111-4111-8111-111111111202": {
+        "role": "secondary",
+        "dishRole": "sub",
+        "weight": 2
+      },
+      "11111111-1111-4111-8111-111111111203": {
+        "role": "secondary",
+        "dishRole": "sub",
+        "weight": 2
+      },
+      "11111111-1111-4111-8111-111111111204": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111105": {
+        "role": "optional",
+        "dishRole": "sub",
+        "weight": 0
+      },
+      "11111111-1111-4111-8111-111111111106": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111107": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111110": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      }
+    }
+  },
+  "22222222-2222-4222-8222-222222222215": {
+    "cookingMethod": "stir_fry",
+    "rolesByIngredientId": {
+      "11111111-1111-4111-8111-111111111301": {
+        "role": "core",
+        "dishRole": "main",
+        "weight": 4
+      },
+      "11111111-1111-4111-8111-111111111209": {
+        "role": "core",
+        "dishRole": "main",
+        "weight": 4
+      },
+      "11111111-1111-4111-8111-111111111210": {
+        "role": "secondary",
+        "dishRole": "sub",
+        "weight": 2
+      },
+      "11111111-1111-4111-8111-111111111205": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111108": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111106": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111110": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      }
+    }
+  },
+  "22222222-2222-4222-8222-222222222216": {
+    "cookingMethod": "stir_fry",
+    "rolesByIngredientId": {
+      "11111111-1111-4111-8111-111111111208": {
+        "role": "core",
+        "dishRole": "main",
+        "weight": 4
+      },
+      "11111111-1111-4111-8111-111111111210": {
+        "role": "secondary",
+        "dishRole": "sub",
+        "weight": 2
+      },
+      "11111111-1111-4111-8111-111111111205": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111108": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111106": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      }
+    }
+  },
+  "22222222-2222-4222-8222-222222222217": {
+    "cookingMethod": "mix",
+    "rolesByIngredientId": {
+      "11111111-1111-4111-8111-111111111207": {
+        "role": "core",
+        "dishRole": "main",
+        "weight": 4
+      },
+      "11111111-1111-4111-8111-111111111205": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111206": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111311": {
+        "role": "optional",
+        "dishRole": "sub",
+        "weight": 0
+      },
+      "11111111-1111-4111-8111-111111111106": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111109": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      }
+    }
+  },
+  "22222222-2222-4222-8222-222222222218": {
+    "cookingMethod": "stir_fry",
+    "rolesByIngredientId": {
+      "11111111-1111-4111-8111-111111111301": {
+        "role": "core",
+        "dishRole": "main",
+        "weight": 4
+      },
+      "11111111-1111-4111-8111-111111111218": {
+        "role": "core",
+        "dishRole": "main",
+        "weight": 4
+      },
+      "11111111-1111-4111-8111-111111111204": {
+        "role": "secondary",
+        "dishRole": "sub",
+        "weight": 2
+      },
+      "11111111-1111-4111-8111-111111111205": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111303": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111106": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111110": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      }
+    }
+  },
+  "22222222-2222-4222-8222-222222222219": {
+    "cookingMethod": "pan_sear",
+    "rolesByIngredientId": {
+      "11111111-1111-4111-8111-111111111219": {
+        "role": "core",
+        "dishRole": "main",
+        "weight": 4
+      },
+      "11111111-1111-4111-8111-111111111303": {
+        "role": "secondary",
+        "dishRole": "sub",
+        "weight": 2
+      },
+      "11111111-1111-4111-8111-111111111205": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111105": {
+        "role": "optional",
+        "dishRole": "sub",
+        "weight": 0
+      },
+      "11111111-1111-4111-8111-111111111106": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111110": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      }
+    }
+  },
+  "22222222-2222-4222-8222-222222222220": {
+    "cookingMethod": "stir_fry",
+    "rolesByIngredientId": {
+      "11111111-1111-4111-8111-111111111312": {
+        "role": "core",
+        "dishRole": "main",
+        "weight": 4
+      },
+      "11111111-1111-4111-8111-111111111205": {
+        "role": "secondary",
+        "dishRole": "sub",
+        "weight": 2
+      },
+      "11111111-1111-4111-8111-111111111108": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111106": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      },
+      "11111111-1111-4111-8111-111111111107": {
+        "role": "spice",
+        "dishRole": "sub",
+        "weight": 1
+      }
+    }
+  }
+};
+
+export const MOCK_RECIPE_DETAILS: Record<string, RecipeDetail> = {
+  "22222222-2222-4222-8222-222222222201": {
+    "id": "22222222-2222-4222-8222-222222222201",
+    "slug": "dau-hu-sot-ca-chua",
+    "name_vi": "Đậu hũ sốt cà chua",
+    "cuisine_code": "VN",
+    "prep_minutes": 10,
+    "cook_minutes": 20,
+    "total_minutes": 30,
+    "cover_image_url": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80",
+    "description": "Món đậu hũ sốt cà chua thanh đạm, đưa cơm.",
+    "country_code": "VN",
+    "base_servings": 2,
+    "servings": 2,
+    "ingredients": [
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111103",
+        "name_vi": "Đậu hũ",
+        "category": "protein",
+        "is_required": true,
+        "grams": 200,
+        "display_quantity": "2 bìa",
+        "sort_order": 1
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111101",
+        "name_vi": "Cà chua",
+        "category": "vegetable",
+        "is_required": true,
+        "grams": 150,
+        "display_quantity": "2 quả",
+        "sort_order": 2
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111105",
+        "name_vi": "Hành lá",
+        "category": "spice",
+        "is_required": false,
+        "grams": 15,
+        "display_quantity": "2 nhánh",
+        "sort_order": 3
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111106",
+        "name_vi": "Muối",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 5,
+        "display_quantity": "1 muỗng cà phê",
+        "sort_order": 4
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111108",
+        "name_vi": "Dầu ăn",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 15,
+        "display_quantity": "1 muỗng canh",
+        "sort_order": 5
+      }
+    ],
+    "steps": [
+      {
+        "step_no": 1,
+        "instruction": "Cắt đậu hũ thành miếng vuông vừa ăn, chiên vàng đều các mặt.",
+        "estimated_minutes": 10
+      },
+      {
+        "step_no": 2,
+        "instruction": "Băm nhỏ cà chua, xào nhừ với muối rồi cho đậu hũ vào rim 20 phút.",
+        "estimated_minutes": 20
+      }
+    ],
+    "nutrition_evidence": [
+      {
+        "tag": {
+          "id": "33333333-3333-4333-8333-333333333301",
+          "code": "HIGH_PROTEIN_PLANT",
+          "name_vi": "Giàu đạm thực vật",
+          "description": "Cung cấp protein thực vật lành mạnh từ đậu nành.",
+          "is_active": true
+        },
+        "source_urls": [
+          "https://fdc.nal.usda.gov/"
+        ],
+        "note": "Đậu hũ và cà chua cung cấp lycopene và đạm thực vật."
+      }
+    ],
+    "usda_nutrition": {
+      "kcal": 316.4,
+      "protein_g": 17.75,
+      "fat_g": 24.89,
+      "carb_g": 10.68,
+      "source_urls": [
+        "https://fdc.nal.usda.gov/food-details/172475/nutrients",
+        "https://fdc.nal.usda.gov/food-details/170457/nutrients",
+        "https://fdc.nal.usda.gov/food-details/170005/nutrients",
+        "https://fdc.nal.usda.gov/food-details/173468/nutrients",
+        "https://fdc.nal.usda.gov/food-details/171028/nutrients"
+      ],
+      "scaling_factor": 1,
+      "scaling_warning_vi": null
+    },
+    "nutrition_disclaimer_vi": "Thông tin dinh dưỡng chỉ mang tính tham khảo ở mức nguyên liệu/công thức chuẩn, kết quả thực tế phụ thuộc khối lượng và cách chế biến. Hệ thống không thay thế tư vấn y tế, dinh dưỡng lâm sàng và không cam kết miễn trừ dị ứng tuyệt đối.",
+    "source_name": "FoodVision Editorial",
+    "source_url": "https://foodvision.local/recipes/dau-hu-sot-ca-chua",
+    "content_license": "CC-BY-4.0"
+  },
+  "22222222-2222-4222-8222-222222222202": {
+    "id": "22222222-2222-4222-8222-222222222202",
+    "slug": "canh-ca-chua-trung",
+    "name_vi": "Canh cà chua trứng",
+    "cuisine_code": "VN",
+    "prep_minutes": 5,
+    "cook_minutes": 10,
+    "total_minutes": 15,
+    "cover_image_url": "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=800&q=80",
+    "description": "Canh trứng cà chua thanh mát nấu nhanh trong 15 phút.",
+    "country_code": "VN",
+    "base_servings": 2,
+    "servings": 2,
+    "ingredients": [
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111101",
+        "name_vi": "Cà chua",
+        "category": "vegetable",
+        "is_required": true,
+        "grams": 150,
+        "display_quantity": "2 quả",
+        "sort_order": 1
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111102",
+        "name_vi": "Trứng gà",
+        "category": "protein",
+        "is_required": true,
+        "grams": 100,
+        "display_quantity": "2 quả",
+        "sort_order": 2
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111106",
+        "name_vi": "Muối",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 5,
+        "display_quantity": "1 muỗng cà phê",
+        "sort_order": 3
+      }
+    ],
+    "steps": [
+      {
+        "step_no": 1,
+        "instruction": "Xào cà chua với chút muối rồi thêm 500ml nước đun sôi.",
+        "estimated_minutes": 5
+      },
+      {
+        "step_no": 2,
+        "instruction": "Đánh tan trứng gà, đổ từ từ vào nồi nước sôi và khuấy nhẹ tạo vân mây.",
+        "estimated_minutes": 5
+      }
+    ],
+    "nutrition_evidence": [],
+    "usda_nutrition": {
+      "kcal": 171,
+      "protein_g": 13.88,
+      "fat_g": 9.81,
+      "carb_g": 6.55,
+      "source_urls": [
+        "https://fdc.nal.usda.gov/food-details/170457/nutrients",
+        "https://fdc.nal.usda.gov/food-details/171287/nutrients",
+        "https://fdc.nal.usda.gov/food-details/173468/nutrients"
+      ],
+      "scaling_factor": 1,
+      "scaling_warning_vi": null
+    },
+    "nutrition_disclaimer_vi": "Thông tin dinh dưỡng chỉ mang tính tham khảo ở mức nguyên liệu/công thức chuẩn, kết quả thực tế phụ thuộc khối lượng và cách chế biến. Hệ thống không thay thế tư vấn y tế, dinh dưỡng lâm sàng và không cam kết miễn trừ dị ứng tuyệt đối.",
+    "source_name": null,
+    "source_url": null,
+    "content_license": null
+  },
+  "22222222-2222-4222-8222-222222222203": {
+    "id": "22222222-2222-4222-8222-222222222203",
+    "slug": "thit-kho-trung",
+    "name_vi": "Thịt kho trứng",
+    "cuisine_code": "VN",
+    "prep_minutes": 15,
+    "cook_minutes": 45,
+    "total_minutes": 60,
+    "cover_image_url": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80",
+    "description": "Thịt ba chỉ kho trứng gà đậm đà truyền thống.",
+    "country_code": "VN",
+    "base_servings": 4,
+    "servings": 4,
+    "ingredients": [
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111104",
+        "name_vi": "Thịt ba chỉ",
+        "category": "protein",
+        "is_required": true,
+        "grams": 300,
+        "display_quantity": "300g",
+        "sort_order": 1
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111102",
+        "name_vi": "Trứng gà",
+        "category": "protein",
+        "is_required": true,
+        "grams": 150,
+        "display_quantity": "3 quả",
+        "sort_order": 2
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111107",
+        "name_vi": "Nước mắm",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 30,
+        "display_quantity": "2 muỗng canh",
+        "sort_order": 3
+      }
+    ],
+    "steps": [
+      {
+        "step_no": 1,
+        "instruction": "Ướp thịt ba chỉ với nước mắm trong 15 phút.",
+        "estimated_minutes": 15
+      },
+      {
+        "step_no": 2,
+        "instruction": "Kho thịt và trứng đã luộc trên lửa nhỏ trong 45 phút đến khi mềm.",
+        "estimated_minutes": 45
+      }
+    ],
+    "nutrition_evidence": [],
+    "usda_nutrition": {
+      "kcal": 1780.5,
+      "protein_g": 48.38,
+      "fat_g": 173.3,
+      "carb_g": 2.17,
+      "source_urls": [
+        "https://fdc.nal.usda.gov/food-details/167814/nutrients",
+        "https://fdc.nal.usda.gov/food-details/171287/nutrients",
+        "https://fdc.nal.usda.gov/food-details/172235/nutrients"
+      ],
+      "scaling_factor": 1,
+      "scaling_warning_vi": null
+    },
+    "nutrition_disclaimer_vi": "Thông tin dinh dưỡng chỉ mang tính tham khảo ở mức nguyên liệu/công thức chuẩn, kết quả thực tế phụ thuộc khối lượng và cách chế biến. Hệ thống không thay thế tư vấn y tế, dinh dưỡng lâm sàng và không cam kết miễn trừ dị ứng tuyệt đối.",
+    "source_name": null,
+    "source_url": null,
+    "content_license": null
+  },
+  "22222222-2222-4222-8222-222222222204": {
+    "id": "22222222-2222-4222-8222-222222222204",
+    "slug": "trung-xao-ca-chua",
+    "name_vi": "Trứng xào cà chua",
+    "cuisine_code": "VN",
+    "prep_minutes": 5,
+    "cook_minutes": 10,
+    "total_minutes": 15,
+    "cover_image_url": "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=800&q=80",
+    "description": "Trứng gà xào cà chua mềm mọng hoàn thành trong 15 phút.",
+    "country_code": "VN",
+    "base_servings": 2,
+    "servings": 2,
+    "ingredients": [
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111101",
+        "name_vi": "Cà chua",
+        "category": "vegetable",
+        "is_required": true,
+        "grams": 150,
+        "display_quantity": "2 quả",
+        "sort_order": 1
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111102",
+        "name_vi": "Trứng gà",
+        "category": "protein",
+        "is_required": true,
+        "grams": 100,
+        "display_quantity": "2 quả",
+        "sort_order": 2
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111105",
+        "name_vi": "Hành lá",
+        "category": "spice",
+        "is_required": false,
+        "grams": 15,
+        "display_quantity": "2 nhánh",
+        "sort_order": 3
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111108",
+        "name_vi": "Dầu ăn",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 15,
+        "display_quantity": "1 muỗng canh",
+        "sort_order": 4
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111107",
+        "name_vi": "Nước mắm",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 10,
+        "display_quantity": "1 muỗng canh",
+        "sort_order": 5
+      }
+    ],
+    "steps": [
+      {
+        "step_no": 1,
+        "instruction": "Phi thơm hành, xào chín mềm cà chua với chút nước mắm.",
+        "estimated_minutes": 5
+      },
+      {
+        "step_no": 2,
+        "instruction": "Đổ trứng gà đã đánh tan vào đảo đều trên lửa vừa rồi rắc hành lá.",
+        "estimated_minutes": 10
+      }
+    ],
+    "nutrition_evidence": [],
+    "usda_nutrition": {
+      "kcal": 311.9,
+      "protein_g": 14.66,
+      "fat_g": 24.84,
+      "carb_g": 8.02,
+      "source_urls": [
+        "https://fdc.nal.usda.gov/food-details/170457/nutrients",
+        "https://fdc.nal.usda.gov/food-details/171287/nutrients",
+        "https://fdc.nal.usda.gov/food-details/170005/nutrients",
+        "https://fdc.nal.usda.gov/food-details/171028/nutrients",
+        "https://fdc.nal.usda.gov/food-details/172235/nutrients"
+      ],
+      "scaling_factor": 1,
+      "scaling_warning_vi": null
+    },
+    "nutrition_disclaimer_vi": "Thông tin dinh dưỡng chỉ mang tính tham khảo ở mức nguyên liệu/công thức chuẩn, kết quả thực tế phụ thuộc khối lượng và cách chế biến. Hệ thống không thay thế tư vấn y tế, dinh dưỡng lâm sàng và không cam kết miễn trừ dị ứng tuyệt đối.",
+    "source_name": null,
+    "source_url": null,
+    "content_license": null
+  },
+  "22222222-2222-4222-8222-222222222205": {
+    "id": "22222222-2222-4222-8222-222222222205",
+    "slug": "mi-y-sot-ca-chua-thit-bam",
+    "name_vi": "Mì Ý sốt cà chua thịt băm",
+    "cuisine_code": "EU",
+    "prep_minutes": 10,
+    "cook_minutes": 20,
+    "total_minutes": 30,
+    "cover_image_url": "https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&w=800&q=80",
+    "description": "Mì Spaghetti sốt cà chua thịt bò băm đậm vị kiểu Âu.",
+    "country_code": "IT",
+    "base_servings": 2,
+    "servings": 2,
+    "ingredients": [
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111302",
+        "name_vi": "Mì Ý",
+        "category": "other",
+        "is_required": true,
+        "grams": 200,
+        "display_quantity": "200g",
+        "sort_order": 1
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111301",
+        "name_vi": "Thịt bò",
+        "category": "protein",
+        "is_required": true,
+        "grams": 150,
+        "display_quantity": "150g",
+        "sort_order": 2
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111101",
+        "name_vi": "Cà chua",
+        "category": "vegetable",
+        "is_required": true,
+        "grams": 200,
+        "display_quantity": "2 quả",
+        "sort_order": 3
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111205",
+        "name_vi": "Tỏi",
+        "category": "spice",
+        "is_required": false,
+        "grams": 10,
+        "display_quantity": "3 tép",
+        "sort_order": 4
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111106",
+        "name_vi": "Muối",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 4,
+        "display_quantity": "1/2 muỗng cà phê",
+        "sort_order": 5
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111108",
+        "name_vi": "Dầu ăn",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 15,
+        "display_quantity": "1 muỗng canh",
+        "sort_order": 6
+      }
+    ],
+    "steps": [
+      {
+        "step_no": 1,
+        "instruction": "Luộc mì Ý trong nước sôi có pha chút muối cho vừa chín tới rồi để ráo.",
+        "estimated_minutes": 10
+      },
+      {
+        "step_no": 2,
+        "instruction": "Phi thơm tỏi với dầu ăn, xào săn thịt bò băm rồi cho cà chua băm nhuyễn vào nấu sánh sốt.",
+        "estimated_minutes": 15
+      },
+      {
+        "step_no": 3,
+        "instruction": "Trộn mì Ý với sốt cà chua thịt băm nóng và thưởng thức.",
+        "estimated_minutes": 5
+      }
+    ],
+    "nutrition_evidence": [],
+    "usda_nutrition": null,
+    "source_name": "FoodVision Editorial",
+    "source_url": "https://foodvision.local/recipes/mi-y-sot-ca-chua-thit-bam",
+    "content_license": "CC-BY-4.0"
+  },
+  "22222222-2222-4222-8222-222222222206": {
+    "id": "22222222-2222-4222-8222-222222222206",
+    "slug": "bong-cai-xanh-nam-ap-chao-bo-toi",
+    "name_vi": "Bông cải xanh và nấm áp chảo bơ tỏi",
+    "cuisine_code": "EU",
+    "prep_minutes": 5,
+    "cook_minutes": 8,
+    "total_minutes": 13,
+    "cover_image_url": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=800&q=80",
+    "description": "Món rau củ kiểu Âu nhanh gọn trong 13 phút dậy mùi bơ tỏi.",
+    "country_code": "FR",
+    "base_servings": 2,
+    "servings": 2,
+    "ingredients": [
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111209",
+        "name_vi": "Bông cải xanh",
+        "category": "vegetable",
+        "is_required": true,
+        "grams": 200,
+        "display_quantity": "200g",
+        "sort_order": 1
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111210",
+        "name_vi": "Nấm",
+        "category": "vegetable",
+        "is_required": true,
+        "grams": 120,
+        "display_quantity": "120g",
+        "sort_order": 2
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111303",
+        "name_vi": "Bơ lạt",
+        "category": "other",
+        "is_required": true,
+        "grams": 20,
+        "display_quantity": "20g",
+        "sort_order": 3
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111205",
+        "name_vi": "Tỏi",
+        "category": "spice",
+        "is_required": true,
+        "grams": 10,
+        "display_quantity": "3 tép",
+        "sort_order": 4
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111106",
+        "name_vi": "Muối",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 3,
+        "display_quantity": "1/3 muỗng cà phê",
+        "sort_order": 5
+      }
+    ],
+    "steps": [
+      {
+        "step_no": 1,
+        "instruction": "Rửa sạch bông cải xanh và nấm, cắt miếng vừa ăn để ráo.",
+        "estimated_minutes": 5
+      },
+      {
+        "step_no": 2,
+        "instruction": "Đun chảy bơ lạt với tỏi băm, áp chảo lửa vừa bông cải xanh và nấm cùng chút muối.",
+        "estimated_minutes": 8
+      }
+    ],
+    "nutrition_evidence": [],
+    "usda_nutrition": null,
+    "source_name": "FoodVision Editorial",
+    "source_url": "https://foodvision.local/recipes/bong-cai-xanh-nam-ap-chao-bo-toi",
+    "content_license": "CC-BY-4.0"
+  },
+  "22222222-2222-4222-8222-222222222207": {
+    "id": "22222222-2222-4222-8222-222222222207",
+    "slug": "burger-bo-pho-mai-kieu-my",
+    "name_vi": "Burger bò phô mai kiểu Mỹ",
+    "cuisine_code": "US",
+    "prep_minutes": 10,
+    "cook_minutes": 12,
+    "total_minutes": 22,
+    "cover_image_url": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=800&q=80",
+    "description": "Bánh burger nhân bò áp chảo kèm phô mai Cheddar, xà lách và cà chua tươi.",
+    "country_code": "US",
+    "base_servings": 2,
+    "servings": 2,
+    "ingredients": [
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111305",
+        "name_vi": "Vỏ bánh Burger",
+        "category": "other",
+        "is_required": true,
+        "grams": 120,
+        "display_quantity": "2 vỏ bánh",
+        "sort_order": 1
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111301",
+        "name_vi": "Thịt bò",
+        "category": "protein",
+        "is_required": true,
+        "grams": 220,
+        "display_quantity": "220g băm",
+        "sort_order": 2
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111304",
+        "name_vi": "Phô mai Cheddar",
+        "category": "other",
+        "is_required": true,
+        "grams": 40,
+        "display_quantity": "2 lát",
+        "sort_order": 3
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111306",
+        "name_vi": "Rau xà lách",
+        "category": "vegetable",
+        "is_required": false,
+        "grams": 30,
+        "display_quantity": "4 lá",
+        "sort_order": 4
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111101",
+        "name_vi": "Cà chua",
+        "category": "vegetable",
+        "is_required": false,
+        "grams": 60,
+        "display_quantity": "4 lát",
+        "sort_order": 5
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111106",
+        "name_vi": "Muối",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 3,
+        "display_quantity": "1/2 muỗng cà phê",
+        "sort_order": 6
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111110",
+        "name_vi": "Tiêu xay",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 2,
+        "display_quantity": "1/3 muỗng cà phê",
+        "sort_order": 7
+      }
+    ],
+    "steps": [
+      {
+        "step_no": 1,
+        "instruction": "Ướp thịt bò băm với muối, tiêu xay rồi nặn thành 2 miếng tròn dẹt.",
+        "estimated_minutes": 10
+      },
+      {
+        "step_no": 2,
+        "instruction": "Áp chảo thịt bò chín mọng, đặt phô mai Cheddar lên mặt cho tan chảy rồi kẹp vào vỏ bánh cùng xà lách và cà chua.",
+        "estimated_minutes": 12
+      }
+    ],
+    "nutrition_evidence": [],
+    "usda_nutrition": null,
+    "source_name": "FoodVision Editorial",
+    "source_url": "https://foodvision.local/recipes/burger-bo-pho-mai-kieu-my",
+    "content_license": "CC-BY-4.0"
+  },
+  "22222222-2222-4222-8222-222222222208": {
+    "id": "22222222-2222-4222-8222-222222222208",
+    "slug": "bap-ngot-khoai-tay-dut-lo-bo-toi",
+    "name_vi": "Bắp ngọt và khoai tây đút lò bơ tỏi",
+    "cuisine_code": "US",
+    "prep_minutes": 10,
+    "cook_minutes": 25,
+    "total_minutes": 35,
+    "cover_image_url": "https://images.unsplash.com/photo-1551754655-cd27e38d2076?auto=format&fit=crop&w=800&q=80",
+    "description": "Khoai tây và bắp ngọt trộn bơ tỏi nướng vàng thơm lừng kiểu Mỹ.",
+    "country_code": "US",
+    "base_servings": 2,
+    "servings": 2,
+    "ingredients": [
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111219",
+        "name_vi": "Bắp ngọt",
+        "category": "vegetable",
+        "is_required": true,
+        "grams": 150,
+        "display_quantity": "150g",
+        "sort_order": 1
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111202",
+        "name_vi": "Khoai tây",
+        "category": "vegetable",
+        "is_required": true,
+        "grams": 200,
+        "display_quantity": "2 củ",
+        "sort_order": 2
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111303",
+        "name_vi": "Bơ lạt",
+        "category": "other",
+        "is_required": true,
+        "grams": 25,
+        "display_quantity": "25g",
+        "sort_order": 3
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111205",
+        "name_vi": "Tỏi",
+        "category": "spice",
+        "is_required": true,
+        "grams": 10,
+        "display_quantity": "3 tép",
+        "sort_order": 4
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111106",
+        "name_vi": "Muối",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 3,
+        "display_quantity": "1/2 muỗng cà phê",
+        "sort_order": 5
+      }
+    ],
+    "steps": [
+      {
+        "step_no": 1,
+        "instruction": "Cắt khoai tây múi cau, tách hạt bắp ngọt và trộn đều với bơ lạt đun chảy, tỏi băm và muối.",
+        "estimated_minutes": 10
+      },
+      {
+        "step_no": 2,
+        "instruction": "Đút lò ở 200°C cho khoai tây chín bùi và vàng xém cạnh.",
+        "estimated_minutes": 25
+      }
+    ],
+    "nutrition_evidence": [],
+    "usda_nutrition": null,
+    "source_name": "FoodVision Editorial",
+    "source_url": "https://foodvision.local/recipes/bap-ngot-khoai-tay-dut-lo-bo-toi",
+    "content_license": "CC-BY-4.0"
+  },
+  "22222222-2222-4222-8222-222222222209": {
+    "id": "22222222-2222-4222-8222-222222222209",
+    "slug": "ga-hap-sa",
+    "name_vi": "Gà hấp sả",
+    "cuisine_code": "VN",
+    "prep_minutes": 10,
+    "cook_minutes": 20,
+    "total_minutes": 30,
+    "cover_image_url": "https://images.unsplash.com/photo-1532550907401-a500c9a57435?auto=format&fit=crop&w=800&q=80",
+    "description": "Thịt gà hấp cùng sả đập dập thơm thanh, giữ trọn vị ngọt tự nhiên.",
+    "country_code": "VN",
+    "base_servings": 2,
+    "servings": 2,
+    "ingredients": [
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111212",
+        "name_vi": "Thịt gà sống",
+        "category": "protein",
+        "is_required": true,
+        "grams": 350,
+        "display_quantity": "350 g",
+        "sort_order": 1
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111307",
+        "name_vi": "Sả",
+        "category": "spice",
+        "is_required": true,
+        "grams": 40,
+        "display_quantity": "2 củ đập dập",
+        "sort_order": 2
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111309",
+        "name_vi": "Lá chanh",
+        "category": "spice",
+        "is_required": false,
+        "grams": 5,
+        "display_quantity": "4 lá",
+        "sort_order": 3
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111216",
+        "name_vi": "Gừng",
+        "category": "spice",
+        "is_required": false,
+        "grams": 10,
+        "display_quantity": "3 lát mỏng",
+        "sort_order": 4
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111106",
+        "name_vi": "Muối",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 4,
+        "display_quantity": "1/2 muỗng cà phê",
+        "sort_order": 5
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111110",
+        "name_vi": "Tiêu xay",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 2,
+        "display_quantity": "1/2 muỗng cà phê",
+        "sort_order": 6
+      }
+    ],
+    "steps": [
+      {
+        "step_no": 1,
+        "instruction": "Xát muối rửa sạch thịt gà, ướp với chút muối và tiêu xay 10 phút; đập dập sả lót đáy nồi.",
+        "estimated_minutes": 10
+      },
+      {
+        "step_no": 2,
+        "instruction": "Đặt gà lên lớp sả, rắc lá chanh và gừng nếu có rồi hấp cách thủy lửa vừa 20 phút cho chín kỹ.",
+        "estimated_minutes": 20
+      }
+    ],
+    "nutrition_evidence": [],
+    "usda_nutrition": null,
+    "nutrition_disclaimer_vi": "Thông tin dinh dưỡng chỉ mang tính tham khảo ở mức nguyên liệu/công thức chuẩn, kết quả thực tế phụ thuộc khối lượng và cách chế biến. Hệ thống không thay thế tư vấn y tế, dinh dưỡng lâm sàng và không cam kết miễn trừ dị ứng tuyệt đối.",
+    "source_name": "FoodVision Editorial",
+    "source_url": "https://foodvision.local/recipes/ga-hap-sa",
+    "content_license": "CC-BY-4.0"
+  },
+  "22222222-2222-4222-8222-222222222210": {
+    "id": "22222222-2222-4222-8222-222222222210",
+    "slug": "ga-kho-sa-nghe",
+    "name_vi": "Gà kho sả nghệ",
+    "cuisine_code": "VN",
+    "prep_minutes": 10,
+    "cook_minutes": 25,
+    "total_minutes": 35,
+    "cover_image_url": "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?auto=format&fit=crop&w=800&q=80",
+    "description": "Thịt gà kho đậm đà với sả băm và nghệ tươi vàng ươm đưa cơm.",
+    "country_code": "VN",
+    "base_servings": 2,
+    "servings": 2,
+    "ingredients": [
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111212",
+        "name_vi": "Thịt gà sống",
+        "category": "protein",
+        "is_required": true,
+        "grams": 350,
+        "display_quantity": "350 g chặt miếng",
+        "sort_order": 1
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111307",
+        "name_vi": "Sả",
+        "category": "spice",
+        "is_required": true,
+        "grams": 30,
+        "display_quantity": "2 củ băm nhỏ",
+        "sort_order": 2
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111308",
+        "name_vi": "Nghệ tươi",
+        "category": "spice",
+        "is_required": true,
+        "grams": 15,
+        "display_quantity": "1 nhánh giã nhuyễn",
+        "sort_order": 3
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111107",
+        "name_vi": "Nước mắm",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 15,
+        "display_quantity": "1 muỗng canh",
+        "sort_order": 4
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111108",
+        "name_vi": "Dầu ăn",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 10,
+        "display_quantity": "2 muỗng cà phê",
+        "sort_order": 5
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111109",
+        "name_vi": "Đường",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 5,
+        "display_quantity": "1 muỗng cà phê",
+        "sort_order": 6
+      }
+    ],
+    "steps": [
+      {
+        "step_no": 1,
+        "instruction": "Ướp thịt gà chặt miếng cùng nghệ tươi giã nhuyễn, nửa phần sả băm, nước mắm và đường 10 phút.",
+        "estimated_minutes": 10
+      },
+      {
+        "step_no": 2,
+        "instruction": "Phi thơm phần sả còn lại với dầu ăn, cho gà vào đảo săn rồi rim lửa nhỏ 25 phút đến khi sánh vị.",
+        "estimated_minutes": 25
+      }
+    ],
+    "nutrition_evidence": [],
+    "usda_nutrition": null,
+    "nutrition_disclaimer_vi": "Thông tin dinh dưỡng chỉ mang tính tham khảo ở mức nguyên liệu/công thức chuẩn, kết quả thực tế phụ thuộc khối lượng và cách chế biến. Hệ thống không thay thế tư vấn y tế, dinh dưỡng lâm sàng và không cam kết miễn trừ dị ứng tuyệt đối.",
+    "source_name": "FoodVision Editorial",
+    "source_url": "https://foodvision.local/recipes/ga-kho-sa-nghe",
+    "content_license": "CC-BY-4.0"
+  },
+  "22222222-2222-4222-8222-222222222211": {
+    "id": "22222222-2222-4222-8222-222222222211",
+    "slug": "ga-xao-sa-ot",
+    "name_vi": "Gà xào sả ớt",
+    "cuisine_code": "VN",
+    "prep_minutes": 10,
+    "cook_minutes": 12,
+    "total_minutes": 22,
+    "cover_image_url": "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&w=800&q=80",
+    "description": "Thịt gà xào sả ớt thơm nồng, cay ấm chuẩn cơm gia đình Việt.",
+    "country_code": "VN",
+    "base_servings": 2,
+    "servings": 2,
+    "ingredients": [
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111212",
+        "name_vi": "Thịt gà sống",
+        "category": "protein",
+        "is_required": true,
+        "grams": 300,
+        "display_quantity": "300 g",
+        "sort_order": 1
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111307",
+        "name_vi": "Sả",
+        "category": "spice",
+        "is_required": true,
+        "grams": 30,
+        "display_quantity": "2 củ băm",
+        "sort_order": 2
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111206",
+        "name_vi": "Ớt",
+        "category": "spice",
+        "is_required": true,
+        "grams": 10,
+        "display_quantity": "1 quả cắt lát",
+        "sort_order": 3
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111205",
+        "name_vi": "Tỏi",
+        "category": "spice",
+        "is_required": true,
+        "grams": 10,
+        "display_quantity": "2 tép băm",
+        "sort_order": 4
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111107",
+        "name_vi": "Nước mắm",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 15,
+        "display_quantity": "1 muỗng canh",
+        "sort_order": 5
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111108",
+        "name_vi": "Dầu ăn",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 10,
+        "display_quantity": "2 muỗng cà phê",
+        "sort_order": 6
+      }
+    ],
+    "steps": [
+      {
+        "step_no": 1,
+        "instruction": "Cắt thịt gà miếng vừa ăn, ướp nhanh với nước mắm; băm nhỏ sả, tỏi và cắt lát ớt.",
+        "estimated_minutes": 10
+      },
+      {
+        "step_no": 2,
+        "instruction": "Phi thơm sả, tỏi và ớt trong dầu nóng rồi xào gà lửa lớn 12 phút cho săn vàng thơm.",
+        "estimated_minutes": 12
+      }
+    ],
+    "nutrition_evidence": [],
+    "usda_nutrition": null,
+    "nutrition_disclaimer_vi": "Thông tin dinh dưỡng chỉ mang tính tham khảo ở mức nguyên liệu/công thức chuẩn, kết quả thực tế phụ thuộc khối lượng và cách chế biến. Hệ thống không thay thế tư vấn y tế, dinh dưỡng lâm sàng và không cam kết miễn trừ dị ứng tuyệt đối.",
+    "source_name": "FoodVision Editorial",
+    "source_url": "https://foodvision.local/recipes/ga-xao-sa-ot",
+    "content_license": "CC-BY-4.0"
+  },
+  "22222222-2222-4222-8222-222222222212": {
+    "id": "22222222-2222-4222-8222-222222222212",
+    "slug": "tom-rang-hanh-toi",
+    "name_vi": "Tôm rang hành tỏi",
+    "cuisine_code": "VN",
+    "prep_minutes": 8,
+    "cook_minutes": 10,
+    "total_minutes": 18,
+    "cover_image_url": "https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=800&q=80",
+    "description": "Tôm tươi rang mặn ngọt bóng đẹp cùng tỏi phi và hành lá thơm lừng.",
+    "country_code": "VN",
+    "base_servings": 2,
+    "servings": 2,
+    "ingredients": [
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111214",
+        "name_vi": "Tôm tươi",
+        "category": "seafood",
+        "is_required": true,
+        "grams": 250,
+        "display_quantity": "250 g",
+        "sort_order": 1
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111205",
+        "name_vi": "Tỏi",
+        "category": "spice",
+        "is_required": true,
+        "grams": 12,
+        "display_quantity": "3 tép băm",
+        "sort_order": 2
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111105",
+        "name_vi": "Hành lá",
+        "category": "spice",
+        "is_required": true,
+        "grams": 15,
+        "display_quantity": "2 nhánh",
+        "sort_order": 3
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111107",
+        "name_vi": "Nước mắm",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 12,
+        "display_quantity": "1 muỗng canh",
+        "sort_order": 4
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111109",
+        "name_vi": "Đường",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 8,
+        "display_quantity": "1.5 muỗng cà phê",
+        "sort_order": 5
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111108",
+        "name_vi": "Dầu ăn",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 10,
+        "display_quantity": "2 muỗng cà phê",
+        "sort_order": 6
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111110",
+        "name_vi": "Tiêu xay",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 2,
+        "display_quantity": "1/3 muỗng cà phê",
+        "sort_order": 7
+      }
+    ],
+    "steps": [
+      {
+        "step_no": 1,
+        "instruction": "Cắt râu, rút chỉ lưng tôm tươi, rửa sạch để ráo; băm tỏi và cắt khúc hành lá.",
+        "estimated_minutes": 8
+      },
+      {
+        "step_no": 2,
+        "instruction": "Phi thơm tỏi với dầu ăn, đảo tôm săn đỏ rồi nêm nước mắm, đường rim cạn sốt, rắc hành tiêu.",
+        "estimated_minutes": 10
+      }
+    ],
+    "nutrition_evidence": [],
+    "usda_nutrition": null,
+    "nutrition_disclaimer_vi": "Thông tin dinh dưỡng chỉ mang tính tham khảo ở mức nguyên liệu/công thức chuẩn, kết quả thực tế phụ thuộc khối lượng và cách chế biến. Hệ thống không thay thế tư vấn y tế, dinh dưỡng lâm sàng và không cam kết miễn trừ dị ứng tuyệt đối.",
+    "source_name": "FoodVision Editorial",
+    "source_url": "https://foodvision.local/recipes/tom-rang-hanh-toi",
+    "content_license": "CC-BY-4.0"
+  },
+  "22222222-2222-4222-8222-222222222213": {
+    "id": "22222222-2222-4222-8222-222222222213",
+    "slug": "ca-kho-gung",
+    "name_vi": "Cá kho gừng",
+    "cuisine_code": "VN",
+    "prep_minutes": 10,
+    "cook_minutes": 30,
+    "total_minutes": 40,
+    "cover_image_url": "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=800&q=80",
+    "description": "Cá tươi kho gừng thái sợi ấm bụng, khử tanh và đậm đà vị mắm tiêu.",
+    "country_code": "VN",
+    "base_servings": 3,
+    "servings": 3,
+    "ingredients": [
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111215",
+        "name_vi": "Cá nguyên con",
+        "category": "seafood",
+        "is_required": true,
+        "grams": 400,
+        "display_quantity": "1 con làm sạch cắt khúc",
+        "sort_order": 1
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111216",
+        "name_vi": "Gừng",
+        "category": "spice",
+        "is_required": true,
+        "grams": 25,
+        "display_quantity": "1 củ thái sợi",
+        "sort_order": 2
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111206",
+        "name_vi": "Ớt",
+        "category": "spice",
+        "is_required": false,
+        "grams": 8,
+        "display_quantity": "1 quả",
+        "sort_order": 3
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111105",
+        "name_vi": "Hành lá",
+        "category": "spice",
+        "is_required": false,
+        "grams": 15,
+        "display_quantity": "2 nhánh",
+        "sort_order": 4
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111107",
+        "name_vi": "Nước mắm",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 25,
+        "display_quantity": "2 muỗng canh",
+        "sort_order": 5
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111109",
+        "name_vi": "Đường",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 10,
+        "display_quantity": "2 muỗng cà phê",
+        "sort_order": 6
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111108",
+        "name_vi": "Dầu ăn",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 10,
+        "display_quantity": "2 muỗng cà phê",
+        "sort_order": 7
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111110",
+        "name_vi": "Tiêu xay",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 2,
+        "display_quantity": "1/2 muỗng cà phê",
+        "sort_order": 8
+      }
+    ],
+    "steps": [
+      {
+        "step_no": 1,
+        "instruction": "Làm sạch cá cắt khúc, ướp với nước mắm, tiêu và nửa phần gừng thái sợi trong 10 phút.",
+        "estimated_minutes": 10
+      },
+      {
+        "step_no": 2,
+        "instruction": "Thắng nhẹ đường với dầu ăn tạo màu cánh gián, xếp cá và phần gừng còn lại kho lửa nhỏ 30 phút.",
+        "estimated_minutes": 30
+      }
+    ],
+    "nutrition_evidence": [],
+    "usda_nutrition": null,
+    "nutrition_disclaimer_vi": "Thông tin dinh dưỡng chỉ mang tính tham khảo ở mức nguyên liệu/công thức chuẩn, kết quả thực tế phụ thuộc khối lượng và cách chế biến. Hệ thống không thay thế tư vấn y tế, dinh dưỡng lâm sàng và không cam kết miễn trừ dị ứng tuyệt đối.",
+    "source_name": "FoodVision Editorial",
+    "source_url": "https://foodvision.local/recipes/ca-kho-gung",
+    "content_license": "CC-BY-4.0"
+  },
+  "22222222-2222-4222-8222-222222222214": {
+    "id": "22222222-2222-4222-8222-222222222214",
+    "slug": "thit-heo-ham-khoai-tay-ca-rot",
+    "name_vi": "Thịt heo hầm khoai tây cà rốt",
+    "cuisine_code": "VN",
+    "prep_minutes": 15,
+    "cook_minutes": 30,
+    "total_minutes": 45,
+    "cover_image_url": "https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=800&q=80",
+    "description": "Canh hầm thịt heo mềm ngọt kết hợp khoai tây bùi béo và cà rốt thanh mát.",
+    "country_code": "VN",
+    "base_servings": 3,
+    "servings": 3,
+    "ingredients": [
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111213",
+        "name_vi": "Thịt heo sống",
+        "category": "protein",
+        "is_required": true,
+        "grams": 300,
+        "display_quantity": "300 g cắt khối",
+        "sort_order": 1
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111202",
+        "name_vi": "Khoai tây",
+        "category": "vegetable",
+        "is_required": true,
+        "grams": 200,
+        "display_quantity": "2 củ cắt khối",
+        "sort_order": 2
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111203",
+        "name_vi": "Cà rốt",
+        "category": "vegetable",
+        "is_required": true,
+        "grams": 120,
+        "display_quantity": "1 củ cắt khoanh",
+        "sort_order": 3
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111204",
+        "name_vi": "Hành tây",
+        "category": "vegetable",
+        "is_required": true,
+        "grams": 60,
+        "display_quantity": "1/2 củ bổ múi",
+        "sort_order": 4
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111105",
+        "name_vi": "Hành lá",
+        "category": "spice",
+        "is_required": false,
+        "grams": 15,
+        "display_quantity": "2 nhánh",
+        "sort_order": 5
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111106",
+        "name_vi": "Muối",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 5,
+        "display_quantity": "1 muỗng cà phê",
+        "sort_order": 6
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111107",
+        "name_vi": "Nước mắm",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 10,
+        "display_quantity": "1 muỗng canh",
+        "sort_order": 7
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111110",
+        "name_vi": "Tiêu xay",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 2,
+        "display_quantity": "1/2 muỗng cà phê",
+        "sort_order": 8
+      }
+    ],
+    "steps": [
+      {
+        "step_no": 1,
+        "instruction": "Sơ chế thịt heo, gọt vỏ cắt khối khoai tây, cà rốt và hành tây; chần sơ thịt cho trong nước.",
+        "estimated_minutes": 15
+      },
+      {
+        "step_no": 2,
+        "instruction": "Hầm thịt heo 15 phút rồi thêm khoai tây, cà rốt, hành tây nấu mềm thêm 15 phút, nêm muối mắm tiêu.",
+        "estimated_minutes": 30
+      }
+    ],
+    "nutrition_evidence": [],
+    "usda_nutrition": null,
+    "nutrition_disclaimer_vi": "Thông tin dinh dưỡng chỉ mang tính tham khảo ở mức nguyên liệu/công thức chuẩn, kết quả thực tế phụ thuộc khối lượng và cách chế biến. Hệ thống không thay thế tư vấn y tế, dinh dưỡng lâm sàng và không cam kết miễn trừ dị ứng tuyệt đối.",
+    "source_name": "FoodVision Editorial",
+    "source_url": "https://foodvision.local/recipes/thit-heo-ham-khoai-tay-ca-rot",
+    "content_license": "CC-BY-4.0"
+  },
+  "22222222-2222-4222-8222-222222222215": {
+    "id": "22222222-2222-4222-8222-222222222215",
+    "slug": "bo-xao-bong-cai-xanh-nam",
+    "name_vi": "Thịt bò xào bông cải xanh nấm",
+    "cuisine_code": "VN",
+    "prep_minutes": 8,
+    "cook_minutes": 10,
+    "total_minutes": 18,
+    "cover_image_url": "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=800&q=80",
+    "description": "Thịt bò xào mềm cùng bông cải xanh giòn ngọt và nấm tươi giàu dinh dưỡng.",
+    "country_code": "VN",
+    "base_servings": 2,
+    "servings": 2,
+    "ingredients": [
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111301",
+        "name_vi": "Thịt bò",
+        "category": "protein",
+        "is_required": true,
+        "grams": 200,
+        "display_quantity": "200 g thái mỏng",
+        "sort_order": 1
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111209",
+        "name_vi": "Bông cải xanh",
+        "category": "vegetable",
+        "is_required": true,
+        "grams": 200,
+        "display_quantity": "1 bông tách nhánh",
+        "sort_order": 2
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111210",
+        "name_vi": "Nấm",
+        "category": "vegetable",
+        "is_required": true,
+        "grams": 100,
+        "display_quantity": "100 g thái lát",
+        "sort_order": 3
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111205",
+        "name_vi": "Tỏi",
+        "category": "spice",
+        "is_required": true,
+        "grams": 10,
+        "display_quantity": "2 tép băm",
+        "sort_order": 4
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111108",
+        "name_vi": "Dầu ăn",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 12,
+        "display_quantity": "1 muỗng canh",
+        "sort_order": 5
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111106",
+        "name_vi": "Muối",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 4,
+        "display_quantity": "1/2 muỗng cà phê",
+        "sort_order": 6
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111110",
+        "name_vi": "Tiêu xay",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 2,
+        "display_quantity": "1/3 muỗng cà phê",
+        "sort_order": 7
+      }
+    ],
+    "steps": [
+      {
+        "step_no": 1,
+        "instruction": "Ướp thịt bò thái mỏng với chút tỏi băm, muối tiêu; chần nhanh bông cải xanh 2 phút giữ màu xanh.",
+        "estimated_minutes": 8
+      },
+      {
+        "step_no": 2,
+        "instruction": "Xào nhanh thịt bò lửa lớn rồi trút riêng; xào nấm và bông cải xanh chín tới rồi đảo đều cùng bò.",
+        "estimated_minutes": 10
+      }
+    ],
+    "nutrition_evidence": [],
+    "usda_nutrition": null,
+    "nutrition_disclaimer_vi": "Thông tin dinh dưỡng chỉ mang tính tham khảo ở mức nguyên liệu/công thức chuẩn, kết quả thực tế phụ thuộc khối lượng và cách chế biến. Hệ thống không thay thế tư vấn y tế, dinh dưỡng lâm sàng và không cam kết miễn trừ dị ứng tuyệt đối.",
+    "source_name": "FoodVision Editorial",
+    "source_url": "https://foodvision.local/recipes/bo-xao-bong-cai-xanh-nam",
+    "content_license": "CC-BY-4.0"
+  },
+  "22222222-2222-4222-8222-222222222216": {
+    "id": "22222222-2222-4222-8222-222222222216",
+    "slug": "bap-cai-xao-nam-toi",
+    "name_vi": "Bắp cải xào nấm tỏi",
+    "cuisine_code": "VN",
+    "prep_minutes": 6,
+    "cook_minutes": 8,
+    "total_minutes": 14,
+    "cover_image_url": "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=800&q=80",
+    "description": "Bắp cải xào giòn ngọt cùng nấm tươi và tỏi phi thanh đạm hoàn tất trong 14 phút.",
+    "country_code": "VN",
+    "base_servings": 2,
+    "servings": 2,
+    "ingredients": [
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111208",
+        "name_vi": "Bắp cải",
+        "category": "vegetable",
+        "is_required": true,
+        "grams": 250,
+        "display_quantity": "1/4 bắp thái sợi",
+        "sort_order": 1
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111210",
+        "name_vi": "Nấm",
+        "category": "vegetable",
+        "is_required": true,
+        "grams": 100,
+        "display_quantity": "100 g thái lát",
+        "sort_order": 2
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111205",
+        "name_vi": "Tỏi",
+        "category": "spice",
+        "is_required": true,
+        "grams": 10,
+        "display_quantity": "2 tép đập dập",
+        "sort_order": 3
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111108",
+        "name_vi": "Dầu ăn",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 10,
+        "display_quantity": "2 muỗng cà phê",
+        "sort_order": 4
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111106",
+        "name_vi": "Muối",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 4,
+        "display_quantity": "1/2 muỗng cà phê",
+        "sort_order": 5
+      }
+    ],
+    "steps": [
+      {
+        "step_no": 1,
+        "instruction": "Thái sợi bắp cải, rửa sạch nấm và đập dập tỏi.",
+        "estimated_minutes": 6
+      },
+      {
+        "step_no": 2,
+        "instruction": "Phi thơm tỏi với dầu ăn, cho nấm và bắp cải vào xào nhanh lửa lớn 8 phút, nêm muối vừa ăn.",
+        "estimated_minutes": 8
+      }
+    ],
+    "nutrition_evidence": [],
+    "usda_nutrition": null,
+    "nutrition_disclaimer_vi": "Thông tin dinh dưỡng chỉ mang tính tham khảo ở mức nguyên liệu/công thức chuẩn, kết quả thực tế phụ thuộc khối lượng và cách chế biến. Hệ thống không thay thế tư vấn y tế, dinh dưỡng lâm sàng và không cam kết miễn trừ dị ứng tuyệt đối.",
+    "source_name": "FoodVision Editorial",
+    "source_url": "https://foodvision.local/recipes/bap-cai-xao-nam-toi",
+    "content_license": "CC-BY-4.0"
+  },
+  "22222222-2222-4222-8222-222222222217": {
+    "id": "22222222-2222-4222-8222-222222222217",
+    "slug": "dua-leo-tron-toi-ot",
+    "name_vi": "Dưa leo trộn tỏi ớt",
+    "cuisine_code": "VN",
+    "prep_minutes": 10,
+    "cook_minutes": 0,
+    "total_minutes": 10,
+    "cover_image_url": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=800&q=80",
+    "description": "Dưa leo đập dập trộn tỏi ớt chua ngọt giòn rụm giải ngấy trong 10 phút.",
+    "country_code": "VN",
+    "base_servings": 2,
+    "servings": 2,
+    "ingredients": [
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111207",
+        "name_vi": "Dưa leo",
+        "category": "vegetable",
+        "is_required": true,
+        "grams": 250,
+        "display_quantity": "2 quả đập dập",
+        "sort_order": 1
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111205",
+        "name_vi": "Tỏi",
+        "category": "spice",
+        "is_required": true,
+        "grams": 10,
+        "display_quantity": "2 tép băm",
+        "sort_order": 2
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111206",
+        "name_vi": "Ớt",
+        "category": "spice",
+        "is_required": true,
+        "grams": 8,
+        "display_quantity": "1 quả băm",
+        "sort_order": 3
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111311",
+        "name_vi": "Chanh tươi",
+        "category": "vegetable",
+        "is_required": false,
+        "grams": 20,
+        "display_quantity": "1/2 quả vắt nước",
+        "sort_order": 4
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111106",
+        "name_vi": "Muối",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 3,
+        "display_quantity": "1/2 muỗng cà phê",
+        "sort_order": 5
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111109",
+        "name_vi": "Đường",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 8,
+        "display_quantity": "1.5 muỗng cà phê",
+        "sort_order": 6
+      }
+    ],
+    "steps": [
+      {
+        "step_no": 1,
+        "instruction": "Rửa sạch dưa leo, đập dập cắt khúc vừa ăn rồi trộn đều cùng tỏi ớt băm, muối, đường và nước cốt chanh.",
+        "estimated_minutes": 10
+      }
+    ],
+    "nutrition_evidence": [],
+    "usda_nutrition": null,
+    "nutrition_disclaimer_vi": "Thông tin dinh dưỡng chỉ mang tính tham khảo ở mức nguyên liệu/công thức chuẩn, kết quả thực tế phụ thuộc khối lượng và cách chế biến. Hệ thống không thay thế tư vấn y tế, dinh dưỡng lâm sàng và không cam kết miễn trừ dị ứng tuyệt đối.",
+    "source_name": "FoodVision Editorial",
+    "source_url": "https://foodvision.local/recipes/dua-leo-tron-toi-ot",
+    "content_license": "CC-BY-4.0"
+  },
+  "22222222-2222-4222-8222-222222222218": {
+    "id": "22222222-2222-4222-8222-222222222218",
+    "slug": "bo-xao-ot-chuong-hanh-tay",
+    "name_vi": "Thịt bò xào ớt chuông hành tây kiểu Âu",
+    "cuisine_code": "EU",
+    "prep_minutes": 8,
+    "cook_minutes": 12,
+    "total_minutes": 20,
+    "cover_image_url": "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80",
+    "description": "Thịt bò áp chảo bơ tỏi cùng ớt chuông giòn ngọt và hành tây kiểu Âu.",
+    "country_code": "FR",
+    "base_servings": 2,
+    "servings": 2,
+    "ingredients": [
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111301",
+        "name_vi": "Thịt bò",
+        "category": "protein",
+        "is_required": true,
+        "grams": 220,
+        "display_quantity": "220 g cắt khối",
+        "sort_order": 1
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111218",
+        "name_vi": "Ớt chuông",
+        "category": "vegetable",
+        "is_required": true,
+        "grams": 160,
+        "display_quantity": "1 quả cắt miếng vuông",
+        "sort_order": 2
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111204",
+        "name_vi": "Hành tây",
+        "category": "vegetable",
+        "is_required": true,
+        "grams": 80,
+        "display_quantity": "1/2 củ cắt múi",
+        "sort_order": 3
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111205",
+        "name_vi": "Tỏi",
+        "category": "spice",
+        "is_required": true,
+        "grams": 10,
+        "display_quantity": "2 tép băm",
+        "sort_order": 4
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111303",
+        "name_vi": "Bơ lạt",
+        "category": "other",
+        "is_required": true,
+        "grams": 15,
+        "display_quantity": "1 muỗng canh",
+        "sort_order": 5
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111106",
+        "name_vi": "Muối",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 4,
+        "display_quantity": "1/2 muỗng cà phê",
+        "sort_order": 6
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111110",
+        "name_vi": "Tiêu xay",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 2,
+        "display_quantity": "1/2 muỗng cà phê",
+        "sort_order": 7
+      }
+    ],
+    "steps": [
+      {
+        "step_no": 1,
+        "instruction": "Cắt thịt bò, ớt chuông và hành tây thành miếng vuông đồng đều; ướp thịt bò với muối và tiêu xay.",
+        "estimated_minutes": 8
+      },
+      {
+        "step_no": 2,
+        "instruction": "Đun chảy bơ lạt với tỏi băm, áp chảo thịt bò săn mặt rồi đảo nhanh cùng ớt chuông và hành tây.",
+        "estimated_minutes": 12
+      }
+    ],
+    "nutrition_evidence": [],
+    "usda_nutrition": null,
+    "nutrition_disclaimer_vi": "Thông tin dinh dưỡng chỉ mang tính tham khảo ở mức nguyên liệu/công thức chuẩn, kết quả thực tế phụ thuộc khối lượng và cách chế biến. Hệ thống không thay thế tư vấn y tế, dinh dưỡng lâm sàng và không cam kết miễn trừ dị ứng tuyệt đối.",
+    "source_name": "FoodVision Editorial",
+    "source_url": "https://foodvision.local/recipes/bo-xao-ot-chuong-hanh-tay",
+    "content_license": "CC-BY-4.0"
+  },
+  "22222222-2222-4222-8222-222222222219": {
+    "id": "22222222-2222-4222-8222-222222222219",
+    "slug": "bap-ngot-ap-chao-bo-toi-kieu-my",
+    "name_vi": "Bắp ngọt áp chảo bơ tỏi kiểu Mỹ",
+    "cuisine_code": "US",
+    "prep_minutes": 5,
+    "cook_minutes": 10,
+    "total_minutes": 15,
+    "cover_image_url": "https://images.unsplash.com/photo-1551754655-cd27e38d2076?auto=format&fit=crop&w=800&q=80",
+    "description": "Bắp ngọt tách hạt áp chảo thơm ngậy bơ lạt và tỏi phi kiểu Mỹ trong 15 phút.",
+    "country_code": "US",
+    "base_servings": 2,
+    "servings": 2,
+    "ingredients": [
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111219",
+        "name_vi": "Bắp ngọt",
+        "category": "vegetable",
+        "is_required": true,
+        "grams": 200,
+        "display_quantity": "1 trái tách hạt",
+        "sort_order": 1
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111303",
+        "name_vi": "Bơ lạt",
+        "category": "other",
+        "is_required": true,
+        "grams": 20,
+        "display_quantity": "1.5 muỗng canh",
+        "sort_order": 2
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111205",
+        "name_vi": "Tỏi",
+        "category": "spice",
+        "is_required": true,
+        "grams": 8,
+        "display_quantity": "2 tép băm",
+        "sort_order": 3
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111105",
+        "name_vi": "Hành lá",
+        "category": "spice",
+        "is_required": false,
+        "grams": 10,
+        "display_quantity": "1 nhánh cắt nhỏ",
+        "sort_order": 4
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111106",
+        "name_vi": "Muối",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 3,
+        "display_quantity": "1/3 muỗng cà phê",
+        "sort_order": 5
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111110",
+        "name_vi": "Tiêu xay",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 2,
+        "display_quantity": "1/3 muỗng cà phê",
+        "sort_order": 6
+      }
+    ],
+    "steps": [
+      {
+        "step_no": 1,
+        "instruction": "Tách hạt bắp ngọt, rửa sạch để ráo; băm nhỏ tỏi và cắt nhỏ hành lá.",
+        "estimated_minutes": 5
+      },
+      {
+        "step_no": 2,
+        "instruction": "Đun chảy bơ lạt, phi thơm tỏi rồi áp chảo bắp ngọt lửa vừa 10 phút với muối tiêu, rắc hành lá.",
+        "estimated_minutes": 10
+      }
+    ],
+    "nutrition_evidence": [],
+    "usda_nutrition": null,
+    "nutrition_disclaimer_vi": "Thông tin dinh dưỡng chỉ mang tính tham khảo ở mức nguyên liệu/công thức chuẩn, kết quả thực tế phụ thuộc khối lượng và cách chế biến. Hệ thống không thay thế tư vấn y tế, dinh dưỡng lâm sàng và không cam kết miễn trừ dị ứng tuyệt đối.",
+    "source_name": "FoodVision Editorial",
+    "source_url": "https://foodvision.local/recipes/bap-ngot-ap-chao-bo-toi-kieu-my",
+    "content_license": "CC-BY-4.0"
+  },
+  "22222222-2222-4222-8222-222222222220": {
+    "id": "22222222-2222-4222-8222-222222222220",
+    "slug": "rau-muong-xao-toi",
+    "name_vi": "Rau muống xào tỏi",
+    "cuisine_code": "VN",
+    "prep_minutes": 5,
+    "cook_minutes": 7,
+    "total_minutes": 12,
+    "cover_image_url": "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=800&q=80",
+    "description": "Rau muống xào tỏi xanh giòn chuẩn bữa cơm gia đình Việt trong 12 phút.",
+    "country_code": "VN",
+    "base_servings": 2,
+    "servings": 2,
+    "ingredients": [
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111312",
+        "name_vi": "Rau muống",
+        "category": "vegetable",
+        "is_required": true,
+        "grams": 300,
+        "display_quantity": "1 bó nhặt sạch",
+        "sort_order": 1
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111205",
+        "name_vi": "Tỏi",
+        "category": "spice",
+        "is_required": true,
+        "grams": 15,
+        "display_quantity": "4 tép đập dập",
+        "sort_order": 2
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111108",
+        "name_vi": "Dầu ăn",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 12,
+        "display_quantity": "1 muỗng canh",
+        "sort_order": 3
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111106",
+        "name_vi": "Muối",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 3,
+        "display_quantity": "1/2 muỗng cà phê",
+        "sort_order": 4
+      },
+      {
+        "ingredient_id": "11111111-1111-4111-8111-111111111107",
+        "name_vi": "Nước mắm",
+        "category": "pantry",
+        "is_required": true,
+        "grams": 8,
+        "display_quantity": "1.5 muỗng cà phê",
+        "sort_order": 5
+      }
+    ],
+    "steps": [
+      {
+        "step_no": 1,
+        "instruction": "Nhặt sạch rau muống, rửa ráo và đập dập tỏi.",
+        "estimated_minutes": 5
+      },
+      {
+        "step_no": 2,
+        "instruction": "Phi thơm nửa phần tỏi, xào rau muống trên lửa lớn 7 phút với muối, nước mắm rồi thêm phần tỏi còn lại.",
+        "estimated_minutes": 7
+      }
+    ],
+    "nutrition_evidence": [],
+    "usda_nutrition": null,
+    "nutrition_disclaimer_vi": "Thông tin dinh dưỡng chỉ mang tính tham khảo ở mức nguyên liệu/công thức chuẩn, kết quả thực tế phụ thuộc khối lượng và cách chế biến. Hệ thống không thay thế tư vấn y tế, dinh dưỡng lâm sàng và không cam kết miễn trừ dị ứng tuyệt đối.",
+    "source_name": "FoodVision Editorial",
+    "source_url": "https://foodvision.local/recipes/rau-muong-xao-toi",
+    "content_license": "CC-BY-4.0"
+  }
+};
+
+const FALLBACK_ING_BY_ID = new Map(
+  MOCK_ALL_INGREDIENTS.map((item) => [item.id, item.name_vi] as const)
 );
 
-function buildMockRecipeIngredient(
-  ingredientId: string,
-  isRequired: boolean,
-  displayQuantity: string | null,
-  sortOrder: number
-): RecipeIngredientView {
-  const ing = ING_BY_ID.get(ingredientId);
-  if (!ing) {
-    throw new Error(`Unknown mock ingredient id: ${ingredientId}`);
-  }
-  return {
-    ingredient_id: ing.id,
-    name_vi: ing.name_vi,
-    category: ing.category,
-    is_required: isRequired,
-    display_quantity: displayQuantity,
-    sort_order: sortOrder,
-  };
-}
-
-/**
- * Tra cứu nhanh tên nguyên liệu tiếng Việt từ UUID (dùng cho badge matched/missing).
- */
 export function getIngredientNameById(
   ingredientId: string,
-  extraIngredients: Ingredient[] = []
+  knownIngredients?: Ingredient[]
 ): string {
-  const fromExtra = extraIngredients.find((item) => item.id === ingredientId);
-  if (fromExtra) {
-    return fromExtra.name_vi;
+  if (knownIngredients && knownIngredients.length > 0) {
+    const found = knownIngredients.find((item) => item.id === ingredientId);
+    if (found) return found.name_vi;
   }
-  const fromMock = ING_BY_ID.get(ingredientId);
-  if (fromMock) {
-    return fromMock.name_vi;
-  }
-  return `Nguyên liệu (${ingredientId.slice(0, 6)})`;
+  return (
+    FALLBACK_ING_BY_ID.get(ingredientId) ??
+    `Nguyên liệu (${ingredientId.slice(0, 6)})`
+  );
 }
-
-const RECIPE_BY_ID = new Map(
-  MOCK_RECIPES.map((recipe) => [recipe.id, recipe] as const)
-);
-
-function summaryOrThrow(id: string): RecipeSummary {
-  const found = RECIPE_BY_ID.get(id);
-  if (!found) {
-    throw new Error(`Missing mock recipe summary: ${id}`);
-  }
-  return found;
-}
-
-/**
- * Chi tiết 8 công thức mẫu chuẩn OpenAPI v1.1.0 (chế độ dự phòng khi Backend chưa chạy).
- * Bao phủ đầy đủ `category === 'pantry'` tách riêng, `nutrition_evidence` có/không có tag (`TC-15`)
- * và mô tả ướp/chờ trong `cook_minutes` (`BR-05`).
- */
-export const MOCK_RECIPE_DETAILS: Record<string, RecipeDetail> = {
-  'a1111111-1111-4111-8111-000000000001': {
-    ...summaryOrThrow('a1111111-1111-4111-8111-000000000001'),
-    description:
-      'Món canh trứng cà chua thanh mát nấu nhanh trong 15 phút, vị chua dịu nhẹ rất đưa cơm gia đình Việt.',
-    country_code: 'VN',
-    ingredients: [
-      buildMockRecipeIngredient(
-        '11111111-1111-4111-8111-000000000002',
-        true,
-        '2 quả chín',
-        1
-      ),
-      buildMockRecipeIngredient(
-        '11111111-1111-4111-8111-000000000003',
-        true,
-        '2 quả',
-        2
-      ),
-      buildMockRecipeIngredient(
-        '11111111-1111-4111-8111-000000000007',
-        false,
-        '2 nhánh thái nhỏ',
-        3
-      ),
-      buildMockRecipeIngredient(
-        '22222222-2222-4222-8222-000000000001',
-        true,
-        '1 muỗng cà phê',
-        4
-      ),
-      buildMockRecipeIngredient(
-        '22222222-2222-4222-8222-000000000003',
-        true,
-        '1 muỗng cà phê',
-        5
-      ),
-      buildMockRecipeIngredient(
-        '22222222-2222-4222-8222-000000000004',
-        true,
-        '1 muỗng canh',
-        6
-      ),
-    ],
-    steps: [
-      {
-        step_no: 1,
-        instruction:
-          'Rửa sạch cà chua, cắt múi cau; đánh tan trứng gà trong bát với chút nước mắm.',
-        estimated_minutes: 5,
-      },
-      {
-        step_no: 2,
-        instruction:
-          'Làm nóng dầu ăn, xào cà chua với muối đến khi ra màu đẹp rồi thêm 500ml nước đun sôi.',
-        estimated_minutes: 6,
-      },
-      {
-        step_no: 3,
-        instruction:
-          'Đổ từ từ trứng vào nồi nước sôi theo vòng tròn và khuấy nhẹ tạo vân mây, rắc hành lá trước khi tắt bếp.',
-        estimated_minutes: 4,
-      },
-    ],
-    nutrition_evidence: [
-      {
-        tag: {
-          id: '33333333-3333-4333-8333-000000000001',
-          code: 'HIGH_VITAMIN_C_LYCOPENE',
-          name_vi: 'Giàu Lycopene & Vitamin tự nhiên',
-          description:
-            'Cà chua cung cấp lycopene và vitamin A, C hỗ trợ chống oxy hóa ở mức nguyên liệu.',
-          is_active: true,
-        },
-        source_urls: ['https://fdc.nal.usda.gov/'],
-        note: 'Thích hợp cho bữa cơm nhẹ, chế biến ít dầu mỡ.',
-      },
-      {
-        tag: {
-          id: '33333333-3333-4333-8333-000000000002',
-          code: 'QUICK_BALANCED_MEAL',
-          name_vi: 'Món canh thanh nhẹ dễ tiêu',
-          description: 'Kết hợp đạm từ trứng gà và rau quả nấu chín nhanh.',
-          is_active: true,
-        },
-        source_urls: ['https://fdc.nal.usda.gov/'],
-        note: null,
-      },
-    ],
-    source_name: 'FoodVision Culinary Archive',
-    source_url: 'https://fdc.nal.usda.gov/',
-    content_license: 'CC-BY-4.0',
-  },
-  'a1111111-1111-4111-8111-000000000002': {
-    ...summaryOrThrow('a1111111-1111-4111-8111-000000000002'),
-    description:
-      'Đậu hũ chiên vàng ngoài giòn trong mềm quyện cùng sốt cà chua sánh đậm, thích hợp cho cả bữa chay và mặn.',
-    country_code: 'VN',
-    ingredients: [
-      buildMockRecipeIngredient(
-        '11111111-1111-4111-8111-000000000001',
-        true,
-        '2 bìa vừa',
-        1
-      ),
-      buildMockRecipeIngredient(
-        '11111111-1111-4111-8111-000000000002',
-        true,
-        '2 quả chín',
-        2
-      ),
-      buildMockRecipeIngredient(
-        '11111111-1111-4111-8111-000000000007',
-        false,
-        '2 nhánh',
-        3
-      ),
-      buildMockRecipeIngredient(
-        '22222222-2222-4222-8222-000000000001',
-        true,
-        '1 muỗng cà phê',
-        4
-      ),
-      buildMockRecipeIngredient(
-        '22222222-2222-4222-8222-000000000004',
-        true,
-        '2 muỗng canh',
-        5
-      ),
-    ],
-    steps: [
-      {
-        step_no: 1,
-        instruction:
-          'Thấm khô đậu hũ, cắt miếng vuông vừa ăn rồi áp chảo vàng đều hai mặt với dầu ăn.',
-        estimated_minutes: 10,
-      },
-      {
-        step_no: 2,
-        instruction:
-          'Băm nhỏ cà chua, xào nhừ với chút muối và 3 muỗng nước lọc tạo sốt sánh.',
-        estimated_minutes: 8,
-      },
-      {
-        step_no: 3,
-        instruction:
-          'Cho đậu hũ vào rim lửa nhỏ cho thấm vị rồi rắc hành lá thái nhỏ.',
-        estimated_minutes: 7,
-      },
-    ],
-    nutrition_evidence: [
-      {
-        tag: {
-          id: '33333333-3333-4333-8333-000000000003',
-          code: 'HIGH_PROTEIN_PLANT',
-          name_vi: 'Giàu đạm thực vật',
-          description:
-            'Nguồn đạm thực vật lành mạnh từ đậu nành kết hợp lycopene từ cà chua.',
-          is_active: true,
-        },
-        source_urls: ['https://fdc.nal.usda.gov/'],
-        note: 'Phù hợp thực đơn ít chất béo bão hòa.',
-      },
-    ],
-    source_name: 'FoodVision Culinary Archive',
-    source_url: 'https://fdc.nal.usda.gov/',
-    content_license: 'CC-BY-4.0',
-  },
-  'a1111111-1111-4111-8111-000000000003': {
-    ...summaryOrThrow('a1111111-1111-4111-8111-000000000003'),
-    description:
-      'Thịt heo kho mềm cùng trứng cút thấm vị mặn ngọt hài hòa; thời gian nấu bao gồm cả bước ướp thịt nghỉ ngấm gia vị.',
-    country_code: 'VN',
-    ingredients: [
-      buildMockRecipeIngredient(
-        '11111111-1111-4111-8111-000000000004',
-        true,
-        '1 phần vừa ăn',
-        1
-      ),
-      buildMockRecipeIngredient(
-        '11111111-1111-4111-8111-000000000021',
-        true,
-        '10 quả luộc bóc vỏ',
-        2
-      ),
-      buildMockRecipeIngredient(
-        '22222222-2222-4222-8222-000000000003',
-        true,
-        '2 muỗng canh',
-        3
-      ),
-      buildMockRecipeIngredient(
-        '22222222-2222-4222-8222-000000000002',
-        true,
-        '1.5 muỗng canh',
-        4
-      ),
-      buildMockRecipeIngredient(
-        '22222222-2222-4222-8222-000000000005',
-        true,
-        '1/2 muỗng cà phê',
-        5
-      ),
-    ],
-    steps: [
-      {
-        step_no: 1,
-        instruction:
-          'Chần sơ thịt heo rồi ướp cùng nước mắm, đường và hạt tiêu khoảng 10 phút cho thấm.',
-        estimated_minutes: 15,
-      },
-      {
-        step_no: 2,
-        instruction:
-          'Thắng đường tạo màu cánh gián, đảo săn thịt rồi thêm nước xâm xấp kho lửa liu riu.',
-        estimated_minutes: 20,
-      },
-      {
-        step_no: 3,
-        instruction:
-          'Thả trứng cút đã luộc vào kho thêm cho nước sánh nhẹ và rắc hạt tiêu.',
-        estimated_minutes: 15,
-      },
-    ],
-    nutrition_evidence: [
-      {
-        tag: {
-          id: '33333333-3333-4333-8333-000000000004',
-          code: 'HIGH_PROTEIN_SAVORY',
-          name_vi: 'Giàu đạm động vật truyền thống',
-          description:
-            'Cung cấp nguồn đạm kết hợp từ thịt heo và trứng phục vụ bữa chính.',
-          is_active: true,
-        },
-        source_urls: ['https://fdc.nal.usda.gov/'],
-        note: null,
-      },
-    ],
-    source_name: 'FoodVision Culinary Archive',
-    source_url: 'https://fdc.nal.usda.gov/',
-    content_license: 'CC-BY-4.0',
-  },
-  'a1111111-1111-4111-8111-000000000004': {
-    ...summaryOrThrow('a1111111-1111-4111-8111-000000000004'),
-    description:
-      'Thịt bò thái vuông áp chảo lửa lớn giữ độ mềm mọng, xào nhanh cùng hành tây giòn ngọt thơm lừng tỏi tiêu.',
-    country_code: 'VN',
-    ingredients: [
-      buildMockRecipeIngredient(
-        '11111111-1111-4111-8111-000000000010',
-        true,
-        '1 phần thái khối vuông',
-        1
-      ),
-      buildMockRecipeIngredient(
-        '11111111-1111-4111-8111-000000000008',
-        true,
-        '1 củ bổ múi cau',
-        2
-      ),
-      buildMockRecipeIngredient(
-        '11111111-1111-4111-8111-000000000009',
-        false,
-        '3 tép băm',
-        3
-      ),
-      buildMockRecipeIngredient(
-        '22222222-2222-4222-8222-000000000004',
-        true,
-        '2 muỗng canh',
-        4
-      ),
-      buildMockRecipeIngredient(
-        '22222222-2222-4222-8222-000000000001',
-        true,
-        '1/2 muỗng cà phê',
-        5
-      ),
-      buildMockRecipeIngredient(
-        '22222222-2222-4222-8222-000000000005',
-        true,
-        '1/2 muỗng cà phê',
-        6
-      ),
-    ],
-    steps: [
-      {
-        step_no: 1,
-        instruction:
-          'Ướp thịt bò thái khối với dầu ăn, chút muối, hạt tiêu và tỏi băm trong 10 phút.',
-        estimated_minutes: 15,
-      },
-      {
-        step_no: 2,
-        instruction:
-          'Xào nhanh thịt bò trên chảo nóng lửa lớn 3 phút rồi trút riêng.',
-        estimated_minutes: 5,
-      },
-      {
-        step_no: 3,
-        instruction:
-          'Đảo hành tây vừa chín tới, cho thịt bò vào xóc đều rồi tắt bếp ngay.',
-        estimated_minutes: 5,
-      },
-    ],
-    nutrition_evidence: [
-      {
-        tag: {
-          id: '33333333-3333-4333-8333-000000000005',
-          code: 'HIGH_IRON_PROTEIN',
-          name_vi: 'Giàu sắt & Đạm thịt đỏ',
-          description:
-            'Thịt bò là nguồn cung cấp sắt heme và protein chất lượng cao.',
-          is_active: true,
-        },
-        source_urls: ['https://fdc.nal.usda.gov/'],
-        note: null,
-      },
-    ],
-    source_name: 'FoodVision Culinary Archive',
-    source_url: 'https://fdc.nal.usda.gov/',
-    content_license: 'CC-BY-4.0',
-  },
-  'a1111111-1111-4111-8111-000000000005': {
-    ...summaryOrThrow('a1111111-1111-4111-8111-000000000005'),
-    description:
-      'Món salad tươi mát trộn nhanh chuẩn vị Âu từ dưa leo giòn, cà chua mọng nước và xốt dầu hạt tiêu thanh nhẹ.',
-    country_code: 'EU',
-    ingredients: [
-      buildMockRecipeIngredient(
-        '11111111-1111-4111-8111-000000000006',
-        true,
-        '1 quả thái lát',
-        1
-      ),
-      buildMockRecipeIngredient(
-        '11111111-1111-4111-8111-000000000002',
-        true,
-        '2 quả cắt múi nhỏ',
-        2
-      ),
-      buildMockRecipeIngredient(
-        '11111111-1111-4111-8111-000000000035',
-        false,
-        '1 nắm nhỏ',
-        3
-      ),
-      buildMockRecipeIngredient(
-        '22222222-2222-4222-8222-000000000004',
-        true,
-        '1 muỗng canh',
-        4
-      ),
-      buildMockRecipeIngredient(
-        '22222222-2222-4222-8222-000000000001',
-        true,
-        '1/3 muỗng cà phê',
-        5
-      ),
-      buildMockRecipeIngredient(
-        '22222222-2222-4222-8222-000000000005',
-        true,
-        '1/3 muỗng cà phê',
-        6
-      ),
-    ],
-    steps: [
-      {
-        step_no: 1,
-        instruction:
-          'Rửa sạch dưa leo, cà chua, xà lách; để ráo hoàn toàn trước khi cắt miếng vừa ăn.',
-        estimated_minutes: 10,
-      },
-      {
-        step_no: 2,
-        instruction:
-          'Trộn nhẹ các loại rau quả với dầu ăn, muối và hạt tiêu xay trước khi dọn.',
-        estimated_minutes: 2,
-      },
-    ],
-    nutrition_evidence: [
-      {
-        tag: {
-          id: '33333333-3333-4333-8333-000000000006',
-          code: 'HIGH_FIBER_FRESH',
-          name_vi: 'Giàu chất xơ & Rau tươi',
-          description:
-            'Giữ trọn vitamin nhạy nhiệt nhờ chế biến lạnh không qua đun nấu.',
-          is_active: true,
-        },
-        source_urls: ['https://fdc.nal.usda.gov/'],
-        note: null,
-      },
-    ],
-    source_name: 'FoodVision Editorial EU',
-    source_url: 'https://fdc.nal.usda.gov/',
-    content_license: 'CC-BY-4.0',
-  },
-  'a1111111-1111-4111-8111-000000000006': {
-    ...summaryOrThrow('a1111111-1111-4111-8111-000000000006'),
-    description:
-      'Ức gà áp chảo vàng cạnh mềm ẩm bên trong, phủ hương tỏi thơm và tiêu xay theo phong cách bếp Âu hiện đại.',
-    country_code: 'EU',
-    ingredients: [
-      buildMockRecipeIngredient(
-        '11111111-1111-4111-8111-000000000011',
-        true,
-        '1 miếng phi lê',
-        1
-      ),
-      buildMockRecipeIngredient(
-        '11111111-1111-4111-8111-000000000009',
-        true,
-        '4 tép đập dập',
-        2
-      ),
-      buildMockRecipeIngredient(
-        '22222222-2222-4222-8222-000000000001',
-        true,
-        '1/2 muỗng cà phê',
-        3
-      ),
-      buildMockRecipeIngredient(
-        '22222222-2222-4222-8222-000000000005',
-        true,
-        '1/2 muỗng cà phê',
-        4
-      ),
-      buildMockRecipeIngredient(
-        '22222222-2222-4222-8222-000000000004',
-        true,
-        '1 muỗng canh',
-        5
-      ),
-    ],
-    steps: [
-      {
-        step_no: 1,
-        instruction:
-          'Thấm khô ức gà, khía nhẹ mặt ngoài và ướp muối, hạt tiêu trong 10 phút.',
-        estimated_minutes: 10,
-      },
-      {
-        step_no: 2,
-        instruction:
-          'Áp chảo ức gà với dầu ăn và tỏi đập dập mỗi mặt 6 phút lửa vừa đến khi chín đều.',
-        estimated_minutes: 15,
-      },
-    ],
-    nutrition_evidence: [
-      {
-        tag: {
-          id: '33333333-3333-4333-8333-000000000007',
-          code: 'LEAN_HIGH_PROTEIN',
-          name_vi: 'Giàu đạm nạc ít béo',
-          description:
-            'Ức gà bỏ da là nguồn protein nạc phổ biến cho chế độ cân bằng.',
-          is_active: true,
-        },
-        source_urls: ['https://fdc.nal.usda.gov/'],
-        note: null,
-      },
-    ],
-    source_name: 'FoodVision Editorial EU',
-    source_url: 'https://fdc.nal.usda.gov/',
-    content_license: 'CC-BY-4.0',
-  },
-  'a1111111-1111-4111-8111-000000000007': {
-    ...summaryOrThrow('a1111111-1111-4111-8111-000000000007'),
-    description:
-      'Hạt bắp ngọt giòn xào nhanh cùng tỏi thơm dịu và chút đường muối, hoàn thiện gọn gàng chỉ trong 15 phút.',
-    country_code: 'US',
-    ingredients: [
-      buildMockRecipeIngredient(
-        '11111111-1111-4111-8111-000000000005',
-        true,
-        '1 trái tách hạt',
-        1
-      ),
-      buildMockRecipeIngredient(
-        '11111111-1111-4111-8111-000000000009',
-        true,
-        '2 tép băm',
-        2
-      ),
-      buildMockRecipeIngredient(
-        '11111111-1111-4111-8111-000000000007',
-        false,
-        '1 nhánh',
-        3
-      ),
-      buildMockRecipeIngredient(
-        '22222222-2222-4222-8222-000000000004',
-        true,
-        '1 muỗng canh',
-        4
-      ),
-      buildMockRecipeIngredient(
-        '22222222-2222-4222-8222-000000000001',
-        true,
-        '1/3 muỗng cà phê',
-        5
-      ),
-      buildMockRecipeIngredient(
-        '22222222-2222-4222-8222-000000000002',
-        true,
-        '1/2 muỗng cà phê',
-        6
-      ),
-    ],
-    steps: [
-      {
-        step_no: 1,
-        instruction:
-          'Tách hạt bắp ngọt, rửa sạch và chần nhanh qua nước sôi cho bắp căng mọng.',
-        estimated_minutes: 5,
-      },
-      {
-        step_no: 2,
-        instruction:
-          'Phi thơm tỏi với dầu ăn, cho bắp vào đảo lửa vừa với muối và đường rồi rắc hành lá.',
-        estimated_minutes: 10,
-      },
-    ],
-    nutrition_evidence: [],
-    source_name: 'FoodVision Editorial US',
-    source_url: 'https://fdc.nal.usda.gov/',
-    content_license: 'CC-BY-4.0',
-  },
-  'a1111111-1111-4111-8111-000000000008': {
-    ...summaryOrThrow('a1111111-1111-4111-8111-000000000008'),
-    description:
-      'Tôm tươi săn chắc ngọt thịt kết hợp bông cải xanh giòn sật, chế biến nhanh giữ màu xanh tự nhiên.',
-    country_code: 'US',
-    ingredients: [
-      buildMockRecipeIngredient(
-        '11111111-1111-4111-8111-000000000012',
-        true,
-        '1 phần bóc vỏ',
-        1
-      ),
-      buildMockRecipeIngredient(
-        '11111111-1111-4111-8111-000000000013',
-        true,
-        '1/2 bông cắt nhỏ',
-        2
-      ),
-      buildMockRecipeIngredient(
-        '11111111-1111-4111-8111-000000000009',
-        false,
-        '2 tép băm',
-        3
-      ),
-      buildMockRecipeIngredient(
-        '22222222-2222-4222-8222-000000000004',
-        true,
-        '1 muỗng canh',
-        4
-      ),
-      buildMockRecipeIngredient(
-        '22222222-2222-4222-8222-000000000001',
-        true,
-        '1/2 muỗng cà phê',
-        5
-      ),
-      buildMockRecipeIngredient(
-        '22222222-2222-4222-8222-000000000005',
-        true,
-        '1/3 muỗng cà phê',
-        6
-      ),
-    ],
-    steps: [
-      {
-        step_no: 1,
-        instruction:
-          'Bóc vỏ rút chỉ tôm tươi; cắt bông cải xanh thành từng nhánh vừa ăn và trụng sơ.',
-        estimated_minutes: 10,
-      },
-      {
-        step_no: 2,
-        instruction:
-          'Phi thơm tỏi, xào săn tôm tươi trước rồi thả bông cải xanh vào đảo đều tay với muối và hạt tiêu.',
-        estimated_minutes: 12,
-      },
-    ],
-    nutrition_evidence: [
-      {
-        tag: {
-          id: '33333333-3333-4333-8333-000000000008',
-          code: 'HIGH_FIBER_SEAFOOD',
-          name_vi: 'Đạm hải sản & Chất xơ xanh',
-          description:
-            'Kết hợp đạm dễ tiêu từ tôm tươi cùng vitamin K, C và chất xơ của bông cải xanh.',
-          is_active: true,
-        },
-        source_urls: ['https://fdc.nal.usda.gov/'],
-        note: 'Lưu ý: có thành phần hải sản (tôm).',
-      },
-    ],
-    source_name: 'FoodVision Editorial US',
-    source_url: 'https://fdc.nal.usda.gov/',
-    content_license: 'CC-BY-4.0',
-  },
-};
-
-export const MOCK_RECIPE_SCORING_META: Record<string, MockRecipeScoringMeta> = {
-  'a1111111-1111-4111-8111-000000000001': {
-    cookingMethod: 'boil',
-    rolesByIngredientId: {
-      '11111111-1111-4111-8111-000000000002': {
-        role: 'core',
-        dishRole: 'main',
-        weight: 4,
-      },
-      '11111111-1111-4111-8111-000000000003': {
-        role: 'core',
-        dishRole: 'main',
-        weight: 4,
-      },
-      '11111111-1111-4111-8111-000000000007': {
-        role: 'optional',
-        dishRole: 'sub',
-        weight: 0,
-      },
-      '22222222-2222-4222-8222-000000000001': {
-        role: 'spice',
-        dishRole: 'sub',
-        weight: 1,
-      },
-      '22222222-2222-4222-8222-000000000003': {
-        role: 'spice',
-        dishRole: 'sub',
-        weight: 1,
-      },
-      '22222222-2222-4222-8222-000000000004': {
-        role: 'spice',
-        dishRole: 'sub',
-        weight: 1,
-      },
-    },
-  },
-  'a1111111-1111-4111-8111-000000000002': {
-    cookingMethod: 'braise',
-    rolesByIngredientId: {
-      '11111111-1111-4111-8111-000000000001': {
-        role: 'core',
-        dishRole: 'main',
-        weight: 4,
-      },
-      '11111111-1111-4111-8111-000000000002': {
-        role: 'secondary',
-        dishRole: 'sub',
-        weight: 2,
-      },
-      '11111111-1111-4111-8111-000000000007': {
-        role: 'optional',
-        dishRole: 'sub',
-        weight: 0,
-      },
-      '22222222-2222-4222-8222-000000000001': {
-        role: 'spice',
-        dishRole: 'sub',
-        weight: 1,
-      },
-      '22222222-2222-4222-8222-000000000004': {
-        role: 'spice',
-        dishRole: 'sub',
-        weight: 1,
-      },
-    },
-  },
-  'a1111111-1111-4111-8111-000000000003': {
-    cookingMethod: 'braise',
-    rolesByIngredientId: {
-      '11111111-1111-4111-8111-000000000004': {
-        role: 'core',
-        dishRole: 'main',
-        weight: 4,
-      },
-      '11111111-1111-4111-8111-000000000021': {
-        role: 'secondary',
-        dishRole: 'main',
-        weight: 2,
-      },
-      '22222222-2222-4222-8222-000000000003': {
-        role: 'spice',
-        dishRole: 'sub',
-        weight: 1,
-      },
-      '22222222-2222-4222-8222-000000000002': {
-        role: 'spice',
-        dishRole: 'sub',
-        weight: 1,
-      },
-      '22222222-2222-4222-8222-000000000005': {
-        role: 'spice',
-        dishRole: 'sub',
-        weight: 1,
-      },
-    },
-  },
-  'a1111111-1111-4111-8111-000000000004': {
-    cookingMethod: 'stir_fry',
-    rolesByIngredientId: {
-      '11111111-1111-4111-8111-000000000010': {
-        role: 'core',
-        dishRole: 'main',
-        weight: 4,
-      },
-      '11111111-1111-4111-8111-000000000008': {
-        role: 'secondary',
-        dishRole: 'sub',
-        weight: 2,
-      },
-      '11111111-1111-4111-8111-000000000009': {
-        role: 'optional',
-        dishRole: 'sub',
-        weight: 0,
-      },
-      '22222222-2222-4222-8222-000000000004': {
-        role: 'spice',
-        dishRole: 'sub',
-        weight: 1,
-      },
-      '22222222-2222-4222-8222-000000000001': {
-        role: 'spice',
-        dishRole: 'sub',
-        weight: 1,
-      },
-      '22222222-2222-4222-8222-000000000005': {
-        role: 'spice',
-        dishRole: 'sub',
-        weight: 1,
-      },
-    },
-  },
-  'a1111111-1111-4111-8111-000000000005': {
-    cookingMethod: 'salad',
-    rolesByIngredientId: {
-      '11111111-1111-4111-8111-000000000006': {
-        role: 'core',
-        dishRole: 'main',
-        weight: 4,
-      },
-      '11111111-1111-4111-8111-000000000002': {
-        role: 'core',
-        dishRole: 'main',
-        weight: 4,
-      },
-      '11111111-1111-4111-8111-000000000035': {
-        role: 'optional',
-        dishRole: 'sub',
-        weight: 0,
-      },
-      '22222222-2222-4222-8222-000000000004': {
-        role: 'spice',
-        dishRole: 'sub',
-        weight: 1,
-      },
-      '22222222-2222-4222-8222-000000000001': {
-        role: 'spice',
-        dishRole: 'sub',
-        weight: 1,
-      },
-      '22222222-2222-4222-8222-000000000005': {
-        role: 'spice',
-        dishRole: 'sub',
-        weight: 1,
-      },
-    },
-  },
-  'a1111111-1111-4111-8111-000000000006': {
-    cookingMethod: 'pan_sear',
-    rolesByIngredientId: {
-      '11111111-1111-4111-8111-000000000011': {
-        role: 'core',
-        dishRole: 'main',
-        weight: 4,
-      },
-      '11111111-1111-4111-8111-000000000009': {
-        role: 'secondary',
-        dishRole: 'sub',
-        weight: 2,
-      },
-      '22222222-2222-4222-8222-000000000001': {
-        role: 'spice',
-        dishRole: 'sub',
-        weight: 1,
-      },
-      '22222222-2222-4222-8222-000000000005': {
-        role: 'spice',
-        dishRole: 'sub',
-        weight: 1,
-      },
-      '22222222-2222-4222-8222-000000000004': {
-        role: 'spice',
-        dishRole: 'sub',
-        weight: 1,
-      },
-    },
-  },
-  'a1111111-1111-4111-8111-000000000007': {
-    cookingMethod: 'stir_fry',
-    rolesByIngredientId: {
-      '11111111-1111-4111-8111-000000000005': {
-        role: 'core',
-        dishRole: 'main',
-        weight: 4,
-      },
-      '11111111-1111-4111-8111-000000000009': {
-        role: 'secondary',
-        dishRole: 'sub',
-        weight: 2,
-      },
-      '11111111-1111-4111-8111-000000000007': {
-        role: 'optional',
-        dishRole: 'sub',
-        weight: 0,
-      },
-      '22222222-2222-4222-8222-000000000004': {
-        role: 'spice',
-        dishRole: 'sub',
-        weight: 1,
-      },
-      '22222222-2222-4222-8222-000000000001': {
-        role: 'spice',
-        dishRole: 'sub',
-        weight: 1,
-      },
-      '22222222-2222-4222-8222-000000000002': {
-        role: 'spice',
-        dishRole: 'sub',
-        weight: 1,
-      },
-    },
-  },
-  'a1111111-1111-4111-8111-000000000008': {
-    cookingMethod: 'stir_fry',
-    rolesByIngredientId: {
-      '11111111-1111-4111-8111-000000000012': {
-        role: 'core',
-        dishRole: 'main',
-        weight: 4,
-      },
-      '11111111-1111-4111-8111-000000000013': {
-        role: 'secondary',
-        dishRole: 'sub',
-        weight: 2,
-      },
-      '11111111-1111-4111-8111-000000000009': {
-        role: 'optional',
-        dishRole: 'sub',
-        weight: 0,
-      },
-      '22222222-2222-4222-8222-000000000004': {
-        role: 'spice',
-        dishRole: 'sub',
-        weight: 1,
-      },
-      '22222222-2222-4222-8222-000000000001': {
-        role: 'spice',
-        dishRole: 'sub',
-        weight: 1,
-      },
-      '22222222-2222-4222-8222-000000000005': {
-        role: 'spice',
-        dishRole: 'sub',
-        weight: 1,
-      },
-    },
-  },
-};

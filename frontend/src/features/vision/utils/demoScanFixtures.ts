@@ -1,32 +1,50 @@
 /**
- * Bộ tạo tệp ảnh mẫu dùng ảnh chụp ẩm thực thật (khi chạy trên trình duyệt có mạng)
- * kèm dự phòng nhị phân tối giản cho môi trường kiểm thử tự động JSDOM / ngoại tuyến.
- * Không vẽ hình học giả tạo trên canvas.
+ * Bộ nạp ảnh mẫu ẩm thực thật cục bộ (/samples/*.jpg >= 640x480 px)
+ * kèm dữ liệu nhị phân dự phòng 64x64 px hợp lệ cho môi trường JSDOM / ngoại tuyến.
+ * Không vẽ hình học giả tạo trên canvas và không bao giờ gửi ảnh < 64x64 gây 422 INVALID_IMAGE.
  */
 
 export type DemoFixtureKind = 'basket-hitl' | 'portrait-exif' | 'blur-empty';
 
-const REAL_SAMPLE_URLS: Record<DemoFixtureKind, string> = {
-  'basket-hitl':
-    'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=760&q=80',
-  'portrait-exif':
-    'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=520&h=720&q=80',
-  'blur-empty':
-    'https://images.unsplash.com/photo-1495195134817-aeb325a55b65?auto=format&fit=crop&w=720&q=60',
+const LOCAL_SAMPLE_PATHS: Record<DemoFixtureKind, string> = {
+  'basket-hitl': '/samples/basket-hitl.jpg',
+  'portrait-exif': '/samples/portrait-exif-6.jpg',
+  'blur-empty': '/samples/blur-empty.jpg',
 };
 
-const MINIMAL_PNG_BYTES = new Uint8Array([
-  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
-  0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
-  0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53, 0xde, 0x00, 0x00, 0x00,
-  0x0c, 0x49, 0x44, 0x41, 0x54, 0x08, 0xd7, 0x63, 0xf8, 0xcf, 0xc0, 0x00,
-  0x00, 0x03, 0x01, 0x01, 0x00, 0x18, 0xdd, 0x8d, 0xb0, 0x00, 0x00, 0x00,
-  0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+/**
+ * Ảnh PNG 64x64 px hợp lệ (139 bytes, nền kem ấm #EFE2D2) dùng làm fallback trong JSDOM / offline,
+ * đạt ngưỡng kích thước tối thiểu >= 64x64 của Backend preprocess_uploaded_image.
+ */
+export const FALLBACK_64X64_PNG_BYTES = new Uint8Array([
+  137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 64, 0,
+  0, 0, 64, 8, 2, 0, 0, 0, 37, 11, 230, 137, 0, 0, 0, 82, 73, 68, 65, 84, 120,
+  218, 237, 207, 49, 13, 0, 48, 8, 0, 48, 152, 127, 93, 104, 64, 2, 50, 166,
+  130, 131, 164, 117, 208, 156, 174, 184, 236, 197, 113, 2, 2, 2, 2, 2, 2, 2,
+  2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+  2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 251, 62, 4, 176, 3, 6, 92, 31, 166, 61,
+  0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130,
 ]);
 
-const MINIMAL_JPEG_BYTES = new Uint8Array([
-  0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01,
-  0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xff, 0xd9,
+/**
+ * Ảnh JPEG 64x64 px hợp lệ (310 bytes, SOF0 64x64) dùng làm fallback EXIF trong JSDOM / offline.
+ */
+export const FALLBACK_64X64_JPEG_BYTES = new Uint8Array([
+  255, 216, 255, 224, 0, 16, 74, 70, 73, 70, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 255,
+  219, 0, 67, 0, 8, 6, 6, 7, 6, 5, 8, 7, 7, 7, 9, 9, 8, 10, 12, 20, 13, 12, 11,
+  11, 12, 25, 18, 19, 15, 20, 29, 26, 31, 30, 29, 26, 28, 28, 32, 36, 46, 39,
+  32, 34, 44, 35, 28, 28, 40, 55, 41, 44, 48, 49, 52, 52, 52, 31, 39, 57, 61,
+  56, 50, 60, 46, 51, 52, 50, 255, 219, 0, 67, 1, 9, 9, 9, 12, 11, 12, 24, 13,
+  13, 24, 50, 33, 28, 33, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50,
+  50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50,
+  50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 255,
+  192, 0, 17, 8, 0, 64, 0, 64, 3, 1, 34, 0, 2, 17, 1, 3, 17, 1, 255, 196, 0,
+  21, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 255, 196, 0, 20,
+  16, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 196, 0, 21, 1, 1,
+  1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 255, 196, 0, 20, 17, 1, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 218, 0, 12, 3, 1, 0, 2, 17,
+  3, 17, 0, 63, 0, 173, 128, 145, 64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 63, 255, 217,
 ]);
 
 /**
@@ -77,9 +95,25 @@ export function buildExifApp1Segment(
   ]);
 }
 
+function isExifApp1Payload(bytes: Uint8Array, payloadOffset: number, segLen: number): boolean {
+  // segLen bao gồm 2 byte độ dài + ít nhất 6 byte "Exif\0\0"
+  if (segLen < 8 || payloadOffset + 6 > bytes.length) {
+    return false;
+  }
+  return (
+    bytes[payloadOffset] === 0x45 &&
+    bytes[payloadOffset + 1] === 0x78 &&
+    bytes[payloadOffset + 2] === 0x69 &&
+    bytes[payloadOffset + 3] === 0x66 &&
+    bytes[payloadOffset + 4] === 0x00 &&
+    bytes[payloadOffset + 5] === 0x00
+  );
+}
+
 /**
  * Chèn segment APP1 EXIF Orientation ngay sau SOI (0xFFD8) của luồng byte JPEG,
- * đồng thời loại bỏ các segment APP1 EXIF cũ (nếu có) để không xung đột cờ hướng ảnh.
+ * đồng thời quét và xóa toàn bộ các segment APP1 (0xFFE1 Exif\0\0) cũ trước đó (F2)
+ * để trình duyệt và Backend Pillow không bao giờ gặp xung đột nhiều thẻ EXIF.
  */
 export function injectJpegExifOrientation(
   jpegBytes: Uint8Array,
@@ -89,61 +123,78 @@ export function injectJpegExifOrientation(
     return new Uint8Array(jpegBytes);
   }
 
+  const keptChunks: Uint8Array[] = [];
+  let offset = 2;
+
+  while (offset < jpegBytes.length) {
+    if (jpegBytes[offset] !== 0xff) {
+      keptChunks.push(jpegBytes.subarray(offset));
+      break;
+    }
+
+    const segStart = offset;
+    let pos = offset + 1;
+    while (pos < jpegBytes.length && jpegBytes[pos] === 0xff) {
+      pos += 1;
+    }
+
+    if (pos >= jpegBytes.length) {
+      keptChunks.push(jpegBytes.subarray(segStart));
+      break;
+    }
+
+    const marker = jpegBytes[pos];
+
+    // SOS (0xFFDA) hoặc EOI (0xFFD9): toàn bộ luồng dữ liệu nén phía sau giữ nguyên
+    if (marker === 0xda || marker === 0xd9 || marker === 0x00) {
+      keptChunks.push(jpegBytes.subarray(segStart));
+      break;
+    }
+
+    // Các marker độc lập không có trường length (RST0..RST7, SOI, TEM)
+    if ((marker >= 0xd0 && marker <= 0xd8) || marker === 0x01) {
+      keptChunks.push(jpegBytes.subarray(segStart, pos + 1));
+      offset = pos + 1;
+      continue;
+    }
+
+    if (pos + 2 >= jpegBytes.length) {
+      keptChunks.push(jpegBytes.subarray(segStart));
+      break;
+    }
+
+    const segLen = (jpegBytes[pos + 1] << 8) | jpegBytes[pos + 2];
+    const segEnd = pos + 1 + segLen;
+    if (segLen < 2 || segEnd > jpegBytes.length) {
+      keptChunks.push(jpegBytes.subarray(segStart));
+      break;
+    }
+
+    // Xóa mọi segment APP1 (0xFFE1) mang header "Exif\0\0" cũ
+    if (marker === 0xe1 && isExifApp1Payload(jpegBytes, pos + 3, segLen)) {
+      offset = segEnd;
+      continue;
+    }
+
+    keptChunks.push(jpegBytes.subarray(segStart, segEnd));
+    offset = segEnd;
+  }
+
   const app1 = buildExifApp1Segment(orientation);
-  const combined = new Uint8Array(jpegBytes.length + app1.length);
+  const keptLength = keptChunks.reduce((sum, chunk) => sum + chunk.length, 0);
+  const combined = new Uint8Array(2 + app1.length + keptLength);
+
   combined[0] = 0xff;
   combined[1] = 0xd8;
   combined.set(app1, 2);
-  combined.set(jpegBytes.subarray(2), 2 + app1.length);
+
+  let writePos = 2 + app1.length;
+  for (const chunk of keptChunks) {
+    combined.set(chunk, writePos);
+    writePos += chunk.length;
+  }
+
   return combined;
-}
-
-function dataUrlToBytes(dataUrl: string): Uint8Array<ArrayBuffer> | null {
-  const commaIdx = dataUrl.indexOf(',');
-  if (commaIdx < 0) return null;
-  const base64 = dataUrl.slice(commaIdx + 1);
-  if (!base64 || typeof atob !== 'function') return null;
-  const binary = atob(base64);
-  const out = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i += 1) {
-    out[i] = binary.charCodeAt(i);
-  }
-  return out;
-}
-
-/**
- * Với mẫu ảnh dọc EXIF: xoay ảnh thực 90° CCW trên bộ nhớ rồi gắn cờ EXIF Orientation = 6 (90° CW)
- * để trình duyệt & Backend tự xoay thẳng đứng về đúng chiều ảnh chụp thật.
- */
-async function buildRealPortraitExifFromBlob(
-  blob: Blob
-): Promise<Uint8Array<ArrayBuffer> | null> {
-  if (typeof createImageBitmap !== 'function' || typeof document === 'undefined') {
-    return null;
-  }
-  try {
-    const bitmap = await createImageBitmap(blob);
-    const uprightW = bitmap.width;
-    const uprightH = bitmap.height;
-    const canvas = document.createElement('canvas');
-    canvas.width = uprightH;
-    canvas.height = uprightW;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      bitmap.close();
-      return null;
-    }
-    ctx.translate(0, uprightW);
-    ctx.rotate(-Math.PI / 2);
-    ctx.drawImage(bitmap, 0, 0, uprightW, uprightH);
-    bitmap.close();
-
-    const jpegBytes = dataUrlToBytes(canvas.toDataURL('image/jpeg', 0.88));
-    if (!jpegBytes) return null;
-    return injectJpegExifOrientation(jpegBytes, 6);
-  } catch {
-    return null;
-  }
 }
 
 export async function createDemoScanFile(kind: DemoFixtureKind): Promise<File> {
@@ -152,17 +203,10 @@ export async function createDemoScanFile(kind: DemoFixtureKind): Promise<File> {
 
   if (!isJsdom && typeof fetch === 'function') {
     try {
-      const response = await fetch(REAL_SAMPLE_URLS[kind], { mode: 'cors' });
+      const response = await fetch(LOCAL_SAMPLE_PATHS[kind]);
       if (response.ok) {
-        const blob = await response.blob();
+        const rawBuf = new Uint8Array(await response.arrayBuffer());
         if (kind === 'portrait-exif') {
-          const exifBytes = await buildRealPortraitExifFromBlob(blob);
-          if (exifBytes) {
-            return new File([exifBytes], 'anh-doc-exif-6.jpg', {
-              type: 'image/jpeg',
-            });
-          }
-          const rawBuf = new Uint8Array(await blob.arrayBuffer());
           const oriented = injectJpegExifOrientation(rawBuf, 6);
           return new File([oriented], 'anh-doc-exif-6.jpg', {
             type: 'image/jpeg',
@@ -173,27 +217,27 @@ export async function createDemoScanFile(kind: DemoFixtureKind): Promise<File> {
           kind === 'basket-hitl'
             ? 'ro-nguyen-lieu-hitl.jpg'
             : 'anh-mo-khong-ro.jpg';
-        return new File([blob], fileName, {
-          type: blob.type || 'image/jpeg',
+        return new File([rawBuf], fileName, {
+          type: 'image/jpeg',
         });
       }
     } catch {
-      // Ngoại tuyến hoặc bị chặn mạng -> dùng tệp nhị phân tối giản bên dưới
+      // Ngoại tuyến hoặc môi trường test không có static server -> dùng ảnh 64x64 nhị phân hợp lệ
     }
   }
 
   if (kind === 'portrait-exif') {
-    const oriented = injectJpegExifOrientation(MINIMAL_JPEG_BYTES, 6);
+    const oriented = injectJpegExifOrientation(FALLBACK_64X64_JPEG_BYTES, 6);
     return new File([oriented], 'anh-doc-exif-6.jpg', { type: 'image/jpeg' });
   }
 
   if (kind === 'blur-empty') {
-    return new File([MINIMAL_PNG_BYTES], 'anh-mo-khong-ro.png', {
+    return new File([FALLBACK_64X64_PNG_BYTES], 'anh-mo-khong-ro.png', {
       type: 'image/png',
     });
   }
 
-  return new File([MINIMAL_PNG_BYTES], 'ro-nguyen-lieu-hitl.png', {
+  return new File([FALLBACK_64X64_PNG_BYTES], 'ro-nguyen-lieu-hitl.png', {
     type: 'image/png',
   });
 }

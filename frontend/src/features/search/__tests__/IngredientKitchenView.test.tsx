@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Ingredient, RecommendDraftPayload } from '../../../shared/api/types';
+import * as ingredientsApi from '../../../shared/api/ingredientsApi';
+import { MOCK_MAIN_INGREDIENTS } from '../../../shared/api/mockData';
 import { IngredientKitchenView } from '../IngredientKitchenView';
 
 const StatefulKitchenHarness: React.FC<{
@@ -24,9 +26,13 @@ const StatefulKitchenHarness: React.FC<{
   );
 };
 
-describe('IngredientKitchenView (FR-18, FR-05, AC-07, AC-08)', () => {
+describe('IngredientKitchenView (FR-18, FR-05, AC-07, AC-08, F1)', () => {
   beforeEach(() => {
     import.meta.env.VITE_API_MOCK_MODE = 'true';
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('AC-08: Khóa nút "Gợi ý món ăn" khi danh sách nguyên liệu chính (ingredient_ids) rỗng và mở khóa khi có >= 1 nguyên liệu', async () => {
@@ -37,40 +43,36 @@ describe('IngredientKitchenView (FR-18, FR-05, AC-07, AC-08)', () => {
     expect(submitBtn).toBeDisabled();
     expect(screen.getByTestId('recommend-disabled-hint')).toBeInTheDocument();
 
-    // Chờ gợi ý nguyên liệu chính hiển thị và chọn "Đậu hũ"
     await waitFor(() => {
       expect(screen.getByTestId('suggestion-item-dau-hu')).toBeInTheDocument();
     });
 
     await user.click(screen.getByTestId('suggestion-item-dau-hu'));
 
-    // Nút Gợi ý món ăn lập tức được mở khóa
     expect(submitBtn).not.toBeDisabled();
     expect(screen.getByTestId('selected-chip-dau-hu')).toBeInTheDocument();
 
-    // Xóa Đậu hũ khỏi danh sách đã chọn -> nút bị khóa trở lại
     await user.click(screen.getByRole('button', { name: 'Xóa Đậu hũ' }));
     expect(submitBtn).toBeDisabled();
   });
 
-  it('AC-07: Tìm kiếm tiếng Việt có dấu, không dấu, đồng nghĩa vùng miền ("đậu phụ" -> Đậu hũ, "ngô" -> Bắp) và chống trùng lặp UUID trong ingredient_ids', async () => {
+  it('AC-07 & F1: Tìm kiếm tiếng Việt có dấu, không dấu, đồng nghĩa vùng miền ("đậu phụ" -> Đậu hũ, "ngô" -> Bắp ngọt) đúng UUID chuẩn Backend', async () => {
     const user = userEvent.setup();
     const onRecommend = vi.fn();
     render(<StatefulKitchenHarness onRecommend={onRecommend} />);
 
     const input = screen.getByLabelText('Nhập tên nguyên liệu chính');
 
-    // 1. Tìm bằng từ đồng nghĩa miền Bắc "đậu phụ" -> phải trả về "Đậu hũ"
+    // 1. Tìm bằng từ đồng nghĩa miền Bắc "đậu phụ" -> trả về "Đậu hũ"
     await user.type(input, 'đậu phụ');
     await waitFor(() => {
       expect(screen.getByTestId('suggestion-item-dau-hu')).toBeInTheDocument();
     });
 
-    // Chọn Đậu hũ lần 1
     await user.click(screen.getByTestId('suggestion-item-dau-hu'));
     expect(screen.getByTestId('selected-chip-dau-hu')).toBeInTheDocument();
 
-    // 2. Tìm lại bằng không dấu "dau hu" và bấm chọn lần 2 -> không được tạo bản sao thứ 2
+    // 2. Tìm lại bằng không dấu "dau hu" và bấm chọn lần 2 -> không tạo bản sao thứ 2
     await user.clear(input);
     await user.type(input, 'dau hu');
     await waitFor(() => {
@@ -82,58 +84,81 @@ describe('IngredientKitchenView (FR-18, FR-05, AC-07, AC-08)', () => {
       screen.getByTestId('duplicate-ingredient-notice')
     ).toBeInTheDocument();
 
-    // 3. Tìm bằng từ đồng nghĩa "ngô" -> khớp "Bắp"
+    // 3. Tìm bằng từ đồng nghĩa "ngô" -> khớp "Bắp ngọt" (bap-ngot)
     await user.clear(input);
     await user.type(input, 'ngô');
     await waitFor(() => {
-      expect(screen.getByTestId('suggestion-item-bap')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('suggestion-item-bap-ngot')
+      ).toBeInTheDocument();
     });
-    await user.click(screen.getByTestId('suggestion-item-bap'));
+    await user.click(screen.getByTestId('suggestion-item-bap-ngot'));
 
-    // Bấm Gợi ý món ăn và kiểm tra mảng ingredient_ids chỉ có đúng 2 UUID duy nhất
     await user.click(screen.getByTestId('recommend-submit-btn'));
     expect(onRecommend).toHaveBeenCalledTimes(1);
     expect(onRecommend).toHaveBeenCalledWith({
       ingredient_ids: [
-        '11111111-1111-4111-8111-000000000001', // Đậu hũ
-        '11111111-1111-4111-8111-000000000005', // Bắp
+        '11111111-1111-4111-8111-111111111103', // Đậu hũ
+        '11111111-1111-4111-8111-111111111219', // Bắp ngọt
       ],
       excluded_pantry_ids: [],
     });
   });
 
-  it('FR-05 & ADR-008: Thanh 5 gia vị sẵn có (Muối, Đường, Nước mắm, Dầu ăn, Hạt tiêu) mặc định checked (excluded_pantry_ids = []) và cập nhật đúng khi bỏ chọn', async () => {
+  it('FR-05, ADR-008 & F1: Thanh 5 gia vị sẵn có (Muối, Đường, Nước mắm, Dầu ăn, Tiêu xay) mặc định checked và gửi đúng UUID chuẩn Backend', async () => {
     const user = userEvent.setup();
     const onRecommend = vi.fn();
     render(<StatefulKitchenHarness onRecommend={onRecommend} />);
 
-    // Kiểm tra đủ 5 gia vị cơ bản hiển thị và mặc định đều được checked
-    const pantrySlugs = ['muoi', 'duong', 'nuoc-mam', 'dau-an', 'hat-tieu'];
+    const pantrySlugs = ['muoi', 'duong', 'nuoc-mam', 'dau-an', 'tieu-xay'];
     for (const slug of pantrySlugs) {
       const label = screen.getByTestId(`pantry-toggle-${slug}`);
       const checkbox = label.querySelector('input[type="checkbox"]');
       expect(checkbox).toBeChecked();
     }
 
-    // Chọn 1 nguyên liệu chính (Cà chua)
     await waitFor(() => {
       expect(screen.getByTestId('suggestion-item-ca-chua')).toBeInTheDocument();
     });
     await user.click(screen.getByTestId('suggestion-item-ca-chua'));
 
-    // Bỏ chọn "Nước mắm" và "Hạt tiêu"
     await user.click(screen.getByTestId('pantry-toggle-nuoc-mam'));
-    await user.click(screen.getByTestId('pantry-toggle-hat-tieu'));
+    await user.click(screen.getByTestId('pantry-toggle-tieu-xay'));
 
-    // Gửi Gợi ý món ăn -> kiểm tra excluded_pantry_ids chứa đúng 2 UUID của Nước mắm và Hạt tiêu
     await user.click(screen.getByTestId('recommend-submit-btn'));
     expect(onRecommend).toHaveBeenCalledWith({
-      ingredient_ids: ['11111111-1111-4111-8111-000000000002'],
+      ingredient_ids: ['11111111-1111-4111-8111-111111111101'],
       excluded_pantry_ids: [
-        '22222222-2222-4222-8222-000000000003', // Nước mắm
-        '22222222-2222-4222-8222-000000000005', // Hạt tiêu
+        '11111111-1111-4111-8111-111111111107', // Nước mắm
+        '11111111-1111-4111-8111-111111111110', // Tiêu xay
       ],
     });
+  });
+
+  it('F1: Lọc cứng category !== "pantry" khi nạp danh mục nguyên liệu chính từ API', async () => {
+    vi.spyOn(ingredientsApi, 'searchMainIngredients').mockResolvedValue({
+      items: [
+        ...MOCK_MAIN_INGREDIENTS.slice(0, 4),
+        {
+          id: '11111111-1111-4111-8111-111111111106',
+          slug: 'muoi',
+          name_vi: 'Muối',
+          category: 'pantry',
+          is_active: true,
+        },
+      ],
+      total: 5,
+      limit: 50,
+      offset: 0,
+    });
+
+    render(<StatefulKitchenHarness />);
+    await waitFor(() => {
+      expect(screen.getByTestId('suggestion-item-ca-chua')).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByTestId('suggestion-item-muoi')
+    ).not.toBeInTheDocument();
   });
 
   it('Điều hướng bàn phím (ArrowDown + Enter chọn và tự đóng dropdown; Escape đóng dropdown)', async () => {
@@ -144,9 +169,7 @@ describe('IngredientKitchenView (FR-18, FR-05, AC-07, AC-08)', () => {
     await user.type(input, 'đậu phụ');
 
     await waitFor(() => {
-      expect(
-        screen.getByTestId('suggestion-item-dau-hu')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('suggestion-item-dau-hu')).toBeInTheDocument();
     });
 
     await user.keyboard('{ArrowDown}{Enter}');
@@ -157,10 +180,11 @@ describe('IngredientKitchenView (FR-18, FR-05, AC-07, AC-08)', () => {
     ).not.toBeInTheDocument();
     expect(input).toHaveValue('');
 
-    // Gõ từ khóa mới rồi bấm Escape -> đóng khung gợi ý ngay
     await user.type(input, 'bắp');
     await waitFor(() => {
-      expect(screen.getByTestId('suggestion-item-bap')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('suggestion-item-bap-ngot')
+      ).toBeInTheDocument();
     });
 
     await user.keyboard('{Escape}');

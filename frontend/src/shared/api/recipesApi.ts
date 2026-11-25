@@ -1,7 +1,73 @@
 import { ApiClientError, apiGetWithFallback } from './client';
 import { MOCK_RECIPES, MOCK_RECIPE_DETAILS } from './mockData';
-import { PagedRecipes, RecipeDetail, RecipeListParams } from './types';
+import {
+  PagedRecipes,
+  RecipeDetail,
+  RecipeListParams,
+  USDANutritionEstimate,
+} from './types';
 import { normalizeVietnamese } from '../utils/vietnamese';
+
+export const PORTION_SCALING_WARNING_VI =
+  'Thời gian chế biến, mức nhiệt và lượng gia vị nêm nếm có thể không tăng/giảm tuyến tính hoàn toàn theo phép nhân khẩu phần.';
+
+function roundTo2(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+function roundTo4(value: number): number {
+  return Math.round(value * 10000) / 10000;
+}
+
+/**
+ * Quy đổi tuyến tính khẩu phần (1..20) cho nhánh mock khớp 100% với backend/app/services/nutrition.py (TP 10, TP 11, DEF-09).
+ */
+export function scaleMockRecipeDetail(
+  detail: RecipeDetail,
+  requestedServings?: number
+): RecipeDetail {
+  const baseServings =
+    typeof detail.base_servings === 'number' && detail.base_servings > 0
+      ? detail.base_servings
+      : 2;
+
+  const targetServings =
+    requestedServings !== undefined
+      ? Math.min(Math.max(Math.round(requestedServings), 1), 20)
+      : (detail.servings ?? baseServings);
+
+  const factor = targetServings / baseServings;
+
+  const scaledIngredients = detail.ingredients.map((item) => ({
+    ...item,
+    grams:
+      typeof item.grams === 'number' && item.grams > 0
+        ? roundTo2(item.grams * factor)
+        : (item.grams ?? null),
+  }));
+
+  let scaledUsda: USDANutritionEstimate | null = null;
+  if (detail.usda_nutrition != null) {
+    scaledUsda = {
+      kcal: roundTo2(detail.usda_nutrition.kcal * factor),
+      protein_g: roundTo2(detail.usda_nutrition.protein_g * factor),
+      fat_g: roundTo2(detail.usda_nutrition.fat_g * factor),
+      carb_g: roundTo2(detail.usda_nutrition.carb_g * factor),
+      source_urls: [...detail.usda_nutrition.source_urls],
+      scaling_factor: roundTo4(factor),
+      scaling_warning_vi:
+        targetServings !== baseServings ? PORTION_SCALING_WARNING_VI : null,
+    };
+  }
+
+  return {
+    ...detail,
+    base_servings: baseServings,
+    servings: targetServings,
+    ingredients: scaledIngredients,
+    usda_nutrition: scaledUsda,
+  };
+}
 
 /**
  * Bộ lọc dự phòng trên bộ dữ liệu mẫu chuẩn OpenAPI (khi Backend chưa chạy).
@@ -44,7 +110,8 @@ export function filterMockRecipes(params: RecipeListParams): PagedRecipes {
  * Gọi GET /api/v1/recipes theo đúng hợp đồng docs/03-api/openapi.yaml (FR-01, AC-01, AC-02).
  */
 export async function listRecipes(
-  params: RecipeListParams = {}
+  params: RecipeListParams = {},
+  signal?: AbortSignal
 ): Promise<PagedRecipes> {
   const limit = params.limit ?? 12;
   const offset = params.offset ?? 0;
@@ -59,18 +126,30 @@ export async function listRecipes(
       limit,
       offset,
     },
-    () => filterMockRecipes(params)
+    () => filterMockRecipes(params),
+    signal
   );
 }
 
 /**
- * Gọi GET /api/v1/recipes/{recipe_id} để lấy chi tiết công thức, nguyên liệu tách pantry,
- * các bước nấu và nhãn dinh dưỡng tham khảo (`FR-02`, `FR-08`, `TC-03`, `TC-15`).
+ * Gọi GET /api/v1/recipes/{recipe_id}?servings=... để lấy chi tiết công thức, nguyên liệu tách pantry,
+ * định lượng quy đổi khẩu phần, ước tính dinh dưỡng USDA Tầng 2 và nhãn tham khảo Tầng 1 (`FR-02`, `FR-08`, `ADR-004`, `DEF-09`).
  */
-export async function getRecipeById(recipeId: string): Promise<RecipeDetail> {
+export async function getRecipeById(
+  recipeId: string,
+  servings?: number,
+  signal?: AbortSignal
+): Promise<RecipeDetail> {
+  const safeServings =
+    typeof servings === 'number' && Number.isFinite(servings)
+      ? Math.min(Math.max(Math.round(servings), 1), 20)
+      : undefined;
+
   return apiGetWithFallback<RecipeDetail>(
     `/recipes/${encodeURIComponent(recipeId)}`,
-    {},
+    {
+      servings: safeServings,
+    },
     () => {
       const detail = MOCK_RECIPE_DETAILS[recipeId];
       if (!detail) {
@@ -80,7 +159,8 @@ export async function getRecipeById(recipeId: string): Promise<RecipeDetail> {
           'Không tìm thấy công thức món ăn hoặc công thức chưa được xuất bản.'
         );
       }
-      return detail;
-    }
+      return scaleMockRecipeDetail(detail, safeServings);
+    },
+    signal
   );
 }
